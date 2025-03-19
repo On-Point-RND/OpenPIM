@@ -104,7 +104,7 @@ def calculate_metrics(args: argparse.Namespace, stat: Dict[str, Any], prediction
     prediction[..., 1] = (prediction[..., 1].reshape(1, -1)[0]*sd['Y'][1] + means['Y'][1])
     ground_truth[..., 0] = (ground_truth[..., 0].reshape(1, -1)[0]*sd['Y'][0] + means['Y'][0])
     ground_truth[..., 1] = (ground_truth[..., 1].reshape(1, -1)[0]*sd['Y'][1] + means['Y'][1])
-
+    
     stat['NMSE'] = metrics.NMSE(prediction, ground_truth)
     stat['Main_metrics'] = pim_metrics.main_metrics(prediction, ground_truth, FS = args.FS, FC_TX = args.FC_TX, PIM_SFT = args.PIM_SFT, PIM_total_BW = args.PIM_total_BW)
     

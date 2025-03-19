@@ -286,22 +286,28 @@ class Runner:
             # Validation
             # -----------
             if self.args.eval_val:
+                print("Started evaluation on validation ...")
                 _, prediction, ground_truth = net_eval(log=self.log_val,
                                                        net=net,
                                                        criterion=criterion,
                                                        dataloader=val_loader,
                                                        device=self.device)
+                
+                print("Computing metrics ...")
                 self.log_val = calculate_metrics(self, self.log_val, prediction, ground_truth, noise['Val'], filter, means, sd)
 
             # -----------
             # Test
             # -----------
+
             if self.args.eval_test:
+                print("Started evaluation on test ...")
                 _, prediction, ground_truth = net_eval(log=self.log_test,
                                                        net=net,
                                                        criterion=criterion,
                                                        dataloader=test_loader,
                                                        device=self.device)
+                print("Computing metrics ...")
                 self.log_test = calculate_metrics(self, self.log_test, prediction, ground_truth, noise['Test'], filter, means, sd)
                 
             ###########################################################################################################
@@ -310,7 +316,9 @@ class Runner:
 
             # Generate Log Dict
             end_time = time.time()
-            elapsed_time_minutes = (end_time - start_time) / 60.0            
+            elapsed_time_minutes = (end_time - start_time) / 60.0   
+
+            print("Generating log ...")         
             self.log_all = gen_log_stat(self.args, elapsed_time_minutes, net, optimizer, epoch, self.log_train,
                                         self.log_val, self.log_test)
 

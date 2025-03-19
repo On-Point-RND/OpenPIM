@@ -43,9 +43,6 @@ def main(epx: Runner):
     
     # Move the network to the proper device
     net_pim = net_pim.to(epx.device)
-
-
-# NOTE: I am not sure how validation is done
    
     net_pim = net_pim.eval()
     with torch.no_grad():

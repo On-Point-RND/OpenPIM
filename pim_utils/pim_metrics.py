@@ -1,9 +1,8 @@
-import os
 import numpy as np
 import matplotlib.pyplot as plt
 
 import numpy as np
-from scipy.signal import convolve
+from scipy.signal import convolve, welch
 
 
 def abs2(x):
@@ -16,20 +15,44 @@ def plot_spectrum(prediction, ground_truth, FS, FC_TX, save_dir):
     ax.set_ylabel(r'PSD, $V^2$/Hz [dB]')
     ax.set_xlabel('Frequency, MHz')
     ax.set_title('Power spectral density')
-    plt.show()
+    #plt.show()
     plt.savefig(save_dir+'/img.png')
 
-def cal_power(signal, FS, FC_TX = 0, PIM_SFT = 0, PIM_total_BW = 0):
-    ax = plt.subplot(1,1,1)
-    plt.close()
-    psd_sig,f = ax.psd(signal, Fs = FS, Fc = FC_TX, NFFT = 2048, window = np.kaiser(2048,10), 
-                          noverlap = 1, pad_to = 2048, label='Residual')
+# def cal_power(signal, FS, FC_TX = 0, PIM_SFT = 0, PIM_total_BW = 0):
+#     print('Calc power start ...')
+#     ax = plt.subplot(1,1,1)
+#     plt.close()
+#     psd_sig,f = ax.psd(signal, Fs = FS, Fc = FC_TX, NFFT = 2048, window = np.kaiser(2048,10), 
+#                           noverlap = 1, pad_to = 2048, label='Residual')
 
-    rng = np.where( (f > FC_TX + PIM_SFT - PIM_total_BW/2) & (f < FC_TX + PIM_SFT + PIM_total_BW/2) )
-    psd_temp = psd_sig[rng[0]]
-    psd_temp_mean = np.mean(psd_temp.real)
-    psd_power = 10*np.log10(psd_temp_mean)
-    return psd_power 
+#     rng = np.where( (f > FC_TX + PIM_SFT - PIM_total_BW/2) & (f < FC_TX + PIM_SFT + PIM_total_BW/2) )
+#     psd_temp = psd_sig[rng[0]]
+#     psd_temp_mean = np.mean(psd_temp.real)
+#     psd_power = 10*np.log10(psd_temp_mean)
+#     print('Calc power end ...')
+#     return psd_power 
+
+
+def cal_power(signal, FS, FC_TX=0, PIM_SFT=0, PIM_total_BW=0):
+    """
+    Optimized power calculation using Welch's method without matplotlib
+    """
+    # Welch's PSD parameters matching original implementation
+    nperseg = 2048
+    window = np.kaiser(nperseg, 10)
+    
+    # Compute PSD using Scipy's optimized Welch implementation
+    f, psd = welch(signal, fs=FS, window=window,
+                   nperseg=nperseg, noverlap=1, return_onesided=False, 
+                   scaling='density', average='mean')
+    
+    # Calculate frequency mask directly
+    freq_mask = (f >= (PIM_SFT - PIM_total_BW/2)) & (f <= (PIM_SFT + PIM_total_BW/2))
+    
+    # Compute mean power in linear scale then convert to dB
+    psd_mean = np.mean(psd[freq_mask])
+    return 10 * np.log10(psd_mean)
+
 
 def calc_perf(PIM_level,RES_level):
     perf = 10*np.log10(10**((PIM_level)/10) - 1) - 10*np.log10(10**((RES_level)/10) - 1)
@@ -37,15 +60,12 @@ def calc_perf(PIM_level,RES_level):
     return perf
 
 def calculate_metrics(initial_signal, filt_signal, FS, FC_TX, PIM_SFT, PIM_total_BW):
-
     initial_power = cal_power(initial_signal, FS = FS, FC_TX = FC_TX, PIM_SFT = PIM_SFT, PIM_total_BW = PIM_total_BW)
     filt_power = cal_power(filt_signal, FS, FC_TX = FC_TX, PIM_SFT = PIM_SFT, PIM_total_BW = PIM_total_BW)
-
     metrics = calc_perf(initial_power, filt_power)
     return metrics
 
 def main_metrics(prediction, ground_truth, FS, FC_TX, PIM_SFT, PIM_total_BW):
-
     initial_signal = ground_truth[..., 0].reshape(1, -1)[0] + 1j * ground_truth[..., 1].reshape(1, -1)[0]
     PIM_pred = prediction[..., 0].reshape(1, -1)[0] + 1j * prediction[..., 1].reshape(1, -1)[0]
 
@@ -58,14 +78,13 @@ def main_metrics(prediction, ground_truth, FS, FC_TX, PIM_SFT, PIM_total_BW):
 
 
 
-def reduction_level(prediction, ground_truth, FS, FC_TX, PIM_SFT, PIM_BW, noise, filter):
-
-    
+def reduction_level(prediction, ground_truth, FS, FC_TX, PIM_SFT, PIM_BW, noise, filter):    
 
     initial_signal = ground_truth[..., 0].reshape(1, -1)[0] + 1j * ground_truth[..., 1].reshape(1, -1)[0]
     PIM_pred = prediction[..., 0].reshape(1, -1)[0] + 1j * prediction[..., 1].reshape(1, -1)[0]
 
     noise_level = noise[..., 0].reshape(1, -1)[0] + 1j * noise[..., 1].reshape(1, -1)[0]
+
     filt_conv = filter.astype(complex).flatten()
 
     min_len = min(noise_level.shape[0], prediction.shape[0])
@@ -73,8 +92,8 @@ def reduction_level(prediction, ground_truth, FS, FC_TX, PIM_SFT, PIM_BW, noise,
     convolved_initial_signal = convolve(initial_signal, filt_conv)
     residual =  convolve(PIM_pred[:min_len], filt_conv) + convolve(noise_level[:min_len], filt_conv) - convolve(initial_signal[:min_len], filt_conv)
 
-    # TODO: some bug with noise level, need to investigate
-    # residual =  convolve(PIM_pred, filt_conv)  - convolve(initial_signal, filt_conv)
+    # # TODO: some bug with noise level, need to investigate
+    # residual =  convolve(PIM_pred, filt_conv) + convolve(noise_level, filt_conv) - convolve(initial_signal, filt_conv)
 
     red_level = calculate_metrics(convolved_initial_signal, residual, FS, FC_TX, PIM_SFT, PIM_BW) 
     return red_level

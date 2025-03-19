@@ -18,7 +18,7 @@ class Config:
 
     # Training Process
     step: str = "train_pim"
-    n_back: int = 28
+    n_back: int = 512
     n_fwd: int = 1
     eval_val: int = 1
     eval_test: int = 1
@@ -34,14 +34,14 @@ class Config:
     # General Hyperparameters
     seed: int = 0
     loss_type: str = "l2"
-    opt_type: str = "adamw"
+    opt_type: str = "adam"
     batch_size: int = 32
     batch_size_eval: int = 256
     n_epochs: int = 1
     lr_schedule: int = 1
     lr: float = 1e-3
     lr_end: float = 1e-6
-    decay_factor: float = 0.5
+    decay_factor: float = 0.001
     patience: float = 10.0
     grad_clip_val: float = 200.0
     train_ratio: float = 0.6
