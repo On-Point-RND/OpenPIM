@@ -74,7 +74,7 @@ class PandasLogger:
 
     def save_best_model(self, net, epoch, val_stat, metric_name='NMSE'):
         best_criteria = val_stat[metric_name]
-        if epoch == 0:
+        if self.best_val_metric is None:
             self.best_val_metric = best_criteria
             torch.save(net.state_dict(), self.path_save_file_best)
             best_epoch = epoch

@@ -28,9 +28,9 @@ class Linear(nn.Module):
         # x = x.permute(0, 2, 1)  # [batch, time, channels]
 
         # Amplitude calculation
-        # amp2 = (torch.pow(x[:, :, 0], 2) + torch.pow(x[:, :, 1], 2))
-        # amp2 = amp2.unsqueeze(-1)
-        # x = amp2 * x
+        amp2 = (torch.pow(x[:, :, 0], 2) + torch.pow(x[:, :, 1], 2))
+        amp2 = amp2.unsqueeze(-1)
+        x = amp2 * x
 
         # Split into real and imaginary components
         x_i = x[:, :, 0]  # Real part

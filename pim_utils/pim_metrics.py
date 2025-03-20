@@ -9,15 +9,31 @@ def abs2(x):
     return np.array([i**2 for i in x])
 
 
-def plot_spectrum(prediction, ground_truth, FS, FC_TX, save_dir):
-    ax = plt.subplot(1,1,1)
-    psd_RX,f = ax.psd(prediction, Fs = FS, Fc = FC_TX, NFFT = 2048, window = np.kaiser(2048,10), noverlap = 1, pad_to = 2048)
-    psd_NF,f = ax.psd(ground_truth, Fs = FS, Fc = FC_TX, NFFT = 2048, window = np.kaiser(2048,10), noverlap = 1, pad_to = 2048)
+def plot_spectrum(prediction, ground_truth, FS, FC_TX, iteration, reduction_level, save_dir):
+    # Create new figure with legend
+    plt.figure(figsize=(10, 6))
+    ax = plt.gca()
+    
+    # Plot both spectra with labels
+    psd_RX, f = ax.psd(prediction, Fs=FS, Fc=FC_TX, NFFT=2048, 
+                       window=np.kaiser(2048, 10), noverlap=1, 
+                       pad_to=2048, label='Filtered Signal')
+    psd_NF, f = ax.psd(ground_truth, Fs=FS, Fc=FC_TX, NFFT=2048, 
+                        window=np.kaiser(2048, 10), noverlap=1, 
+                        pad_to=2048, label='Original Signal')
+    
+    # Add plot elements
     ax.set_ylabel(r'PSD, $V^2$/Hz [dB]')
     ax.set_xlabel('Frequency, MHz')
-    ax.set_title('Power spectral density')
-    #plt.show()
-    plt.savefig(save_dir+'/img.png')
+    ax.set_title(f'Power Spectral Density - Iteration: {iteration}, Reduction: {reduction_level:.3f} dB')
+    ax.legend(loc='upper right')
+    
+    # Save and clean up
+    plt.savefig(f'{save_dir}/img_{iteration}.png', bbox_inches='tight')
+    plt.close()  # Prevent figure accumulation
+    
+    # Optional: Return PSD data for further analysis
+    #return psd_RX, psd_NF, f
 
 
 def compute_power(x, fs, pim_sft, pim_bw, return_db=True):

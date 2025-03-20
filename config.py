@@ -20,8 +20,6 @@ class Config:
     step: str = "train_pim"
     n_back: int = 16
     n_fwd: int = 1
-    eval_val: int = 1
-    eval_test: int = 1
     accelerator: str = "cpu"
     devices: int = 0
     re_level: str = "soft"
@@ -37,7 +35,8 @@ class Config:
     opt_type: str = "adam"
     batch_size: int = 32
     batch_size_eval: int = 256
-    n_epochs: int = 1
+    n_iterations: int = 7e3
+    n_log_steps: int = 1e3
     lr_schedule: int = 1
     lr: float = 1e-3
     lr_end: float = 1e-6

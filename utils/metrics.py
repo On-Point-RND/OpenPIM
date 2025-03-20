@@ -1,6 +1,7 @@
 from typing import Tuple
 import numpy as np
-
+import numpy as np
+from scipy.signal import welch
 
 def magnitude_spectrum(input_signal: np.ndarray[np.complex128],
                        sample_rate: int,
@@ -49,9 +50,6 @@ def power_spectrum(complex_signal, fs=800e6, nperseg=2560, axis=-1):
     - frequencies_signal_subset: Frequencies at which the PSD is computed.
     - psd_signal_subset: PSD values.
     """
-
-    import numpy as np
-    from scipy.signal import welch
 
     # Compute the PSD using the Welch method
     freq, ps = welch(complex_signal, fs=fs, nperseg=nperseg,
