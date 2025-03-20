@@ -1,7 +1,3 @@
-__author__ = "Yizhuo Wu, Chang Gao"
-__license__ = "Apache-2.0 License"
-__email__ = "yizhuo.wu@tudelft.nl, chang.gao@tudelft.nl"
-
 from typing import Tuple
 import numpy as np
 
@@ -39,117 +35,6 @@ def magnitude_spectrum(input_signal: np.ndarray[np.complex128],
 
     return freq, spectrum
 
-def NMSE(prediction, ground_truth):
-    i_hat = prediction[..., 0]
-    i_true = ground_truth[..., 0]
-    q_hat = prediction[..., 1]
-    q_true = ground_truth[..., 1]
-
-    MSE = np.mean(np.square(i_true - i_hat) + np.square(q_true - q_hat), axis=-1)
-    energy = np.mean(np.square(i_true) + np.square(q_true), axis=-1)
-
-    NMSE = np.mean(10 * np.log10(MSE / energy))
-    return NMSE
-
-
-def EVM(prediction, ground_truth, sample_rate=int(800e6), bw_main_ch=200e6, n_sub_ch=10, nperseg=2560):
-    """
-    Calculate EVM based on the given formula.
-
-    Parameters:
-    - prediction (array): Prediction/measurements of the PA or DPD-PA outputs.
-    - ground_truth (array): Desired output of PA.
-    - sample_rate (int, optional): Sampling rate. Default is 800e6.
-    - bw_main_ch (float, optional): Bandwidth of main channel. Default is 200e6.
-    - n_sub_ch (int, optional): Number of sub-channels. Default is 10.
-    - nperseg (int, optional): Length of each segment for the FFT. If not provided, use the entire signal. Default is 2560.
-
-    Returns:
-    - float: EVM value in dB.
-    """
-
-    # Convert to Complex Array
-    prediction_complex = prediction[..., 0] + 1j * prediction[..., 1]
-    freq, spectrum_prediction = magnitude_spectrum(prediction_complex, sample_rate=sample_rate, nfft=nperseg,
-                                                   shift=True)
-    ground_truth_complex = ground_truth[..., 0] + 1j * ground_truth[..., 1]
-    freq, spectrum_ground_truth = magnitude_spectrum(ground_truth_complex, sample_rate=sample_rate, nfft=nperseg,
-                                                     shift=True)
-
-    # Determine the indices for the main channel
-    index_left = np.min(np.where(freq >= -bw_main_ch / 2))
-    index_right = np.max(np.where(freq <= bw_main_ch / 2))
-
-    # Determine the index length for each sub-channel
-    channel_index_len = int((index_right - index_left) / n_sub_ch)
-
-    # Initialize error array
-    error = np.zeros((prediction.shape[0], n_sub_ch))
-
-    # Calculate the error for each sub-channel
-    for c in range(n_sub_ch):
-        error[:, c] = np.mean(np.abs(
-            spectrum_prediction[:, index_left + c * channel_index_len:index_left + (c + 1) * channel_index_len]
-            - spectrum_ground_truth[:, index_left + c * channel_index_len:index_left + (c + 1) * channel_index_len]),
-            axis=-1)
-
-        # Normalize the error by the magnitude of the ground truth
-        error[:, c] = error[:, c] / np.mean(
-            np.abs(
-                spectrum_ground_truth[:, index_left + c * channel_index_len:index_left + (c + 1) * channel_index_len]),
-            axis=-1)
-
-    # Average error across sub-channels
-    EVM_avg_seq = error.mean(axis=-1)
-
-    # Convert error to dB
-    EVM_db = 20 * np.log10(np.mean(EVM_avg_seq))
-
-    return EVM_db
-
-
-def ACLR(prediction, fs=800e6, nperseg=2560, bw_main_ch=200e6, n_sub_ch=10):
-    """
-    Calculates the left and right Adjacent Channel Leakage Ratio (ACLR).
-
-    Parameters:
-    - frequencies: Array of frequency values from the Welch method.
-    - psd: Power Spectral Density values corresponding to the frequencies.
-    - bw_main_ch: Bandwidth of the main channel baseband signals (default is 200e6).
-    - bw_side_ch: Bandwidth of the side channel baseband signals (default is 20e6).
-
-    Returns:
-    - aclr_left: ACLR value for the left adjacent channel.
-    - aclr_right: ACLR value for the right adjacent channel.
-    """
-    # Get complex signal
-    complex_signal = IQ_to_complex(prediction)
-
-    # Calculate power spectral density
-    freq, psd = power_spectrum(complex_signal, fs=fs, nperseg=nperseg, axis=-1)
-
-    # Compute the left and right index of the main channel
-    index_left = np.min(np.where(freq >= -bw_main_ch / 2))
-    index_right = np.max(np.where(freq <= bw_main_ch / 2))
-
-    # Compute the length in index of each subchannel
-    sub_ch_index_len = int((index_right - index_left) / n_sub_ch)
-
-    # Compute the power of each subchannel and find the maximum power
-    sub_ch_power = np.zeros((n_sub_ch))
-    for c in range(n_sub_ch):
-        sub_ch_power[c] = np.sum(
-            psd[index_left + c * sub_ch_index_len:index_left + (c + 1) * sub_ch_index_len])
-    max_sub_ch_power = sub_ch_power.max()
-
-    # Compute ACLR for left and right adjacent channels
-    left_side_ch_power = np.sum(psd[index_left - sub_ch_index_len:index_left])
-    aclr_left = np.mean(10 * np.log10(left_side_ch_power / max_sub_ch_power))
-    right_side_channel_power = np.sum(psd[index_right:index_right + sub_ch_index_len])
-    aclr_right = np.mean(10 * np.log10(right_side_channel_power / max_sub_ch_power))
-
-    return aclr_left, aclr_right
-
 
 def power_spectrum(complex_signal, fs=800e6, nperseg=2560, axis=-1):
     """
@@ -185,6 +70,19 @@ def power_spectrum(complex_signal, fs=800e6, nperseg=2560, axis=-1):
     ps = np.mean(ps, axis=0)
 
     return freq, ps
+
+
+def NMSE(prediction, ground_truth):
+    i_hat = prediction[..., 0]
+    i_true = ground_truth[..., 0]
+    q_hat = prediction[..., 1]
+    q_true = ground_truth[..., 1]
+
+    MSE = np.mean(np.square(i_true - i_hat) + np.square(q_true - q_hat), axis=-1)
+    energy = np.mean(np.square(i_true) + np.square(q_true), axis=-1)
+
+    NMSE = np.mean(10 * np.log10(MSE / energy))
+    return NMSE
 
 
 def IQ_to_complex(IQ_signal):
