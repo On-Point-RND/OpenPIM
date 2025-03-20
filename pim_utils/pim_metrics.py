@@ -53,6 +53,24 @@ def calculate_metrics(initial_signal, filt_signal, FS, FC_TX, PIM_SFT, PIM_total
     return metrics
 
 
+def calculate_avg_metrics(orig_signal: np.ndarray, filt_signal: np.ndarray,
+                          fs, pim_sft, pim_bw):
+    """
+    Computes average metrics across n transceivers.
+    Requires signals in a shape (k x n),
+    where k is a length of a signal sample
+    """
+    assert len(orig_signal.shape) > 1
+    assert len(filt_signal.shape) > 1
+    n_trans = orig_signal.shape[1]
+    metrics = 0.0
+    for i in range(n_trans):
+        init_power = compute_power(orig_signal[:, i], fs, pim_sft, pim_bw)
+        filt_power = compute_power(filt_signal[:, i], fs, pim_sft, pim_bw)
+        metrics += calc_perf(init_power, filt_power)
+    return (metrics / n_trans)
+
+
 def main_metrics(prediction, ground_truth, FS, FC_TX, PIM_SFT, PIM_total_BW):
     initial_signal = ground_truth[..., 0].reshape(1, -1)[0] + 1j * ground_truth[..., 1].reshape(1, -1)[0]
     PIM_pred = prediction[..., 0].reshape(1, -1)[0] + 1j * prediction[..., 1].reshape(1, -1)[0]
