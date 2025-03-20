@@ -90,7 +90,7 @@ def reduction_level(prediction, ground_truth, FS, FC_TX, PIM_SFT, PIM_BW, noise,
     min_len = min(noise_level.shape[0], prediction.shape[0])
     
     convolved_initial_signal = convolve(initial_signal, filt_conv)
-    residual =  convolve(PIM_pred[:min_len], filt_conv) + convolve(noise_level[:min_len], filt_conv) - convolve(initial_signal[:min_len], filt_conv)
+    residual =  convolve(PIM_pred[:min_len], filt_conv) - convolve(initial_signal[:min_len], filt_conv)
 
     # # TODO: some bug with noise level, need to investigate
     # residual =  convolve(PIM_pred, filt_conv) + convolve(noise_level, filt_conv) - convolve(initial_signal, filt_conv)

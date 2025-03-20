@@ -10,3 +10,11 @@ Update default parameters from a command line: <br>
 Update default parameters from a config file: <br>
 
 > python main.py --config_path exp.yaml <br>
+
+
+#### TODO:
+
+- [ ]  Infinite dataloader
+- [ ]  Save Image and Intermediate metrics - check how PIM outside of the signal changes
+- [ ]  Try other, convolution like models
+- [ ]  Rewrite linear model with dot product instead of linear layer

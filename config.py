@@ -18,7 +18,7 @@ class Config:
 
     # Training Process
     step: str = "train_pim"
-    n_back: int = 512
+    n_back: int = 16
     n_fwd: int = 1
     eval_val: int = 1
     eval_test: int = 1
