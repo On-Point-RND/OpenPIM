@@ -17,10 +17,13 @@ def plot_spectrum(prediction, ground_truth, FS, FC_TX, iteration, reduction_leve
     # Plot both spectra with labels
     psd_RX, f = ax.psd(prediction, Fs=FS, Fc=FC_TX, NFFT=2048, 
                        window=np.kaiser(2048, 10), noverlap=1, 
-                       pad_to=2048, label='Filtered Signal')
+                       pad_to=2048, label='Predicted Signal')
     psd_NF, f = ax.psd(ground_truth, Fs=FS, Fc=FC_TX, NFFT=2048, 
                         window=np.kaiser(2048, 10), noverlap=1, 
                         pad_to=2048, label='Original Signal')
+    psd_NF, f = ax.psd(ground_truth - prediction, Fs=FS, Fc=FC_TX, NFFT=2048, 
+                        window=np.kaiser(2048, 10), noverlap=1, 
+                        pad_to=2048, label='(Original - Predicted) Signal')
     
     # Add plot elements
     ax.set_ylabel(r'PSD, $V^2$/Hz [dB]')

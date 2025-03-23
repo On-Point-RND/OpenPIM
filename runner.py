@@ -19,6 +19,8 @@ from config import Config
 from modules.data_collector import InfiniteIQSegmentDataset, IQSegmentDataset, prepare_data
 from modules.paths import gen_log_stat, gen_dir_paths, gen_file_paths
 from modules.train_funcs import net_train, net_eval, calculate_metrics
+import matplotlib.pyplot as plt
+from scipy.signal import convolve
 
 
 def get_mean_var(data):
@@ -313,10 +315,15 @@ class Runner:
         start_time = time.time()
         net.train()
         losses = []
+
+        train_loss_values = []
+        test_loss_values = []
+        red_levels = []
+        n_iterations = []
         
         for iteration, (features, targets) in enumerate(train_loader):
             features, targets = features.to(self.device), targets.to(self.device)
-            optimizer.zero_grad()
+            optimizer.zero_grad()            
             
             loss = criterion(net(features), targets)
             loss.backward()
@@ -348,17 +355,22 @@ class Runner:
                             gt[...,i] = gt[...,i].flatten() * sd["Y"][i] + means["Y"][i]
                         
                         plot_spectrum(
+                            pred[...,0] + 1j*pred[...,1],
                             gt[...,0] + 1j*gt[...,1],
-                            (gt - pred)[...,0] + 1j*(gt - pred)[...,1],
                             self.FS, self.FC_TX, iteration,self.log_test['Reduction_level'], self.path_dir_save
                         )
                         print(f"Reduction_level: {self.log_test['Reduction_level']}")
                 
                 # Logging
                 elapsed = (time.time()-start_time)/60
-                self.log_all = gen_log_stat(self.args, elapsed, net, optimizer, log_epoch,
+                self.log_all = gen_log_stat(self.args, elapsed, net, optimizer, iteration, log_epoch,
                                         self.log_train, self.log_val, self.log_test)
                 self.logger.write_log(self.log_all)
+
+                train_loss_values.append(self.log_all['TRAIN_LOSS'])
+                test_loss_values.append(self.log_all['TEST_LOSS'])
+                red_levels.append(self.log_all['TEST_REDUCTION_LEVEL'])
+                n_iterations.append(iteration)
                 
                 # Learning rate & model saving
                 if self.args.lr_schedule:
@@ -371,4 +383,16 @@ class Runner:
             if iteration > self.args.n_iterations: break
         
         print("Training Completed\n")
+
+        loss_dict = {'Train loss': train_loss_values, 'Test loss': test_loss_values, 'Reduction level': red_levels}
+        for k in loss_dict.keys():
+            
+            fig = plt.figure(figsize = (10, 7))
+            plt.plot(n_iterations, loss_dict[k], linewidth = 2, color = 'red')
+            plt.xlabel('Iterations', fontsize = 16)
+            plt.ylabel(k, fontsize = 16)
+            plt.grid()
+            plt.savefig(f'{self.path_dir_save}/' + k + '.png', bbox_inches='tight')
+            plt.close()
+
         return self.log_all

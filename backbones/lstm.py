@@ -1,6 +1,41 @@
 from torch import nn
 import torch
 
+class ComplexLinear(nn.Module):
+    def __init__(self, in_features, out_features, bias=False):
+        super().__init__()
+        self.fc_real = nn.Linear(in_features, out_features, bias=bias)
+        self.fc_imag = nn.Linear(in_features, out_features, bias=bias)
+
+    def forward(self, x_real, x_imag):
+        return self.fc_real(x_real) - self.fc_imag(x_imag), self.fc_real(x_imag) + self.fc_imag(x_real)
+
+class ComplexRNN(nn.Module):
+    def __init__(self, input_size, hidden_size, num_layers, bidirectional, batch_first, bias):
+        super().__init__()
+        
+        self.rnn_real = nn.LSTM(input_size=input_size,
+                          hidden_size=hidden_size,
+                          num_layers=num_layers,
+                          bidirectional=bidirectional,
+                          batch_first=batch_first,
+                          bias=bias)
+        
+        self.rnn_imag = nn.LSTM(input_size=input_size,
+                          hidden_size=hidden_size,
+                          num_layers=num_layers,
+                          bidirectional=bidirectional,
+                          batch_first=batch_first,
+                          bias=bias)
+
+    def forward(self, x_real, x_imag):
+        real_r, (_,_) = self.rnn_real(x_real)
+        imag_i, (_,_) = self.rnn_imag(x_imag)
+        real_i, (_,_) = self.rnn_real(x_imag)
+        imag_r, (_,_) = self.rnn_imag(x_real)
+
+        return real_r - imag_i, real_i + imag_r
+
 
 class LSTM(nn.Module):
     def __init__(self, input_size, hidden_size, output_size, num_layers, batch_size, bidirectional=False, batch_first=True,
@@ -18,43 +53,15 @@ class LSTM(nn.Module):
         # Instantiate NN Layers
         self.bn_in = nn.BatchNorm1d(num_features=2)
         self.bn_out = nn.BatchNorm1d(num_features=2)
+
+        self.complex_fc_in = ComplexLinear(input_size, input_size)
                 
-        self.rnn_I = nn.LSTM(input_size=input_size,
-                          hidden_size=hidden_size,
+        self.complex_fc = ComplexRNN(input_size=input_size,
+                          hidden_size=output_size//2,
                           num_layers=num_layers,
                           bidirectional=self.bidirectional,
                           batch_first=self.batch_first,
                           bias=self.bias)
-        self.rnn_Q = nn.LSTM(input_size=input_size,
-                          hidden_size=hidden_size,
-                          num_layers=num_layers,
-                          bidirectional=self.bidirectional,
-                          batch_first=self.batch_first,
-                          bias=self.bias)
-        self.fc_out_I = nn.Linear(in_features=hidden_size,
-                                out_features=self.output_size//2,
-                                bias=True)
-        self.fc_out_Q = nn.Linear(in_features=hidden_size,
-                                out_features=self.output_size//2,
-                                bias=True)
-
-    def reset_parameters(self):
-        for name, param in self.rnn.named_parameters():
-            num_gates = int(param.shape[0] / self.hidden_size)
-            if 'bias' in name:
-                nn.init.constant_(param, 0)
-            if 'weight' in name:
-                for i in range(0, num_gates):
-                    nn.init.orthogonal_(param[i * self.hidden_size:(i + 1) * self.hidden_size, :])
-            if 'weight_ih_l0' in name:
-                for i in range(0, num_gates):
-                    nn.init.xavier_uniform_(param[i * self.hidden_size:(i + 1) * self.hidden_size, :])
-
-        for name, param in self.fc_out.named_parameters():
-            if 'weight' in name:
-                nn.init.xavier_uniform_(param)
-            if 'bias' in name:
-                nn.init.constant_(param, 0)
 
     def forward(self, x, h_0):
 
@@ -64,25 +71,16 @@ class LSTM(nn.Module):
         x = self.bn_in(x)
         x = x.permute(0, 2, 1)
 
-        amp2 = torch.pow(x[:, :, 0], 2) + torch.pow(x[:, :, 1], 2)  # Shape: (batch_size, sequence_length)
-        amp2 = amp2.unsqueeze(-1)  # Shape: (batch_size, sequence_length, 1)
-        x = amp2 * x  # Shape: (batch_size, sequence_length, input_size)
+        # Initial complex processing
+        x_i, x_q = x[..., 0], x[..., 1]
+        c_real, c_imag = self.complex_fc_in(x_i, x_q)
 
-        # Split the input into I and Q components
-        x_i = x[:, :, 0]  # Shape: (batch_size, sequence_length)
-        x_q = x[:, :, 1]  # Shape: (batch_size, sequence_length)
+        # Amplitude modulation
+        amp2 = torch.sum(x**2, dim=-1, keepdim=False)
+        x_i, x_q = amp2 * c_real, amp2 * c_imag
 
-        
-        # print('x_i.shape: ', x_i.shape)
-        # x_i, (_, _) = self.rnn_I(x_i, (h_0, h_0))
-        # x_q, (_, _) = self.rnn_Q(x_q, (h_0, h_0))
+        # x_i, x_q = self.rnn(x_i, x_q)
 
-        x_i, (_, _) = self.rnn_I(x_i)
-        x_q, (_, _) = self.rnn_Q(x_q)
-        
-        x_i = self.fc_out_I(x_i)
-        x_q = self.fc_out_Q(x_q)
-        
-        out = torch.cat([x_i, x_q], dim=-1)  # Shape: (batch_size, sequence_length, output_size)
-        # print('out.shape: ', out.shape)
-        return self.bn_out(out)
+        # Final complex processing
+        C_real, C_imag = self.complex_fc(x_i, x_q)
+        return self.bn_out(torch.cat([C_real, C_imag], dim=-1))

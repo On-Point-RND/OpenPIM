@@ -37,7 +37,6 @@ def main(epx: Runner):
                train_loader=train_loader,
                val_loader=val_loader,
                test_loader=test_loader,
-               # best_model_metric='NMSE'
                best_model_metric='Reduction_level',
                noise = noise, 
                filter = filter, 

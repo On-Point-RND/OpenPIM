@@ -6,7 +6,7 @@ import argparse
 import os
 
 
-def gen_log_stat(args: argparse.Namespace, elapsed_time, net, optimizer, epoch, train_stat=None, val_stat=None,
+def gen_log_stat(args: argparse.Namespace, elapsed_time, net, optimizer, iteration, epoch, train_stat=None, val_stat=None,
                  test_stat=None):
     # Get Epoch & Batch Size
     n_iterations = args.n_iterations
@@ -32,6 +32,7 @@ def gen_log_stat(args: argparse.Namespace, elapsed_time, net, optimizer, epoch, 
 
     # Create log dictionary
     log_stat = {'EPOCH': epoch,
+                'iteration' : iteration,
                 'n_iterations': n_iterations,
                 'TIME:': elapsed_time,
                 'LR': lr_curr,
