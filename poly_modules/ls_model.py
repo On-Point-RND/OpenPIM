@@ -2,25 +2,31 @@ import numpy as np
 from scipy.signal import convolve
 
 from gen_mat import *
-from gen_tens import *
 
 
-def convolve_tensor(x: np.ndarray, x_conv: np.ndarray, filter: np.ndarray):
+def convolve_tensor(x: np.ndarray, filter: np.ndarray, x_conv: np.ndarray):
     for i in range(x.shape[1]):
         x_conv[:, i] = convolve(x[:,i], filter)
     return True
 
 
-def ls_multi_trans(model_tens: np.ndarray, rhs_tens: np.ndarray):
-    assert model_tens.shape[0] == rhs_tens.shape[0]
-    assert model_tens.shape[2] == rhs_tens.shape[1]
-    n_trans = rhs_tens.shape[1]
-    wts_tens = np.empty((model_tens.shape[1], rhs_tens.shape[1]), dtype=np.complex128)
+def contract(x: np.ndarray, y: np.ndarray, z: np.ndarray):
+    n = z.shape[1]
+    for i in range(n):
+        z[:,i] -= x[:, :, i] @ y[:, i]
+    return True
+
+
+def ls_multi_trans(model_tens: np.ndarray, rhs: np.ndarray):
+    assert model_tens.shape[0] == rhs.shape[0]
+    assert model_tens.shape[2] == rhs.shape[1]
+    n_trans = rhs.shape[1]
+    wts_tens = np.empty((model_tens.shape[1], rhs.shape[1]), dtype=np.complex128)
     for i_tr in range(n_trans):
-        rhs = rhs_tens[:, i_tr]
+        rhs_i = rhs[:, i_tr]
         model_mat = model_tens[:,:,i_tr]
         inverted = model_mat.conj().T @ model_mat
-        tmp_prod = model_mat.conj().T @ rhs
+        tmp_prod = model_mat.conj().T @ rhs_i
         if np.linalg.cond(inverted) > 10**5:
             I = np.eye(inverted.shape[0], dtype=np.complex128)
             psi = 10**(-11)
