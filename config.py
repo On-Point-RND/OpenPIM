@@ -5,11 +5,13 @@ import pyrallis
 class Config:
     """Configuration class for PIM model training"""
     # Dataset & Log
-    dataset_path: str = "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/"
+    # dataset_path: str = "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/"
+    dataset_path: str = "../../../Data/FOR_COOPERATION/"
     dataset_name: str = "1TR_C20Nc1CD_E20Ne1CD_20250117_5m"
     log_out_dir: str = "./results"
     log_precision: int = 8
-    filter_path: str = "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
+    # filter_path: str = "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
+    filter_path: str = "../../../Data/FOR_COOPERATION/rx_filter.mat"
 
     # PIM Model Settings
     PIM_backbone: str = "linear"
@@ -18,8 +20,10 @@ class Config:
 
     # Training Process
     step: str = "train_pim"
-    n_back: int = 16
+    n_back: int = 128
     n_fwd: int = 1
+    # n_back: int = 350
+    # n_fwd: int = 100
     accelerator: str = "cpu"
     devices: int = 0
     re_level: str = "soft"
@@ -32,13 +36,14 @@ class Config:
     # General Hyperparameters
     seed: int = 0
     loss_type: str = "l2"
-    opt_type: str = "adam"
-    batch_size: int = 32
+    # opt_type: str = "adabound"
+    opt_type: str = "adabound"
+    batch_size: int = 64
     batch_size_eval: int = 256
     n_iterations: int = 20e3
     n_log_steps: int = 1e3
     lr_schedule: int = 1
-    lr: float = 1e-3
+    lr: float = 1e-4
     lr_end: float = 1e-6
     decay_factor: float = 0.001
     patience: float = 10.0

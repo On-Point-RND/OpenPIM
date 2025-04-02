@@ -28,13 +28,49 @@ def standardize_complex_array(complex_array):
 def to2Dreal(x):
     return np.row_stack((x.real, x.imag)).T
 
+def prepare_data_for_predict(data_path):
+    data = loadmat(data_path)
+
+    all_txa = data["txa"]
+    all_rxa = data["rxa"]
+    all_nfa = data["nfa"]
+
+    rxa = []
+    txa = []
+    nfa = []
+    
+    for x_id in range(all_txa.shape[0]):
+        rxa.append(to2Dreal(all_rxa[x_id]))
+        txa.append(to2Dreal(all_txa[x_id]))
+        nfa.append(to2Dreal(all_nfa[x_id]))
+
+
+    # txa = to2Dreal(data["txa"])
+    # rxa = to2Dreal(data["rxa"])
+    # nfa = to2Dreal(data["nfa"])
+    
+    FC_TX = data['BANDS_DL'][0][0][0][0][0] / 10**6
+    FS = data['Fs'][0][0] / 10**6
+    return {'X': txa, 'Y': rxa, 'noise': nfa, 'FC_TX': FC_TX, 'FS': FS}
+    
+    
 def prepare_data(data_path, filter_path, train_ratio=0.6, val_ratio=0.2, test_ratio=0.2):
 
     fil = loadmat(filter_path)['flt_coeff']
     data = loadmat(data_path)
-    rxa = to2Dreal(data["rxa"])
-    txa = to2Dreal(data["txa"])
-    nfa = to2Dreal(data["nfa"])
+    
+    all_txa = data["txa"]
+    all_rxa = data["rxa"]
+    all_nfa = data["nfa"]
+
+    rxa = []
+    txa = []
+    nfa = []
+    
+    for x_id in range(all_txa.shape[0]):
+        rxa.append(to2Dreal(all_rxa[x_id]))
+        txa.append(to2Dreal(all_txa[x_id]))
+        nfa.append(to2Dreal(all_nfa[x_id]))
         
     FC_TX = data['BANDS_DL'][0][0][0][0][0] / 10**6
     FC_RX = data['BANDS_UL'][0][0][0][0][0] / 10**6
@@ -53,31 +89,34 @@ def prepare_data(data_path, filter_path, train_ratio=0.6, val_ratio=0.2, test_ra
         "nperseg": 1536,
     }
    
-    total_samples = txa.shape[0]
+    total_samples = all_txa.shape[1]
     train_end = int(total_samples * train_ratio)
     val_end = train_end + int(total_samples * val_ratio)
 
     return {
-    'X': {'Train': txa[:train_end, :], 'Val': txa[train_end:val_end, :], 'Test': txa[val_end:, :]},
-    'Y': {'Train': rxa[:train_end, :], 'Val': rxa[train_end:val_end, :], 'Test': rxa[val_end:, :]},
-    'N': {'Train': nfa[:train_end, :], 'Val': nfa[train_end:val_end, :], 'Test': nfa[val_end:, :]},
+    'X': {'Train': [x[:train_end, :] for x in txa], 'Val': [x[train_end:val_end, :] for x in txa], 'Test': [x[val_end:, :] for x in txa]},
+    'Y': {'Train': [y[:train_end, :] for y in rxa], 'Val': [y[train_end:val_end, :] for y in rxa], 'Test': [y[val_end:, :] for y in rxa]},
+    'N': {'Train': [n[:train_end, :] for n in nfa], 'Val': [n[train_end:val_end, :] for n in nfa], 'Test': [n[val_end:, :] for n in nfa]},
     'specs': spec_dictionary,
     'filter': fil
 }
 
-def back_fwd_feature_prepare(sequence_x, sequence_t, n_back, n_fwd):
+def back_fwd_feature_prepare(list_sequence_x, sequence_t, n_back, n_fwd):
+    sequence_x = list_sequence_x[0]
+    for id in range(len(list_sequence_x)-1):
+        sequence_x = np.row_stack((sequence_x.T, list_sequence_x[id].T)).T
+
     win_len = n_back + n_fwd + 1
     num_samples = sequence_x.shape[0] - win_len + 1
-    segments_x = np.zeros((num_samples, win_len, 2), dtype=float)
-    segments_y = np.zeros((num_samples, 2), dtype=float)
+    
+    segments_x = np.zeros((num_samples, win_len, sequence_x.shape[1]), dtype=float)
+    segments_y = np.zeros((num_samples, sequence_t.shape[1]), dtype=float)
     
     for step in range(num_samples):
         segments_x[step,:] = sequence_x[step:win_len+step,:]
         segments_y[step,:] = sequence_t[win_len+step-n_fwd-1,:]
+
     return segments_x, segments_y
-
-
-
 
 class InfiniteIQSegmentDataset(IterableDataset):
     def __init__(self, features, targets, n_back, n_fwd, shuffle=True):
@@ -126,33 +165,6 @@ class IQSegmentDataset(Dataset):
         targets = self.targets[idx, ...]
         return features, targets
 
-
-# class IQFrameDataset(Dataset):
-#     def __init__(self, features, targets, frame_length, stride, n_back, n_fwd):
-
-#         features = back_fwd_feature_prepare(features, n_back=n_back, n_fwd=n_fwd)
-#         targets = back_fwd_target_prepare(targets, n_back=n_back, n_fwd=n_fwd)
-        
-#         self.features = torch.Tensor(self.get_frames(features, frame_length, stride))
-#         self.targets = torch.Tensor(self.get_frames(targets, frame_length, stride))
-        
-#     @staticmethod
-#     def get_frames(sequence, frame_length, stride_length):
-#             frames = []
-#             sequence_length = len(sequence)
-#             num_frames = (sequence_length - frame_length) // stride_length + 1
-#             for i in range(num_frames):
-#                 frame = sequence[i * stride_length: i * stride_length + frame_length]
-#                 frames.append(frame)
-#             return np.stack(frames)
-        
-#     def __len__(self):
-#         return len(self.features)
-
-#     def __getitem__(self, idx):
-#         return self.features[idx], self.targets[idx]
-
-
 def data_prepare(X, y, frame_length, degree):
     Input = []
     Output = []
@@ -181,33 +193,3 @@ def data_prepare(X, y, frame_length, degree):
         Output.append(b_output)
 
     return Input, Output
-
-
-# NOTE: why do we need that?
-
-# class IQFrameDataset_gmp(Dataset):
-#     def __init__(self, segment_dataset, frame_length, degree, stride_length=1):
-#         """
-#         Initialize the frame dataset using a subset of IQSegmentDataset.
-
-#         Args:
-#         - segment_dataset (IQSegmentDataset): The pre-split segment dataset.
-#         - seq_len (int): The length of each frame.
-#         - stride_length (int, optional): The step between frames. Default is 1.
-#         """
-
-#         # Extract segments from the segment_dataset
-#         IQ_in_segments = [item[0] for item in segment_dataset]
-#         IQ_out_segments = [item[1] for item in segment_dataset]
-
-#         # Convert the list of tensors to numpy arrays
-#         IQ_in_segments = torch.stack(IQ_in_segments).numpy()
-#         IQ_out_segments = torch.stack(IQ_out_segments).numpy()
-
-#         self.IQ_in_frames, self.IQ_out_frames = data_prepare(IQ_in_segments, IQ_out_segments, frame_length, degree)
-
-#     def __len__(self):
-#         return len(self.IQ_in_frames)
-
-#     def __getitem__(self, idx):
-#         return self.IQ_in_frames[idx], self.IQ_out_frames[idx]

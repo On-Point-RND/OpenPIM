@@ -1,9 +1,11 @@
 # Dataset & Log
-dataset_path: "./home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"  # Data path
+# dataset_path: "./home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"  # Data path
+dataset_path: ../../../Data/FOR_COOPERATION/  # Data path
 dataset_name: "1TR_C20Nc1CD_E20Ne1CD_20250117_5m"  # Dataset names
 log_our_dir:  "./results"  # Filename to save model and log to
 log_precision: 8  # Number of decimals in the log files
-filter_path: "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
+# filter_path: "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
+filter_path: ../../../Data/FOR_COOPERATION/rx_filter.mat
 
 
 PIM_backbone: "linear"  # Modeling PIM Recurrent layer type (choices: ["gmp", "fcn", "gru", "dgru", "qgru", "qgru_amp1", "lstm", "vdlstm", "rvtdcnn", "dgru_abs_only", "linear"])
@@ -33,7 +35,7 @@ batch_size_eval: 256  # Batch size for evaluation
 n_epochs: 1  # Number of epochs to train for
 # n_epochs: 100  # Number of epochs to train for
 lr_schedule: 1  # Whether enable learning rate scheduling
-lr: 1e-3  # Learning rate
+lr: 1e-4  # Learning rate
 lr_end: 1e-6  # Learning rate
 decay_factor: 0.5  # Learning rate decay factor
 patience: 10.0  # Patience for learning rate scheduling

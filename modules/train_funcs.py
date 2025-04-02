@@ -96,27 +96,38 @@ def net_eval(log: Dict,
     # End of Evaluation Epoch
     return net, prediction, ground_truth
 
-
+def net_pred(net: nn.Module,
+             dataloader: DataLoader,
+             device: torch.device):
+    net = net.eval()
+    with torch.no_grad():
+        prediction = []
+        # Batch Iteration
+        for features, targets in tqdm(dataloader):
+            # Move features and targets to the proper device
+            features = features.to(device)
+            # Forward Propagation
+            outputs = net(features)
+            prediction.append(outputs.cpu())
+    # Average loss per epoch
+    # Prediction and Ground Truth
+    prediction = torch.cat(prediction, dim=0).numpy()
+    # End of Evaluation Epoch
+    return prediction
+    
 def calculate_metrics(args: argparse.Namespace, stat: Dict[str, Any], prediction: np.ndarray, ground_truth: np.ndarray,
                      noise: Dict[str, Any], filter: np.ndarray, means, sd):
         
-    prediction[..., 0] = (prediction[..., 0].reshape(1, -1)[0]*sd['Y'][0] + means['Y'][0])
-    prediction[..., 1] = (prediction[..., 1].reshape(1, -1)[0]*sd['Y'][1] + means['Y'][1])
-    ground_truth[..., 0] = (ground_truth[..., 0].reshape(1, -1)[0]*sd['Y'][0] + means['Y'][0])
-    ground_truth[..., 1] = (ground_truth[..., 1].reshape(1, -1)[0]*sd['Y'][1] + means['Y'][1])
+    pred = prediction.copy()
+    gt = ground_truth.copy()
+    
+    pred[..., 0] = (prediction[..., 0].reshape(1, -1)[0]*sd['Y'][0] + means['Y'][0])
+    pred[..., 1] = (prediction[..., 1].reshape(1, -1)[0]*sd['Y'][1] + means['Y'][1])
+    gt[..., 0] = (ground_truth[..., 0].reshape(1, -1)[0]*sd['Y'][0] + means['Y'][0])
+    gt[..., 1] = (ground_truth[..., 1].reshape(1, -1)[0]*sd['Y'][1] + means['Y'][1])
     
     stat['NMSE'] = metrics.NMSE(prediction, ground_truth)
-    stat['Main_metrics'] = pim_metrics.main_metrics(prediction, ground_truth, FS = args.FS, FC_TX = args.FC_TX, PIM_SFT = args.PIM_SFT, PIM_total_BW = args.PIM_total_BW)
+    # stat['Main_metrics'] = pim_metrics.main_metrics(pred, gt, FS = args.FS, FC_TX = args.FC_TX, PIM_SFT = args.PIM_SFT, PIM_total_BW = args.PIM_total_BW)
     
-    stat['Reduction_level'] = pim_metrics.reduction_level(prediction, ground_truth, FS = args.FS, FC_TX = args.FC_TX, PIM_SFT = args.PIM_SFT, PIM_BW = args.PIM_BW, noise = noise, filter = filter)
-    # stat['EVM'] = metrics.EVM(prediction, ground_truth, bw_main_ch=args.bw_main_ch, n_sub_ch=args.n_sub_ch, nperseg=args.nperseg)
-    # ACLR_L = []
-    # ACLR_R = []
-    # ACLR_left, ACLR_right = metrics.ACLR(prediction, fs=args.input_signal_fs, nperseg=args.nperseg,
-    #                                      bw_main_ch=args.bw_main_ch, n_sub_ch=args.n_sub_ch)
-    # ACLR_L.append(ACLR_left)
-    # ACLR_R.append(ACLR_right)
-    # stat['ACLR_L'] = np.mean(ACLR_L)
-    # stat['ACLR_R'] = np.mean(ACLR_R)
-    # stat['ACLR_AVG'] = (stat['ACLR_L'] + stat['ACLR_R']) / 2
+    stat['Reduction_level'] = pim_metrics.reduction_level(pred, gt, FS = args.FS, FC_TX = args.FC_TX, PIM_SFT = args.PIM_SFT, PIM_BW = args.PIM_BW, noise = noise, filter = filter)
     return stat

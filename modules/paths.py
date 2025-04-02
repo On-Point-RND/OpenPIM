@@ -6,7 +6,7 @@ import argparse
 import os
 
 
-def gen_log_stat(args: argparse.Namespace, elapsed_time, net, optimizer, epoch, train_stat=None, val_stat=None,
+def gen_log_stat(args: argparse.Namespace, elapsed_time, net, optimizer, iteration, epoch, train_stat=None, val_stat=None,
                  test_stat=None):
     # Get Epoch & Batch Size
     n_iterations = args.n_iterations
@@ -26,12 +26,13 @@ def gen_log_stat(args: argparse.Namespace, elapsed_time, net, optimizer, epoch, 
             sizes = sizes * el
         n_param += sizes
 
-    if args.step == 'train_pim':
+    if args.step == 'train_pim' or args.step=='train_res':
         backbone = args.PIM_backbone
         hidden_size = args.PIM_hidden_size
 
     # Create log dictionary
     log_stat = {'EPOCH': epoch,
+                'iteration' : iteration,
                 'n_iterations': n_iterations,
                 'TIME:': elapsed_time,
                 'LR': lr_curr,
@@ -57,9 +58,9 @@ def gen_log_stat(args: argparse.Namespace, elapsed_time, net, optimizer, epoch, 
 
 
 def gen_dir_paths(args: argparse.Namespace):
-    path_dir_save = os.path.join(args.log_out_dir,'save', args.dataset_name, args.PIM_backbone, args.step)  # Best model save dir
-    path_dir_log_hist = os.path.join(args.log_out_dir,'log', args.dataset_name, args.PIM_backbone, args.step, 'history')  # Log dir to save training history
-    path_dir_log_best = os.path.join(args.log_out_dir, 'log', args.dataset_name, args.PIM_backbone, args.step, 'best')  # Log dir to save info of the best epoch
+    path_dir_save = os.path.join(args.log_out_dir,'save', args.dataset_name, args.PIM_backbone)  # Best model save dir
+    path_dir_log_hist = os.path.join(args.log_out_dir,'log', args.dataset_name, args.PIM_backbone, 'history')  # Log dir to save training history
+    path_dir_log_best = os.path.join(args.log_out_dir, 'log', args.dataset_name, args.PIM_backbone, 'best')  # Log dir to save info of the best epoch
     dir_paths = (path_dir_save, path_dir_log_hist, path_dir_log_best)
     return dir_paths
 
