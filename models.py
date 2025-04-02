@@ -8,9 +8,10 @@ from backbones.rvtdcnn import RVTDCNN
 
 
 class CoreModel(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers, backbone_type, batch_size):
+    def __init__(self, n_channels, input_size, hidden_size, num_layers, backbone_type, batch_size):
         super(CoreModel, self).__init__()
         self.output_size = 2  # PIM outputs: I & Q
+        self.n_channels = n_channels
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
@@ -93,7 +94,8 @@ class CoreModel(nn.Module):
                                  bias=self.bias)
         elif backbone_type == 'linear':
             from backbones.linear import Linear
-            self.backbone = Linear(input_size = self.input_size,
+            self.backbone = Linear(n_channels = n_channels,
+                                 input_size = self.input_size,
                                  output_size=self.output_size,
                                  batch_size=self.batch_size)
         else:

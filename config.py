@@ -22,6 +22,8 @@ class Config:
     step: str = "train_pim"
     n_back: int = 128
     n_fwd: int = 1
+    # n_back: int = 350
+    # n_fwd: int = 100
     accelerator: str = "cpu"
     devices: int = 0
     re_level: str = "soft"

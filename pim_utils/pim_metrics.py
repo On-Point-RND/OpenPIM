@@ -8,38 +8,57 @@ from scipy.signal import convolve, welch
 def abs2(x):
     return np.array([i**2 for i in x])
 
-
-def plot_spectrum(prediction, ground_truth, FS, FC_TX, iteration, reduction_level, save_dir):
+def plot_spectrum(prediction, ground_truth, FS, FC_TX, PIM_SFT, PIM_BW, iteration, reduction_level, n_channel, save_dir, add_name = '',
+                  cut = False, initial = False, initial_ground_truth = []):
     # Create new figure with legend
     plt.figure(figsize=(10, 6))
     ax = plt.gca()
     
     # Plot both spectra with labels
-    psd_RX, f = ax.psd(prediction, Fs=FS, Fc=FC_TX, NFFT=2048, 
+    if initial:
+        psd_RX, f = ax.psd(prediction, Fs=FS, Fc=FC_TX, NFFT=2048, 
                        window=np.kaiser(2048, 10), noverlap=1, 
                        pad_to=2048, label='Predicted Signal')
-    psd_NF, f = ax.psd(ground_truth, Fs=FS, Fc=FC_TX, NFFT=2048, 
-                        window=np.kaiser(2048, 10), noverlap=1, 
-                        pad_to=2048, label='Original Signal')
-    psd_NF, f = ax.psd(ground_truth - prediction, Fs=FS, Fc=FC_TX, NFFT=2048, 
-                        window=np.kaiser(2048, 10), noverlap=1, 
-                        pad_to=2048, label='(Original - Predicted) Signal')
+        psd_NF, f = ax.psd(initial_ground_truth, Fs=FS, Fc=FC_TX, NFFT=2048, 
+                    window=np.kaiser(2048, 10), noverlap=1, 
+                    pad_to=2048, label='Initial Signal')
+        psd_NF, f = ax.psd(ground_truth, Fs=FS, Fc=FC_TX, NFFT=2048, 
+                            window=np.kaiser(2048, 10), noverlap=1, 
+                            pad_to=2048, label='Residual Signal')
+        psd_NF, f = ax.psd(ground_truth - prediction, Fs=FS, Fc=FC_TX, NFFT=2048, 
+                            window=np.kaiser(2048, 10), noverlap=1, 
+                            pad_to=2048, label='(Residual - Predicted) Signal')
     
+    else:
+        psd_RX, f = ax.psd(prediction, Fs=FS, Fc=FC_TX, NFFT=2048, 
+                       window=np.kaiser(2048, 10), noverlap=1, 
+                       pad_to=2048, label='Predicted Signal')
+        psd_NF, f = ax.psd(ground_truth, Fs=FS, Fc=FC_TX, NFFT=2048, 
+                            window=np.kaiser(2048, 10), noverlap=1, 
+                            pad_to=2048, label='Original Signal')
+        psd_NF, f = ax.psd(ground_truth - prediction, Fs=FS, Fc=FC_TX, NFFT=2048, 
+                            window=np.kaiser(2048, 10), noverlap=1, 
+                            pad_to=2048, label='(Original - Predicted) Signal')
+
     # Add plot elements
     ax.set_ylabel(r'PSD, $V^2$/Hz [dB]')
     ax.set_xlabel('Frequency, MHz')
-    ax.set_title(f'Power Spectral Density - Iteration: {iteration}, Reduction: {reduction_level:.3f} dB')
+    if cut:
+        ax.set_xlim(FC_TX - FS/10 + PIM_SFT - PIM_BW/2, FC_TX + FS/10 + PIM_SFT + PIM_BW/2)
+    ax.set_title(f'Power Spectral Density - Iteration: {iteration}, Reduction: {reduction_level:.3f} dB, CH_{n_channel}')
     ax.legend(loc='upper right')
     
     # Save and clean up
-    plt.savefig(f'{save_dir}/img_{iteration}.png', bbox_inches='tight')
+    if cut: 
+        plt.savefig(f'{save_dir}/img_{iteration}_cut' + add_name + '.png', bbox_inches='tight')
+    else:
+        plt.savefig(f'{save_dir}/img_{iteration}' + add_name + '.png', bbox_inches='tight')
     plt.close()  # Prevent figure accumulation
     
     # Optional: Return PSD data for further analysis
     #return psd_RX, psd_NF, f
 
-
-def compute_power(x, fs, pim_sft, pim_bw, return_db=True):
+def compute_power(x, fs, fc_tx, pim_sft, pim_bw, return_db=True):
     """
     Power calculation using Welch's method without matplotlib
     """
@@ -52,6 +71,7 @@ def compute_power(x, fs, pim_sft, pim_bw, return_db=True):
     freq_mask = np.where(
         (f > pim_sft - pim_bw/2) & (f < pim_sft + pim_bw/2)
     )
+
     psd_window = psd[freq_mask[0]]
     power = np.mean(psd_window.real)
     if return_db:
@@ -65,9 +85,9 @@ def calc_perf(PIM_level,RES_level):
     return perf
 
 
-def calculate_metrics(initial_signal, filt_signal, FS, FC_TX, PIM_SFT, PIM_total_BW):
-    initial_power = compute_power(initial_signal, FS, PIM_SFT, PIM_total_BW)
-    filt_power = compute_power(filt_signal, FS, PIM_SFT, PIM_total_BW)
+def calculate_res(initial_signal, filt_signal, FS, FC_TX, PIM_SFT, PIM_total_BW):
+    initial_power = compute_power(initial_signal, FS, FC_TX, PIM_SFT, PIM_total_BW)
+    filt_power = compute_power(filt_signal, FS, FC_TX, PIM_SFT, PIM_total_BW)
     metrics = calc_perf(initial_power, filt_power)
     return metrics
 
@@ -96,7 +116,7 @@ def main_metrics(prediction, ground_truth, FS, FC_TX, PIM_SFT, PIM_total_BW):
 
     filt_signal = initial_signal - PIM_pred
 
-    main_metric = calculate_metrics(initial_signal, filt_signal, FS, FC_TX, PIM_SFT, PIM_total_BW)
+    main_metric = calculate_res(initial_signal, filt_signal, FS, FC_TX, PIM_SFT, PIM_total_BW)
     # plot_spectrum(initial_signal, filt_signal, FS, FC_TX, PIM_SFT)
     
     return main_metric
@@ -111,13 +131,14 @@ def reduction_level(prediction, ground_truth, FS, FC_TX, PIM_SFT, PIM_BW, noise,
 
     filt_conv = filter.astype(complex).flatten()
 
-    min_len = min(noise_level.shape[0], prediction.shape[0])
+    # min_len = min(noise_level.shape[0], prediction.shape[0])
     
     convolved_initial_signal = convolve(initial_signal, filt_conv)
-    residual =  convolve(PIM_pred[:min_len], filt_conv) - convolve(initial_signal[:min_len], filt_conv)
+    # residual =  convolve(PIM_pred[:min_len], filt_conv) - convolve(initial_signal[:min_len], filt_conv)
+    residual =  convolve(PIM_pred, filt_conv) - convolve(initial_signal, filt_conv)
 
     # # TODO: some bug with noise level, need to investigate
     # residual =  convolve(PIM_pred, filt_conv) + convolve(noise_level, filt_conv) - convolve(initial_signal, filt_conv)
 
-    red_level = calculate_metrics(convolved_initial_signal, residual, FS, FC_TX, PIM_SFT, PIM_BW) 
+    red_level = calculate_res(convolved_initial_signal, residual, FS, FC_TX, PIM_SFT, PIM_BW) 
     return red_level

@@ -54,10 +54,10 @@ class LSTM(nn.Module):
         self.bn_in = nn.BatchNorm1d(num_features=2)
         self.bn_out = nn.BatchNorm1d(num_features=2)
 
-        self.complex_fc_in = ComplexLinear(input_size, input_size)
+        self.complex_fc = ComplexLinear(input_size, output_size//2)
                 
-        self.complex_fc = ComplexRNN(input_size=input_size,
-                          hidden_size=output_size//2,
+        self.complex_fc_in = ComplexRNN(input_size=input_size,
+                          hidden_size=input_size,
                           num_layers=num_layers,
                           bidirectional=self.bidirectional,
                           batch_first=self.batch_first,
