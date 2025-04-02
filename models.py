@@ -96,6 +96,13 @@ class CoreModel(nn.Module):
             self.backbone = Linear(input_size = self.input_size,
                                  output_size=self.output_size,
                                  batch_size=self.batch_size)
+            
+        elif backbone_type == 'linseq':
+            from backbones.sequential_linear import SequentialLinear
+            self.backbone = SequentialLinear(input_size = self.input_size,
+                                 output_size=self.output_size,
+                                 batch_size=self.batch_size)
+
         else:
             raise ValueError(f"The backbone type '{self.backbone_type}' is not supported. Please add your own "
                              f"backbone under ./backbones and update models.py accordingly.")

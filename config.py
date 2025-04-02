@@ -35,7 +35,7 @@ class Config:
     opt_type: str = "adam"
     batch_size: int = 32
     batch_size_eval: int = 256
-    n_iterations: int = 7e3
+    n_iterations: int = 20e3
     n_log_steps: int = 1e3
     lr_schedule: int = 1
     lr: float = 1e-3

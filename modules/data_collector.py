@@ -183,7 +183,7 @@ def data_prepare(X, y, frame_length, degree):
     return Input, Output
 
 
-# NOTE: why do we need that?s
+# NOTE: why do we need that?
 
 # class IQFrameDataset_gmp(Dataset):
 #     def __init__(self, segment_dataset, frame_length, degree, stride_length=1):
