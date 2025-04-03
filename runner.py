@@ -368,6 +368,7 @@ class Runner:
                 data["Y"]["Train"][id],
                 n_back=self.args.n_back,
                 n_fwd=self.args.n_fwd,
+                n_iterations=int(self.args.n_iterations)
             )
                 
             val_set = IQSegmentDataset(

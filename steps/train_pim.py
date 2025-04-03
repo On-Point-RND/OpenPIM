@@ -71,7 +71,12 @@ def main(epx: Runner):
     })
     fig = plt.figure(figsize = (10, 7))
     power_df.plot.bar(color = ('red', 'blue', 'black'))
-    plt.title(f'PIM: ORIG: {round( np.mean(total_powers['gt']), 2)}, RES: {round( np.mean([CH_max_perf[i] - CH_test_perf[i] for i in range(len(CH_test_perf))]), 2)}; Performance ABS: {round( np.max(CH_test_perf), 2)}, MEAN: {round( np.mean(CH_test_perf), 2)}')
+    plt.title(
+    f"PIM: ORIG: {round(np.mean(total_powers['gt']), 2)}, "
+    f"RES: {round(np.mean([CH_max_perf[i] - CH_test_perf[i] for i in range(len(CH_test_perf))]), 2)}; "
+    f"Performance ABS: {round(np.max(CH_test_perf), 2)}, "
+    f"MEAN: {round(np.mean(CH_test_perf), 2)}"
+)
     plt.xlabel('Channel number', fontsize = 16)
     plt.ylabel('Signal level [dB]', fontsize = 16)
     plt.savefig(f'{epx.path_dir_save}/' 'barplot_perfofmance.png', bbox_inches='tight')

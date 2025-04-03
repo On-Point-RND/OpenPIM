@@ -8,56 +8,124 @@ from scipy.signal import convolve, welch
 def abs2(x):
     return np.array([i**2 for i in x])
 
-def plot_spectrum(prediction, ground_truth, FS, FC_TX, PIM_SFT, PIM_BW, iteration, reduction_level, n_channel, save_dir, add_name = '',
-                  cut = False, initial = False, initial_ground_truth = []):
-    # Create new figure with legend
+import numpy as np
+import matplotlib.pyplot as plt
+
+def plot_spectrum(prediction, ground_truth, FS, FC_TX, PIM_SFT, PIM_BW, iteration, reduction_level, n_channel, save_dir, add_name='',
+                  cut=False, initial=False, initial_ground_truth=[]):
+    """
+    Plots the power spectral density (PSD) of signals and saves the resulting figure.
+
+    Parameters:
+        prediction: Predicted signal data.
+        ground_truth: Ground truth signal data.
+        FS: Sampling frequency.
+        FC_TX: Center frequency.
+        PIM_SFT: Frequency shift for PIM.
+        PIM_BW: Bandwidth for PIM.
+        iteration: Current iteration number.
+        reduction_level: Reduction level in dB.
+        n_channel: Channel number.
+        save_dir: Directory to save the plot.
+        add_name: Optional suffix for the saved file name.
+        cut: Whether to limit the x-axis range.
+        initial: Whether to include the initial ground truth signal.
+        initial_ground_truth: Initial ground truth signal data (used if `initial=True`).
+    """
+    # Create a new figure with a specified size
     plt.figure(figsize=(10, 6))
     ax = plt.gca()
-    
-    # Plot both spectra with labels
+
+    # Plot the predicted signal
+    psd_RX, f = ax.psd(
+        prediction,
+        Fs=FS,
+        Fc=FC_TX,
+        NFFT=2048,
+        window=np.kaiser(2048, 10),
+        noverlap=1,
+        pad_to=2048,
+        label='Predicted Signal'
+    )
+
+    # Plot the ground truth or initial signals based on the `initial` flag
     if initial:
-        psd_RX, f = ax.psd(prediction, Fs=FS, Fc=FC_TX, NFFT=2048, 
-                       window=np.kaiser(2048, 10), noverlap=1, 
-                       pad_to=2048, label='Predicted Signal')
-        psd_NF, f = ax.psd(initial_ground_truth, Fs=FS, Fc=FC_TX, NFFT=2048, 
-                    window=np.kaiser(2048, 10), noverlap=1, 
-                    pad_to=2048, label='Initial Signal')
-        psd_NF, f = ax.psd(ground_truth, Fs=FS, Fc=FC_TX, NFFT=2048, 
-                            window=np.kaiser(2048, 10), noverlap=1, 
-                            pad_to=2048, label='Residual Signal')
-        psd_NF, f = ax.psd(ground_truth - prediction, Fs=FS, Fc=FC_TX, NFFT=2048, 
-                            window=np.kaiser(2048, 10), noverlap=1, 
-                            pad_to=2048, label='(Residual - Predicted) Signal')
-    
+        # Plot the initial ground truth signal
+        psd_NF, f = ax.psd(
+            initial_ground_truth,
+            Fs=FS,
+            Fc=FC_TX,
+            NFFT=2048,
+            window=np.kaiser(2048, 10),
+            noverlap=1,
+            pad_to=2048,
+            label='Initial Signal'
+        )
+        # Plot the residual signal
+        psd_NF, f = ax.psd(
+            ground_truth,
+            Fs=FS,
+            Fc=FC_TX,
+            NFFT=2048,
+            window=np.kaiser(2048, 10),
+            noverlap=1,
+            pad_to=2048,
+            label='Residual Signal'
+        )
+        # Plot the difference between residual and predicted signals
+        psd_NF, f = ax.psd(
+            ground_truth - prediction,
+            Fs=FS,
+            Fc=FC_TX,
+            NFFT=2048,
+            window=np.kaiser(2048, 10),
+            noverlap=1,
+            pad_to=2048,
+            label='(Residual - Predicted) Signal'
+        )
     else:
-        psd_RX, f = ax.psd(prediction, Fs=FS, Fc=FC_TX, NFFT=2048, 
-                       window=np.kaiser(2048, 10), noverlap=1, 
-                       pad_to=2048, label='Predicted Signal')
-        psd_NF, f = ax.psd(ground_truth, Fs=FS, Fc=FC_TX, NFFT=2048, 
-                            window=np.kaiser(2048, 10), noverlap=1, 
-                            pad_to=2048, label='Original Signal')
-        psd_NF, f = ax.psd(ground_truth - prediction, Fs=FS, Fc=FC_TX, NFFT=2048, 
-                            window=np.kaiser(2048, 10), noverlap=1, 
-                            pad_to=2048, label='(Original - Predicted) Signal')
+        # Plot the original signal
+        psd_NF, f = ax.psd(
+            ground_truth,
+            Fs=FS,
+            Fc=FC_TX,
+            NFFT=2048,
+            window=np.kaiser(2048, 10),
+            noverlap=1,
+            pad_to=2048,
+            label='Original Signal'
+        )
+        # Plot the difference between original and predicted signals
+        psd_NF, f = ax.psd(
+            ground_truth - prediction,
+            Fs=FS,
+            Fc=FC_TX,
+            NFFT=2048,
+            window=np.kaiser(2048, 10),
+            noverlap=1,
+            pad_to=2048,
+            label='(Original - Predicted) Signal'
+        )
 
     # Add plot elements
     ax.set_ylabel(r'PSD, $V^2$/Hz [dB]')
     ax.set_xlabel('Frequency, MHz')
     if cut:
-        ax.set_xlim(FC_TX - FS/10 + PIM_SFT - PIM_BW/2, FC_TX + FS/10 + PIM_SFT + PIM_BW/2)
+        ax.set_xlim(FC_TX - FS / 10 + PIM_SFT - PIM_BW / 2, FC_TX + FS / 10 + PIM_SFT + PIM_BW / 2)
     ax.set_title(f'Power Spectral Density - Iteration: {iteration}, Reduction: {reduction_level:.3f} dB, CH_{n_channel}')
-    ax.legend(loc='upper right')
-    
-    # Save and clean up
-    if cut: 
-        plt.savefig(f'{save_dir}/img_{iteration}_cut' + add_name + '.png', bbox_inches='tight')
-    else:
-        plt.savefig(f'{save_dir}/img_{iteration}' + add_name + '.png', bbox_inches='tight')
-    plt.close()  # Prevent figure accumulation
-    
-    # Optional: Return PSD data for further analysis
-    #return psd_RX, psd_NF, f
 
+    # Place the legend in the upper left corner
+    ax.legend(loc='upper left')
+
+    # Save the figure
+    if cut:
+        plt.savefig(f'{save_dir}/img_{iteration}_cut{add_name}.png', bbox_inches='tight')
+    else:
+        plt.savefig(f'{save_dir}/img_{iteration}{add_name}.png', bbox_inches='tight')
+
+    # Close the figure to prevent accumulation
+    plt.close()
+    
 def compute_power(x, fs, fc_tx, pim_sft, pim_bw, return_db=True):
     """
     Power calculation using Welch's method without matplotlib

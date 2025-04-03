@@ -94,7 +94,7 @@ class CoreModel(nn.Module):
                                  bias=self.bias)
         elif backbone_type == 'linear':
             from backbones.linear import Linear
-            self.backbone = Linear(n_channels = n_channels,
+            self.backbone = Linear(#n_channels = n_channels,
                                  input_size = self.input_size,
                                  output_size=self.output_size,
                                  batch_size=self.batch_size)

@@ -5,13 +5,12 @@ import pyrallis
 class Config:
     """Configuration class for PIM model training"""
     # Dataset & Log
-    # dataset_path: str = "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/"
-    dataset_path: str = "../../../Data/FOR_COOPERATION/"
+    dataset_path: str = "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/"
     dataset_name: str = "1TR_C20Nc1CD_E20Ne1CD_20250117_5m"
     log_out_dir: str = "./results"
     log_precision: int = 8
-    # filter_path: str = "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
-    filter_path: str = "../../../Data/FOR_COOPERATION/rx_filter.mat"
+    filter_path: str = "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
+
 
     # PIM Model Settings
     PIM_backbone: str = "linear"
@@ -27,7 +26,7 @@ class Config:
     accelerator: str = "cpu"
     devices: int = 0
     re_level: str = "soft"
-    use_segments: bool = False
+
 
     # # Feature Extraction
     # frame_length: int = 50
@@ -37,7 +36,7 @@ class Config:
     seed: int = 0
     loss_type: str = "l2"
     # opt_type: str = "adabound"
-    opt_type: str = "adabound"
+    opt_type: str = "adam"
     batch_size: int = 64
     batch_size_eval: int = 256
     n_iterations: int = 20e3

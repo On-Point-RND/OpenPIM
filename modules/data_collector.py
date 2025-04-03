@@ -101,13 +101,13 @@ def prepare_data(data_path, filter_path, train_ratio=0.6, val_ratio=0.2, test_ra
     'filter': fil
 }
 
-def back_fwd_feature_prepare(list_sequence_x, sequence_t, n_back, n_fwd):
+def back_fwd_feature_prepare(list_sequence_x, sequence_t, n_back, n_fwd, n_iterations):
     sequence_x = list_sequence_x[0]
     for id in range(len(list_sequence_x)-1):
         sequence_x = np.row_stack((sequence_x.T, list_sequence_x[id].T)).T
 
     win_len = n_back + n_fwd + 1
-    num_samples = sequence_x.shape[0] - win_len + 1
+    num_samples = min(sequence_x.shape[0] - win_len + 1, n_iterations)
     
     segments_x = np.zeros((num_samples, win_len, sequence_x.shape[1]), dtype=float)
     segments_y = np.zeros((num_samples, sequence_t.shape[1]), dtype=float)
@@ -119,8 +119,8 @@ def back_fwd_feature_prepare(list_sequence_x, sequence_t, n_back, n_fwd):
     return segments_x, segments_y
 
 class InfiniteIQSegmentDataset(IterableDataset):
-    def __init__(self, features, targets, n_back, n_fwd, shuffle=True):
-        segments_x, segments_y = back_fwd_feature_prepare(features, targets, n_back, n_fwd)
+    def __init__(self, features, targets, n_back, n_fwd, n_iterations,shuffle=True):
+        segments_x, segments_y = back_fwd_feature_prepare(features, targets, n_back, n_fwd,n_iterations)
         
         self.features = torch.Tensor(segments_x)
         self.targets = torch.Tensor(segments_y)

@@ -24,7 +24,6 @@ eval_test: 1  # Whether evaluate test set during training
 accelerator: "cpu"  # Accelerator types (choices: ["cpu", "cuda", "mps"])
 devices: 0  # Which accelerator to train on
 re_level: "soft"  # Level of reproducibility (choices: ["soft", "hard"])
-use_segments: false  # Whether partition training sequences into segments of length nperseg before doing the framing
 
 # General Hyperparameters
 seed: 0  # Global random number seed

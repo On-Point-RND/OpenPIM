@@ -3,7 +3,7 @@ from scipy.io import loadmat
 import pandas as pd
 import json
 
-def prepare_data(data_path = '5m', train_ratio=0.6, val_ratio=0.2, test_ratio=0.2):
+def prepare_data(data_path = '5m', train_ratio=0.6, val_ratio=0.2, test_ratio=0.2, n_iterations=-1):
                             
     # Ensure the ratios sum to 1
     assert abs(train_ratio + val_ratio + test_ratio - 1.0) < 1e-10, "Ratios should sum to 1"
@@ -38,9 +38,9 @@ def prepare_data(data_path = '5m', train_ratio=0.6, val_ratio=0.2, test_ratio=0.
     fil = loadmat("../../../Data/FOR_COOPERATION/rx_filter.mat")
     pd.DataFrame(fil['flt_coeff'][0], columns=['Filter_coeffs']).to_csv(output_dir + '/filter.csv', index = False)
 
-    rxa = data["rxa"]
-    txa = data["txa"]
-    nfa = data["nfa"]
+    rxa = data["rxa"][:n_iterations*3] # multiply by 3 for validations and paddings etc, neet to cut due to memory limits
+    txa = data["txa"][:n_iterations*3]
+    nfa = data["nfa"][:n_iterations*3]
         
     FC_TX = data['BANDS_DL'][0][0][0][0][0] / 10**6
     FC_RX = data['BANDS_UL'][0][0][0][0][0] / 10**6
@@ -56,7 +56,6 @@ def prepare_data(data_path = '5m', train_ratio=0.6, val_ratio=0.2, test_ratio=0.
         "PIM_SFT": PIM_SFT,
         "PIM_BW": PIM_BW,
         "PIM_total_BW": PIM_total_BW,
-        # "n_sub_ch" : 5,
         "nperseg": 1536,
     }
     json_object = json.dumps(spec_dictionary)
