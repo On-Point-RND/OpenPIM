@@ -1,8 +1,8 @@
 {
-    "model": "sep_nlin_mult_infl_fix_pwr",
-    "poly": "power",
-    "n_back": 28,
-    "n_fwd": 3,
+    "models": ["sep_nlin_mult_infl_fix_pwr"],
+    "poly_list": ["power"],
+    "back_list": [24, 26, 28, 30, 32, 34],
+    "fwd_list": [1, 3],
     "pim_type": "total",
     "bf_dict": {
         "simple_mult_infl": 16,

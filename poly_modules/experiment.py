@@ -7,17 +7,23 @@ from scipy.signal import convolve
 from scipy.io import loadmat
 import json
 
-from gen_mat import *
-from ls_model import *
+from linalg_aux import *
 from metrics import *
 
-@dataclass
+
 class SignalConfig:
     fs: float
     fc_tx: float
     pim_sft: float
     pim_bw: float
     pim_total_bw: float
+
+    def __init__(self, signal_data):
+        self.fc_tx = signal_data['BANDS_DL'][0][0][0][0][0] / 10**6
+        self.fs = signal_data['Fs'][0][0] / 10**6
+        self.pim_sft = signal_data['PIM_sft'][0][0] / 10**6
+        self.pim_bw = signal_data['BANDS_TX'][0][0][1][0][0] / 10**6
+        self.pim_total_bw = signal_data['BANDS_TX'][0][0][3][0][0] / 10**6
 
 
 @dataclass
@@ -40,33 +46,33 @@ class ModelExpConfig:
             self.fwd_list = config['fwd_list']
 
 
-def experiment(experiment_name, output_dir = './Results/Polynomial_experiments/',
+def experiment(experiment_name, output_dir = './results/',
                               data_path = '5m'):
-    print('***************************************************************************************************')
+    print('*****************************************************************')
     print(f"Running experiment: {experiment_name}")
 
-    model_config = ModelExpConfig('config.json')
+    model_config = ModelExpConfig('exp_config.json')
 
     os.makedirs(output_dir, exist_ok=True)
     multi_trans = False
     if data_path == '5m':
-        data = loadmat("../Data/FOR_COOPERATION/1TR_C20Nc1CD_E20Ne1CD_20250117_5m/1TR_C20Nc1CD_E20Ne1CD_20250117_5m.mat")
+        data = loadmat("../Data/1TR_C20Nc1CD_E20Ne1CD_20250117_5m.mat")
     elif data_path == '0.5m':
-        data = loadmat("../Data/FOR_COOPERATION/1TR_C20Nc1CD_E20Ne1CD_20250117_0.5m/1TR_C20Nc1CD_E20Ne1CD_20250117_0.5m.mat")
+        data = loadmat("../Data/1TR_C20Nc1CD_E20Ne1CD_20250117_0.5m.mat")
     elif data_path == '1L':
         multi_trans = True
-        data = loadmat("../Data/FOR_COOPERATION/16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L/16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L.mat")
+        data = loadmat("../Data/16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L.mat")
     elif data_path == '16L':
         multi_trans = True
-        data = loadmat("../Data/FOR_COOPERATION/16TR_C25Nc16CD_CL_E20Ne1CD_20250117_16L/16TR_C25Nc16CD_CL_E20Ne1CD_20250117_16L.mat")
+        data = loadmat("../Data/16TR_C25Nc16CD_CL_E20Ne1CD_20250117_16L.mat")
 
-    fil = loadmat("../Data/FOR_COOPERATION/rx_filter.mat")
+    fil = loadmat("../Data/rx_filter.mat")
     n,m = data["rxa"].shape[1], data["rxa"].shape[0] 
     conv_data = fil['flt_coeff'].flatten()
     rxa = np.empty((n,m), dtype=np.complex128, order='F')
     txa = np.empty((n,m), dtype=np.complex128, order='F')
     # nfa = np.empty((n,m), dtype=np.complex128, order='F')
-    if model_config.pim_type == 'all':
+    if model_config.pim_type == 'total':
         rxa[...] = np.copy(data["rxa"].T)
     elif model_config.pim_type == 'ext':
         rxa[...] = np.copy(data["PIM_EXT"].T + data["nfa"].T)
@@ -75,16 +81,11 @@ def experiment(experiment_name, output_dir = './Results/Polynomial_experiments/'
             data["PIM_COND"].T + data["PIM_COND_LEAK"].T + data["nfa"].T
         )
     txa[...] = np.copy(data["txa"].T)
-    # nfa[...] = np.copy(data["nfa"].T)
-    FC_TX = data['BANDS_DL'][0][0][0][0][0] / 10**6
-    FC_RX = data['BANDS_UL'][0][0][0][0][0] / 10**6
-    FS = data['Fs'][0][0] / 10**6
-    PIM_SFT = data['PIM_sft'][0][0] / 10**6
-    PIM_BW = data['BANDS_TX'][0][0][1][0][0] / 10**6
-    PIM_total_BW = data['BANDS_TX'][0][0][3][0][0] / 10**6
-    signal_config = SignalConfig(FS, FC_TX, PIM_SFT, PIM_BW, PIM_total_BW)
+    signal_config = SignalConfig(data)
     model_config.bf_lengths = {"utd_nlin_mult_infl_fix_pwr": [16],
-        "sep_nlin_mult_infl_fix_pwr": [16]}
+        "sep_nlin_mult_infl_fix_pwr": [16],
+        "utd_nlin_fix_power": [1],
+        "utd_nlin": [2]}
     for model_name, poly_name in product(model_config.models, model_config.poly_list):
         print(model_name)
         train_gl, test_gl, params_gl = [], [], []
@@ -98,15 +99,14 @@ def experiment(experiment_name, output_dir = './Results/Polynomial_experiments/'
             train_gl += train_metrics
             test_gl += test_metrics
             params_gl += params
-        result_path = os.path.join(output_dir,poly_name+"/")
+        result_path = os.path.join(output_dir,poly_name, model_config.pim_type+"_pim/")
         os.makedirs(result_path, exist_ok=True)
         pd.DataFrame({'Train_metric': train_gl, 'Test_metric': test_gl, 
                     'Back' : [v[0] for v in  params_gl], 'Forward' : [v[1] for v in params_gl], 
                     'Degree': [v[2] for v in  params_gl]}).to_csv(
-                        result_path + data_path +'_{}_{}_metrics.tsv'.format(model_name, model_config.pim_type
-                        ))
-        if multi_trans:
-            np.savez(result_path + data_path +'_signals.npz', signal_dict=signal_dict)
+                        result_path + data_path +'_{}_metrics.tsv'.format(model_name))
+        # if multi_trans:
+        #     np.savez(result_path + data_path +'_signals.npz', signal_dict=signal_dict)
     return True
 
 
@@ -229,7 +229,6 @@ def window_experiment_multr(rxa, txa, conv4metrics, config: WindowExpConfig, sig
             model_wts = ls_multi_trans(mtn_train_slice, rxa_train)
             pred_train[...] = rxa_train
             pred_test[...] = rxa_test
-            print(model_wts.shape)
             contract(mtn_train_slice, model_wts, pred_train)
             contract(mtn_test_slice, model_wts, pred_test)
             convolve_tensor(pred_train, conv4metrics, conv_pred_train)
