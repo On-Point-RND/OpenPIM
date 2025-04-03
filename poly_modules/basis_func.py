@@ -80,7 +80,7 @@ def utd_nlin(poly_func: Callable[..., np.ndarray],
     pow = int(mem_segment.shape[1])
     total_x = np.sum(x, axis=1)
     for i in range(pow):
-        mem_segment[:, i] = x[:, ts] * poly_func(np.abs(total_x), i)
+        mem_segment[:, i] = x[:, ts] * poly_func(np.abs(total_x), i+1)
     return True
 
 
@@ -123,4 +123,28 @@ def utd_nlin_self_act(poly_func: Callable[..., np.ndarray],
     for i in range(pow):
         mem_segment[:, i] = x[:, ts] * poly_func(np.abs(total_x), i)
         mem_segment[:, pow+i] = x[:, ts] * poly_func(np.abs(x[:, ts]), i)
+    return True
+
+
+def utd_nlin_cross_a(poly_func: Callable[..., np.ndarray],
+                      x: np.ndarray, mem_segment: np.ndarray, ts: int):
+    assert x.shape[0] == mem_segment.shape[0]
+    n_ts = x.shape[1]
+    i = 0
+    for i_tr in range(n_ts):
+        for tr_loc in range(i_tr, n_ts):
+            mem_segment[:, i] = x[:, i_tr] * poly_func(np.abs(x[:, tr_loc]), 1)
+            i += 1
+    return True
+
+
+def utd_nlin_cross_b(poly_func: Callable[..., np.ndarray],
+                      x: np.ndarray, mem_segment: np.ndarray, ts: int):
+    assert x.shape[0] == mem_segment.shape[0]
+    n_ts = x.shape[1]
+    i = 0
+    for i_tr in range(n_ts):
+        for tr_loc in range(i_tr, n_ts):
+            mem_segment[:, i] = x[:, i_tr] * poly_func(np.abs(x[:, tr_loc]), 2)
+            i += 1
     return True
