@@ -9,10 +9,13 @@ class ComplexLinear(nn.Module):
         self.fc_imag = nn.Linear(in_features, out_features, bias=bias)
 
     def forward(self, x_real, x_imag):
-        return self.fc_real(x_real) - self.fc_imag(x_imag), self.fc_real(x_imag) + self.fc_imag(x_real)
+        return self.fc_real(x_real) - self.fc_imag(x_imag), self.fc_real(
+            x_imag
+        ) + self.fc_imag(x_real)
+
 
 class Linear(nn.Module):
-    def __init__(self, input_size, output_size, batch_size):
+    def __init__(self, input_size, output_size, batch_size, n_channels):
         super().__init__()
         self.input_size = input_size
         self.output_size = output_size
@@ -20,10 +23,10 @@ class Linear(nn.Module):
 
         self.bn_in = nn.BatchNorm1d(num_features=2)
         self.bn_out = nn.BatchNorm1d(num_features=2)
-        
+
         # Complex linear layers
         self.complex_fc_in = ComplexLinear(input_size, input_size)
-        self.complex_fc = ComplexLinear(input_size, output_size//2)
+        self.complex_fc = ComplexLinear(input_size, output_size // 2)
 
     def forward(self, x, h_0):
         # Input processing
@@ -42,5 +45,3 @@ class Linear(nn.Module):
         # Final complex processing
         C_real, C_imag = self.complex_fc(x_i, x_q)
         return self.bn_out(torch.cat([C_real, C_imag], dim=-1))
-
-
