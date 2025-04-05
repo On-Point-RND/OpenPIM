@@ -13,12 +13,12 @@ class CoreModel(nn.Module):
     ):
         super(CoreModel, self).__init__()
         self.output_size = 2  # PIM outputs: I & Q
-        self.n_channels = n_channels
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.backbone_type = backbone_type
         self.batch_size = batch_size
+        self.n_channels = n_channels
         self.batch_first = True  # Force batch first
         self.bidirectional = False
         self.bias = True

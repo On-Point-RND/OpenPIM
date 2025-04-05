@@ -20,28 +20,26 @@ class Linear(nn.Module):
         self.input_size = input_size
         self.output_size = output_size
         self.batch_size = batch_size
-
-        self.bn_in = nn.BatchNorm1d(num_features=2)
-        self.bn_out = nn.BatchNorm1d(num_features=2)
-
+        self.n_channels = n_channels
         # Complex linear layers
         self.complex_fc_in = ComplexLinear(input_size, input_size)
         self.complex_fc = ComplexLinear(input_size, output_size // 2)
 
     def forward(self, x, h_0):
-        # Input processing
-        x = x.permute(0, 2, 1)
-        x = self.bn_in(x)
-        x = x.permute(0, 2, 1)
 
-        # Initial complex processing
-        x_i, x_q = x[..., 0], x[..., 1]
-        c_real, c_imag = self.complex_fc_in(x_i, x_q)
+        for c in range(self.n_channels):
+            # Initial complex processing
+            x_i[:, :, c], x_q[:, :, c] = x[:, :, c, 1], x[:, :, c, 1]
+            c_real[:, :, c], c_imag[:, :, c] = self.complex_fc_in(
+                x_i[:, :, c], x_q[:, :, c]
+            )
 
-        # Amplitude modulation
-        amp2 = torch.sum(x**2, dim=-1, keepdim=False)
-        x_i, x_q = amp2 * c_real, amp2 * c_imag
+            # Amplitude modulation
+            amp2 = torch.sum(x[:, :, c] ** 2, dim=-1, keepdim=False)
+            x_i[:, :, c], x_q[:, :, c] = amp2 * c_real[:, :, c], amp2 * c_imag[:, :, c]
 
-        # Final complex processing
-        C_real, C_imag = self.complex_fc(x_i, x_q)
-        return self.bn_out(torch.cat([C_real, C_imag], dim=-1))
+            # Final complex processing
+            c_real[:, :, c], c_imag[:, :, c] = self.complex_fc(
+                x_i[:, :, c], x_q[:, :, c]
+            )
+        return torch.cat([C_real, C_imag], dim=-1)

@@ -8,7 +8,9 @@ class Config:
 
     # Dataset & Log
     dataset_path: str = "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/"
-    dataset_name: str = "1TR_C20Nc1CD_E20Ne1CD_20250117_5m"
+    dataset_name: str = (
+        "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"  # ,"1TR_C20Nc1CD_E20Ne1CD_20250117_5m"
+    )
     log_out_dir: str = "./results"
     log_precision: int = 8
     filter_path: str = (

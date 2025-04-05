@@ -11,9 +11,10 @@ from modules.loggers import PandasLogger
 import pyrallis
 from config import Config
 
-from pim_utils.data_utils import prepare_residuals, load_for_pred, load_resources
+from modules.data_collector import load_resources
 from modules.paths import gen_dir_paths, gen_file_paths
 from modules.train_funcs import train_model
+from modules.loggers import make_logger
 
 
 class Runner:
@@ -25,7 +26,7 @@ class Runner:
 
         # Load Hyperparameters
         self.args = pyrallis.parse(config_class=Config)
-
+        self.step_logger = make_logger()
         # Hardware Info
         self.num_cpu_threads = os.cpu_count()
 
@@ -65,17 +66,25 @@ class Runner:
             self.args.path_log_file_hist,
             self.args.path_log_file_best,
         ) = file_paths
-        print("::: Best Model Save Path: ", self.args.path_save_file_best)
-        print("::: Log-History     Path: ", self.args.path_log_file_hist)
-        print("::: Log-Best        Path: ", self.args.path_log_file_best)
+        self.step_logger.info(
+            f"::: Best Model Save Path:  {self.args.path_save_file_best}"
+        )
+        self.step_logger.info(
+            f"::: Log-History     Path: {self.args.path_log_file_hist}"
+        )
+        self.step_logger.info(
+            f"::: Log-Best        Path: {self.args.path_log_file_best}"
+        )
 
         # Instantiate Logger for Recording Training Statistics
-        self.logger = PandasLogger(
+        PandasWriter = PandasLogger(
             path_save_file_best=self.args.path_save_file_best,
             path_log_file_best=self.args.path_log_file_best,
             path_log_file_hist=self.args.path_log_file_hist,
             precision=self.args.log_precision,
         )
+
+        return PandasWriter
 
     def reproducible(self):
         rnd.seed(self.args.seed)
@@ -91,11 +100,9 @@ class Runner:
             torch.use_deterministic_algorithms(mode=True)
             torch.backends.cudnn.benchmark = False
         torch.cuda.empty_cache()
-        print(
-            "::: Are Deterministic Algorithms Enabled: ",
-            torch.are_deterministic_algorithms_enabled(),
+        self.step_logger.info(
+            f"::: Are Deterministic Algorithms Enabled:  {torch.are_deterministic_algorithms_enabled()}"
         )
-        print("--------------------------------------------------------------------")
 
     def set_device(self):
         # Find Available GPUs
@@ -104,17 +111,19 @@ class Runner:
             name_gpu = torch.cuda.get_device_name(idx_gpu)
             device = torch.device("cuda:" + str(idx_gpu))
             torch.cuda.set_device(device)
-            print("::: Available GPUs: %s" % (torch.cuda.device_count()))
-            print("::: Using GPU %s:   %s" % (idx_gpu, name_gpu))
-            print(
+            self.step_logger.info(
+                "::: Available GPUs: %s" % (torch.cuda.device_count())
+            )
+            self.step_logger.info("::: Using GPU %s:   %s" % (idx_gpu, name_gpu))
+            self.step_logger.info(
                 "--------------------------------------------------------------------"
             )
         elif self.args.accelerator == "mps" and torch.backends.mps.is_available():
             device = torch.device("mps")
         elif self.args.accelerator == "cpu":
             device = torch.device("cpu")
-            print("::: Available GPUs: None")
-            print(
+            self.step_logger.info("::: Available GPUs: None")
+            self.step_logger.info(
                 "--------------------------------------------------------------------"
             )
         else:
@@ -123,29 +132,6 @@ class Runner:
             )
         self.device = device
         return device
-
-    def prepare_residuals(self, data, train_ratio=0.6, val_ratio=0.2, test_ratio=0.2):
-        prepare_residuals(
-            data,
-            self.args.n_back,
-            self.args.n_fwd,
-            self.args.n_iterations,
-            self.args.batch_size,
-            self.args.batch_size_eval,
-            train_ratio,
-            val_ratio,
-            test_ratio,
-        )
-
-    def load_for_pred(self):
-        return load_for_pred(
-            self.args.dataset_path,
-            self.args.dataset_name,
-            self.args.path_dir_save,
-            self.args.n_back,
-            self.args.n_fwd,
-            self.args.batch_size_eval,
-        )
 
     def load_resources(self):
         return load_resources(
@@ -238,7 +224,7 @@ class Runner:
         CScaler,
         n_channel_id,
         spec_dictionary,
-        pim_model_id,
+        writer,
     ):
 
         return train_model(
@@ -258,7 +244,7 @@ class Runner:
             path_dir_save=self.path_dir_save,
             path_dir_log_hist=self.path_dir_log_hist,
             path_dir_log_best=self.path_dir_log_best,
-            pim_model_id=pim_model_id,
+            writer=writer,
             FS=spec_dictionary["FS"],
             FC_TX=spec_dictionary["FC_TX"],
             PIM_SFT=spec_dictionary["PIM_SFT"],
@@ -267,7 +253,6 @@ class Runner:
             n_iterations=self.args.n_iterations,
             grad_clip_val=self.args.grad_clip_val,
             lr_schedule=self.args.lr_schedule,
-            log_precision=self.args.log_precision,
             save_results=self.args.save_results,
             val_ratio=self.args.log_precision,
             test_ratio=self.args.log_precision,
@@ -277,3 +262,13 @@ class Runner:
             n_fwd=self.args.log_precision,
             batch_size=self.args.log_precision,
         )
+
+    # def load_for_pred(self):
+    #     return load_for_pred(
+    #         self.args.dataset_path,
+    #         self.args.dataset_name,
+    #         self.args.path_dir_save,
+    #         self.args.n_back,
+    #         self.args.n_fwd,
+    #         self.args.batch_size_eval,
+    #     )

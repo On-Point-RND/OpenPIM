@@ -2,13 +2,27 @@ __author__ = "Yizhuo Wu, Chang Gao"
 __license__ = "Apache-2.0 License"
 __email__ = "yizhuo.wu@tudelft.nl, chang.gao@tudelft.nl"
 
+import os
 import warnings
 import pandas as pd
 import torch
+from loguru import logger
+from config import Config
+
+
+def make_logger():
+    logger.add(os.path.join(Config.log_out_dir, "log_file.log"))
+    return logger
 
 
 class PandasLogger:
-    def __init__(self, path_save_file_best: str, path_log_file_hist: str, path_log_file_best: str, precision: int = 8):
+    def __init__(
+        self,
+        path_save_file_best: str,
+        path_log_file_hist: str,
+        path_log_file_best: str,
+        precision: int = 8,
+    ):
         self.path_save_file_best = path_save_file_best
         self.path_log_file_hist = path_log_file_hist
         self.path_log_file_best = path_log_file_best
@@ -28,7 +42,10 @@ class PandasLogger:
 
     def write_csv(self, logfile=None):
         if len(self.list_log_headers) == 0:
-            warnings.warn("DataFrame columns not defined. Call add_row for at least once...", RuntimeWarning)
+            warnings.warn(
+                "DataFrame columns not defined. Call add_row for at least once...",
+                RuntimeWarning,
+            )
         else:
             df = pd.DataFrame(self.list_log_rows, columns=self.list_log_headers)
             if logfile is not None:
@@ -57,13 +74,16 @@ class PandasLogger:
 
     def write_log_idx(self, idx, logfile=None):
         if len(self.list_log_headers) == 0:
-            warnings.warn("DataFrame columns not defined. Call add_row for at least once...", RuntimeWarning)
+            warnings.warn(
+                "DataFrame columns not defined. Call add_row for at least once...",
+                RuntimeWarning,
+            )
         else:
             loglist_best = [self.list_log_rows[idx]]
             df = pd.DataFrame(loglist_best, columns=self.list_log_headers)
 
             # Format the float columns based on the specified precision
-            float_cols = df.select_dtypes(include=['float64']).columns
+            float_cols = df.select_dtypes(include=["float64"]).columns
             for col in float_cols:
                 df[col] = df[col].apply(lambda x: round(x, self.precision))
 
@@ -72,18 +92,24 @@ class PandasLogger:
             else:
                 df.to_csv(self.path_log_file_hist, index=False)
 
-    def save_best_model(self, net, epoch, val_stat, metric_name='NMSE'):
+    def save_best_model(self, net, epoch, val_stat, metric_name="NMSE"):
         best_criteria = val_stat[metric_name]
         if self.best_val_metric is None:
             self.best_val_metric = best_criteria
             torch.save(net.state_dict(), self.path_save_file_best)
             best_epoch = epoch
             self.write_log_idx(best_epoch, self.path_log_file_best)
-            print(f'>>> saving best model (%f -> %f {metric_name}) from epoch %d to %s' % (self.best_val_metric, best_criteria, epoch, self.path_save_file_best))
+            print(
+                f">>> saving best model (%f -> %f {metric_name}) from epoch %d to %s"
+                % (self.best_val_metric, best_criteria, epoch, self.path_save_file_best)
+            )
         if best_criteria < self.best_val_metric:
             best_epoch = epoch
             # Record the best epoch
             self.write_log_idx(best_epoch, self.path_log_file_best)
             torch.save(net.state_dict(), self.path_save_file_best)
-            print(f'>>> saving best model (%f -> %f {metric_name}) from epoch %d to %s' % (self.best_val_metric, best_criteria, epoch, self.path_save_file_best))
+            print(
+                f">>> saving best model (%f -> %f {metric_name}) from epoch %d to %s"
+                % (self.best_val_metric, best_criteria, epoch, self.path_save_file_best)
+            )
             self.best_val_metric = best_criteria

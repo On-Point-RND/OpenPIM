@@ -8,17 +8,15 @@ import pandas as pd
 from torch.utils.data import DataLoader
 from typing import Dict, Any, Callable
 from pim_utils.pim_metrics import compute_power
-from modules.paths import gen_log_stat, gen_file_paths
-from modules.loggers import PandasLogger
+from modules.paths import gen_log_stat
 
 from tqdm import tqdm
 from utils import metrics
 from pim_utils import pim_metrics
 from pim_utils.pim_metrics import plot_spectrum, compute_power
 
-
-def toComplex(x):
-    return x[..., 0] + 1j * x[..., 1]
+from modules.data_utils import toComplex
+from modules.loggers import make_logger
 
 
 def train_model(
@@ -38,7 +36,7 @@ def train_model(
     path_dir_save: str,
     path_dir_log_hist: str,
     path_dir_log_best: str,
-    pim_model_id: str,
+    writer,
     FS: float,
     FC_TX: float,
     PIM_SFT: float,
@@ -47,7 +45,6 @@ def train_model(
     n_iterations: int,
     grad_clip_val: float,
     lr_schedule: bool,
-    log_precision: int,
     save_results: bool = True,
     val_ratio: float = 0.2,
     test_ratio: float = 0.2,
@@ -58,6 +55,8 @@ def train_model(
     batch_size: int = 64,
 ) -> tuple:
     """Standalone training function detached from class"""
+
+    step_logger = make_logger()
 
     paths = (path_dir_save, path_dir_log_hist, path_dir_log_best)
     path_dir_save = path_dir_save + "/CH_" + str(n_channel)
@@ -73,25 +72,6 @@ def train_model(
         ]
     ]
 
-    (path_save_file_best, path_log_file_hist, path_log_file_best) = gen_file_paths(
-        path_dir_save,
-        path_dir_log_hist,
-        path_dir_log_best,
-        pim_model_id,
-    )
-
-    print("::: Best Model Save Path: ", path_save_file_best)
-    print("::: Log-History     Path: ", path_log_file_hist)
-    print("::: Log-Best        Path: ", path_log_file_best)
-
-    # Instantiate Logger for Recording Training Statistics
-    logger = PandasLogger(
-        path_save_file_best=path_save_file_best,
-        path_log_file_best=path_log_file_best,
-        path_log_file_hist=path_log_file_hist,
-        precision=log_precision,
-    )
-
     start_time = time.time()
     net.train()
     losses = []
@@ -105,8 +85,13 @@ def train_model(
     loaders = {"val": val_loader, "test": test_loader}
     logs = {"val": dict(), "test": dict(), "train": dict()}
 
+    log_shape = True
     for iteration, (features, targets) in enumerate(train_loader):
         features, targets = features.to(device), targets.to(device)
+        if log_shape:
+            step_logger.info(
+                f"Trainng sample shapes X: {features.shape} Y: {targets.shape}"
+            )
         optimizer.zero_grad()
 
         loss = criterion(net(features), targets)
@@ -120,7 +105,7 @@ def train_model(
 
         log_epoch = 0
         if iteration % n_log_steps == 0 and iteration > 0:
-            print(f"{iteration} iteration out of {n_iterations} is complete")
+            step_logger.info(f"{iteration} iteration out of {n_iterations} is complete")
             logs["train"]["loss"] = np.mean(losses)
 
             # Validation/Test evaluation
@@ -163,7 +148,9 @@ def train_model(
                             cut=FT,
                         )
 
-                    print(f"Reduction_level: {logs['test']['Reduction_level']}")
+                    step_logger.info(
+                        f"Reduction_level: {logs['test']['Reduction_level']}"
+                    )
 
             # Logging
             elapsed_time = (time.time() - start_time) / 60
@@ -183,7 +170,7 @@ def train_model(
                 logs["test"],
             )
 
-            logger.write_log(log_all)
+            writer.write_log(log_all)
 
             train_loss_values.append(log_all["TRAIN_LOSS"])
             test_loss_values.append(log_all["TEST_LOSS"])
@@ -194,13 +181,13 @@ def train_model(
             if lr_schedule:
                 lr_scheduler.step(logs["val"][best_model_metric])
             if save_results:
-                logger.save_best_model(net, log_epoch, logs["val"], best_model_metric)
+                writer.save_best_model(net, log_epoch, logs["val"], best_model_metric)
 
         log_epoch += 1
         if iteration > n_iterations:
             break
 
-    print("Training Completed\n")
+    step_logger.info("Training Completed\n")
 
     loss_dict = {
         "Train loss": train_loss_values,
