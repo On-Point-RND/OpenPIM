@@ -13,7 +13,7 @@ from modules.paths import gen_log_stat
 from tqdm import tqdm
 from utils import metrics
 from pim_utils import pim_metrics
-from pim_utils.pim_metrics import plot_spectrum, compute_power
+from pim_utils.pim_metrics import plot_spectrums, compute_power
 
 from modules.data_utils import toComplex
 from modules.loggers import make_logger
@@ -48,11 +48,6 @@ def train_model(
     save_results: bool = True,
     val_ratio: float = 0.2,
     test_ratio: float = 0.2,
-    PIM_backbone: str = "linear",
-    PIM_hidden_size: int = 128,
-    n_back: int = 128,
-    n_fwd: int = 1,
-    batch_size: int = 64,
 ) -> tuple:
     """Standalone training function detached from class"""
 
@@ -92,9 +87,15 @@ def train_model(
             step_logger.info(
                 f"Trainng sample shapes X: {features.shape} Y: {targets.shape}"
             )
-        optimizer.zero_grad()
 
-        loss = criterion(net(features), targets)
+        optimizer.zero_grad()
+        out = net(features)
+
+        if log_shape:
+            log_shape = False
+            step_logger.info(f"out shape: {out.shape} target shape: {targets.shape}")
+
+        loss = criterion(out, targets)
         loss.backward()
 
         if grad_clip_val != 0:
@@ -134,21 +135,20 @@ def train_model(
                     gt = CScaler.rescale(gt, key="Y")
 
                     for FT in [False, True]:
-                        plot_spectrum(
-                            toComplex(pred),
-                            toComplex(gt),
+                        plot_spectrums(
+                            toComplex(pred),  # .squeeze(-1),
+                            toComplex(gt),  # .squeeze(-1),
                             FS,
                             FC_TX,
                             PIM_SFT,
                             PIM_BW,
                             iteration,
                             logs["test"]["Reduction_level"],
-                            n_channel,
                             path_dir_save,
                             cut=FT,
                         )
 
-                    step_logger.info(
+                    step_logger.success(
                         f"Reduction_level: {logs['test']['Reduction_level']}"
                     )
 
@@ -158,13 +158,8 @@ def train_model(
             log_all = gen_log_stat(
                 net,
                 optimizer,
-                PIM_backbone,
-                PIM_hidden_size,
                 elapsed_time,
                 iteration,
-                n_back,
-                n_fwd,
-                batch_size,
                 logs["train"],
                 logs["val"],
                 logs["test"],
@@ -179,9 +174,9 @@ def train_model(
 
             # Learning rate & model saving
             if lr_schedule:
-                lr_scheduler.step(logs["val"][best_model_metric])
+                lr_scheduler.step(logs["val"]["loss"])
             if save_results:
-                writer.save_best_model(net, log_epoch, logs["val"], best_model_metric)
+                writer.save_best_model(net, log_epoch, logs["val"], "loss")
 
         log_epoch += 1
         if iteration > n_iterations:
@@ -268,21 +263,28 @@ def net_eval(
 def calculate_metrics(
     prediction, ground_truth, noise, filter, СScaler, FS, FC_TX, PIM_SFT, PIM_BW, stat
 ):
+    if not "NMSE" in stat:
+        stat["NMSE"] = dict()
+
+    if not "Reduction_level" in stat:
+        stat["Reduction_level"] = dict()
+
+    n_channels = prediction.shape[1]
 
     pred = СScaler.rescale(prediction, key="Y")
     gt = СScaler.rescale(ground_truth, key="Y")
 
-    stat["NMSE"] = metrics.NMSE(prediction, ground_truth)
-    # stat['Main_metrics'] = pim_metrics.main_metrics(pred, gt, FS = args.FS, FC_TX = args.FC_TX, PIM_SFT = args.PIM_SFT, PIM_total_BW = args.PIM_total_BW)
+    for c in range(n_channels):
+        stat["NMSE"][f"CH_{c}"] = metrics.NMSE(prediction, ground_truth)
 
-    stat["Reduction_level"] = pim_metrics.reduction_level(
-        pred,
-        gt,
-        FS=FS,
-        FC_TX=FC_TX,
-        PIM_SFT=PIM_SFT,
-        PIM_BW=PIM_BW,
-        noise=noise,
-        filter=filter,
-    )
+        stat["Reduction_level"][f"CH_{c}"] = pim_metrics.reduction_level(
+            pred[:, c],
+            gt[:, c],
+            FS=FS,
+            FC_TX=FC_TX,
+            PIM_SFT=PIM_SFT,
+            PIM_BW=PIM_BW,
+            noise=noise,
+            filter=filter,
+        )
     return stat

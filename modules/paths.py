@@ -5,20 +5,13 @@ import argparse
 def gen_log_stat(
     net,
     optimizer,
-    PIM_backbone,
-    PIM_hidden_size,
     elapsed_time,
-    iteration,
-    n_back,
-    n_fwd,
-    batch_size,
+    n_iterations,
     train_stat=None,
     val_stat=None,
     test_stat=None,
 ):
     # Get Epoch & Batch Size
-    n_iterations = iteration
-    batch_size = batch_size
 
     # Get current learning rate
     lr_curr = 0
@@ -34,21 +27,13 @@ def gen_log_stat(
             sizes = sizes * el
         n_param += sizes
 
-    backbone = PIM_backbone
-    hidden_size = PIM_hidden_size
-
     # Create log dictionary
     log_stat = {
-        "iteration": iteration,
+        "iteration": n_iterations,
         "n_iterations": n_iterations,
         "TIME:": elapsed_time,
         "LR": lr_curr,
-        "BATCH_SIZE": batch_size,
         "N_PARAM": n_param,
-        "BACKBONE": backbone,
-        "HIDDEN_SIZE": hidden_size,
-        "N_BACK": n_back,
-        "N_FWD": n_fwd,
     }
 
     # Merge stat dicts into the log dict

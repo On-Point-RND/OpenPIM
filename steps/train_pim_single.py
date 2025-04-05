@@ -1,6 +1,7 @@
 import models as model
 from runner import Runner
 from utils.util import count_net_params
+from modules.loggers import make_logger
 
 
 def main(exp: Runner):
@@ -27,8 +28,9 @@ def main(exp: Runner):
         n_channels=n_channels,
     )
 
+    logger = make_logger()
     n_net_pim_params = count_net_params(net)
-    print("::: Number of PIM Model Parameters: ", n_net_pim_params)
+    logger.info(f"::: Number of PIM Model Parameters:   {n_net_pim_params}")
 
     pim_model_id = exp.gen_model_id(n_net_pim_params)
 

@@ -28,7 +28,7 @@ def load_resources(
     data = load_and_split_data(path, filter_path, train_ratio, val_ratio, test_ratio)
 
     input_size = 1 + n_back + n_fwd
-    n_channels = data["X"]["Train"][1]
+    n_channels = data["X"]["Train"].shape[1]
 
     # Calculate normalization parameters
     СScaler = ComplexScaler(data, path_dir_save)

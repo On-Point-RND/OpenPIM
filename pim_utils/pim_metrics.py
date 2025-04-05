@@ -9,6 +9,39 @@ def abs2(x):
     return np.array([i**2 for i in x])
 
 
+def plot_spectrums(
+    prediction,
+    ground_truth,
+    FS,
+    FC_TX,
+    PIM_SFT,
+    PIM_BW,
+    iteration,
+    reduction_level,
+    save_dir,
+    path_dir_save="",
+    cut=False,
+):
+
+    n_channels = prediction.shape[1]
+
+    for c_number in range(n_channels):
+        plot_spectrum(
+            prediction[:, c_number],
+            ground_truth[:, c_number],
+            FS,
+            FC_TX,
+            PIM_SFT,
+            PIM_BW,
+            iteration,
+            reduction_level[f"CH_{c_number}"],
+            c_number,
+            save_dir,
+            path_dir_save,
+            cut,
+        )
+
+
 def plot_spectrum(
     prediction,
     ground_truth,
@@ -18,9 +51,9 @@ def plot_spectrum(
     PIM_BW,
     iteration,
     reduction_level,
-    n_channel,
+    c_number,
     save_dir,
-    add_name="",
+    path_dir_save="",
     cut=False,
     initial=False,
     initial_ground_truth=[],
@@ -113,18 +146,19 @@ def plot_spectrum(
             FC_TX + FS / 10 + PIM_SFT + PIM_BW / 2,
         )
     ax.set_title(
-        f"Power Spectral Density - Iteration: {iteration}, Reduction: {reduction_level:.3f} dB, CH_{n_channel}"
+        f"Power Spectral Density - Iteration: {iteration}, Reduction: {reduction_level:.3f} dB, CH_{c_number}"
     )
     ax.legend(loc="upper left")
 
-    # Save and clean up
     if cut:
         plt.savefig(
-            f"{save_dir}/img_{iteration}_cut" + add_name + ".png", bbox_inches="tight"
+            f"{save_dir}/img_{iteration}_cut_CH{c_number}" + path_dir_save + ".png",
+            bbox_inches="tight",
         )
     else:
         plt.savefig(
-            f"{save_dir}/img_{iteration}" + add_name + ".png", bbox_inches="tight"
+            f"{save_dir}/img_{iteration}_CH{c_number}" + path_dir_save + ".png",
+            bbox_inches="tight",
         )
     plt.close()  # Prevent figure accumulation
 

@@ -25,8 +25,8 @@ class Runner:
         # Dictionary for Statistics Log
 
         # Load Hyperparameters
-        self.args = pyrallis.parse(config_class=Config)
         self.step_logger = make_logger()
+        self.args = pyrallis.parse(config_class=Config)
         # Hardware Info
         self.num_cpu_threads = os.cpu_count()
 
@@ -254,13 +254,8 @@ class Runner:
             grad_clip_val=self.args.grad_clip_val,
             lr_schedule=self.args.lr_schedule,
             save_results=self.args.save_results,
-            val_ratio=self.args.log_precision,
-            test_ratio=self.args.log_precision,
-            PIM_backbone=self.args.log_precision,
-            PIM_hidden_size=self.args.log_precision,
-            n_back=self.args.log_precision,
-            n_fwd=self.args.log_precision,
-            batch_size=self.args.log_precision,
+            val_ratio=self.args.val_ratio,
+            test_ratio=self.args.test_ratio,
         )
 
     # def load_for_pred(self):
