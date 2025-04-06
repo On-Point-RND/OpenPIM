@@ -135,6 +135,26 @@ class CoreModel(nn.Module):
                 batch_size=self.batch_size,
             )
 
+        elif backbone_type == "linexp":
+            from backbones.experimental_linear import EnhancedLinear
+
+            self.backbone = EnhancedLinear(
+                input_size=self.input_size,
+                output_size=self.output_size,
+                batch_size=self.batch_size,
+                n_channels=n_channels,
+            )
+
+        elif backbone_type == "linpoly":
+            from backbones.lin_poly import Linear
+
+            self.backbone = Linear(
+                input_size=self.input_size,
+                output_size=self.output_size,
+                batch_size=self.batch_size,
+                n_channels=n_channels,
+            )
+
         else:
             raise ValueError(
                 f"The backbone type '{self.backbone_type}' is not supported. Please add your own "
