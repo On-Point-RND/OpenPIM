@@ -130,26 +130,24 @@ def train_model(
                         logs[phase_name],
                     )
 
-                if phase_name == "test" and test_ratio > 0:
-                    pred = CScaler.rescale(pred, key="Y")
-                    gt = CScaler.rescale(gt, key="Y")
+            step_logger.success(f"Reduction_level: {logs['test']['Reduction_level']}")
 
-                    for FT in [False, True]:
-                        plot_spectrums(
-                            toComplex(pred),  # .squeeze(-1),
-                            toComplex(gt),  # .squeeze(-1),
-                            FS,
-                            FC_TX,
-                            PIM_SFT,
-                            PIM_BW,
-                            iteration,
-                            logs["test"]["Reduction_level"],
-                            path_dir_save,
-                            cut=FT,
-                        )
+            if phase_name == "test" and test_ratio > 0:
+                pred = CScaler.rescale(pred, key="Y")
+                gt = CScaler.rescale(gt, key="Y")
 
-                    step_logger.success(
-                        f"Reduction_level: {logs['test']['Reduction_level']}"
+                for FT in [False, True]:
+                    plot_spectrums(
+                        toComplex(pred),  # .squeeze(-1),
+                        toComplex(gt),  # .squeeze(-1),
+                        FS,
+                        FC_TX,
+                        PIM_SFT,
+                        PIM_BW,
+                        iteration,
+                        logs["test"]["Reduction_level"],
+                        path_dir_save,
+                        cut=FT,
                     )
 
             # Logging
