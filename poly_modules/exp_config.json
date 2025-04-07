@@ -1,12 +1,8 @@
 {
-    "models": ["sep_nlin_mult_infl_fix_pwr"],
-    "poly_list": ["power"],
-    "back_list": [24, 26, 28, 30, 32, 34],
-    "fwd_list": [1, 3],
-    "pim_type": "total",
-    "bf_dict": {
-        "simple_mult_infl": 16,
-        "utd_nlin_mult_infl_fix_pwr": 16,
-        "sep_nlin_mult_infl_fix_pwr": 16
-    }
+    "models": ["sep_nlin_mult_infl", "utd_nlin_mult_infl"],
+    "poly_list": ["cheb", "power"],
+    "back_list": [20, 26, 28, 30],
+    "fwd_list": [1, 2, 3, 5, 8],
+    "pim_type": ["total", "ext", "int"],
+    "data_prefix": "16L"
 }

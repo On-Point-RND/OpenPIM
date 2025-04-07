@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Callable, Any
+from typing import Callable
 
 from numpy.polynomial import Chebyshev as T
 from numpy.polynomial import Legendre as L
@@ -28,18 +28,18 @@ def legendre(x, n, interval=(-1.0, 1.0)):
 
 
 def poly_fix_power(poly_func: Callable[..., np.ndarray],
-                   x: np.ndarray, mem_segment: np.ndarray):
+                   x: np.ndarray, mem_segment: np.ndarray, ts: int = 0):
     assert x.shape[0] == mem_segment.shape[0]
-    mem_segment[:,0] = x * poly_func(np.abs(x), 2)
+    mem_segment[:, ts] = x[:, ts] * poly_func(np.abs(x[:, ts]), 2)
     return True
 
 
-def poly_model(poly_func: Callable[..., np.ndarray],
-               x: np.ndarray, mem_segment: np.ndarray):
+def poly_series(poly_func: Callable[..., np.ndarray],
+               x: np.ndarray, mem_segment: np.ndarray, ts: int = 0):
     assert x.shape[0] == mem_segment.shape[0]
     pow = mem_segment.shape[1]
     for i in range(pow):
-        mem_segment[:, i] = x * poly_func(np.abs(x), i)
+        mem_segment[:, i] = x[:, ts] * poly_func(np.abs(x[:, ts]), i)
     return True
 
 
@@ -68,19 +68,8 @@ def sep_nlin_mult_infl_fix_pwr(poly_func: Callable[..., np.ndarray],
                        x: np.ndarray, mem_segment: np.ndarray, ts: int):
     assert x.shape[0] == mem_segment.shape[0]
     n_ts = x.shape[1]
-    pow = int(mem_segment.shape[1] / n_ts)
     for i_tr in range(n_ts):
         mem_segment[:, i_tr] = x[:, i_tr] * poly_func(np.abs(x[:, i_tr]), 2)
-    return True
-
-
-def utd_nlin(poly_func: Callable[..., np.ndarray],
-             x: np.ndarray, mem_segment: np.ndarray, ts: int):
-    assert x.shape[0] == mem_segment.shape[0]
-    pow = int(mem_segment.shape[1])
-    total_x = np.sum(x, axis=1)
-    for i in range(pow):
-        mem_segment[:, i] = x[:, ts] * poly_func(np.abs(total_x), i+1)
     return True
 
 
@@ -96,14 +85,6 @@ def utd_nlin_mult_infl(poly_func: Callable[..., np.ndarray],
     return True
 
 
-def utd_nlin_fix_power(poly_func: Callable[..., np.ndarray],
-             x: np.ndarray, mem_segment: np.ndarray, ts: int):
-    assert x.shape[0] == mem_segment.shape[0]
-    total_x = np.sum(x, axis=1)
-    mem_segment[:, 0] = x[:, ts] * poly_func(np.abs(total_x), 2)
-    return True
-
-
 def utd_nlin_mult_infl_fix_pwr(poly_func: Callable[..., np.ndarray],
                        x: np.ndarray, mem_segment: np.ndarray, ts: int):
     assert x.shape[0] == mem_segment.shape[0]
@@ -114,15 +95,21 @@ def utd_nlin_mult_infl_fix_pwr(poly_func: Callable[..., np.ndarray],
     return True
 
 
-def utd_nlin_self_act(poly_func: Callable[..., np.ndarray],
-                      x: np.ndarray, mem_segment: np.ndarray, ts: int):
+def utd_nlin_self_infl(poly_func: Callable[..., np.ndarray],
+             x: np.ndarray, mem_segment: np.ndarray, ts: int):
     assert x.shape[0] == mem_segment.shape[0]
     pow = int(mem_segment.shape[1])
-    assert 2*pow == mem_segment.shape[1]
     total_x = np.sum(x, axis=1)
     for i in range(pow):
-        mem_segment[:, i] = x[:, ts] * poly_func(np.abs(total_x), i)
-        mem_segment[:, pow+i] = x[:, ts] * poly_func(np.abs(x[:, ts]), i)
+        mem_segment[:, i] = x[:, ts] * poly_func(np.abs(total_x), i+1)
+    return True
+
+
+def utd_nlin_self_infl_fix_power(poly_func: Callable[..., np.ndarray],
+             x: np.ndarray, mem_segment: np.ndarray, ts: int):
+    assert x.shape[0] == mem_segment.shape[0]
+    total_x = np.sum(x, axis=1)
+    mem_segment[:, 0] = x[:, ts] * poly_func(np.abs(total_x), 2)
     return True
 
 
@@ -147,4 +134,17 @@ def utd_nlin_cross_b(poly_func: Callable[..., np.ndarray],
         for tr_loc in range(i_tr, n_ts):
             mem_segment[:, i] = x[:, i_tr] * poly_func(np.abs(x[:, tr_loc]), 2)
             i += 1
+    return True
+
+
+def combi_nlin_mult_infl_fix_pwr(
+        poly_func: Callable[..., np.ndarray],
+        x: np.ndarray, mem_segment: np.ndarray, ts: int):
+    assert x.shape[0] == mem_segment.shape[0]
+    n_ts = x.shape[1]
+    total_x = np.sum(x, axis=1)
+    assert 2 * n_ts == mem_segment.shape[1]
+    for i in range(n_ts):
+        mem_segment[:, i] = x[:, i] * poly_func(np.abs(total_x), 2)
+        mem_segment[:, n_ts+i] = x[:, i] * poly_func(np.abs(x[:, i]), 2)
     return True
