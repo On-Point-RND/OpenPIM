@@ -1,0 +1,8 @@
+{
+    "model": "poly_fix_power",
+    "poly": "power",
+    "n_back": 28,
+    "n_fwd": 3,
+    "pim_type": "total",
+    "data_prefix": "5m"
+}
