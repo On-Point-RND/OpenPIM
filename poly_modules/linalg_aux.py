@@ -12,7 +12,7 @@ def convolve_tensor(x: np.ndarray, filter: np.ndarray, x_conv: np.ndarray):
 def contract(x: np.ndarray, y: np.ndarray, z: np.ndarray):
     n = z.shape[1]
     for i in range(n):
-        z[:,i] -= x[:, :, i] @ y[:, i]
+        z[:,i] += x[:, :, i] @ y[:, i]
     return True
 
 
