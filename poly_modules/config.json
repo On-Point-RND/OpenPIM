@@ -1,8 +1,8 @@
 {
-    "model": "poly_fix_power",
-    "poly": "power",
-    "n_back": 28,
-    "n_fwd": 3,
+    "model": "combi_nlin_mult_infl_fix_pwr",
+    "poly": "cheb",
+    "n_back": 24,
+    "n_fwd": 1,
     "pim_type": "total",
-    "data_prefix": "5m"
+    "data_prefix": "16L"
 }
