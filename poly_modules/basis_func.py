@@ -73,6 +73,17 @@ def sep_nlin_mult_infl_fix_pwr(poly_func: Callable[..., np.ndarray],
     return True
 
 
+def sep_nlin_mult_infl_cross_b(poly_func: Callable[..., np.ndarray],
+                      x: np.ndarray, mem_segment: np.ndarray, ts: int):
+    assert x.shape[0] == mem_segment.shape[0]
+    n_ts = x.shape[1]
+    assert 2 * n_ts == mem_segment.shape[1]
+    for i in range(n_ts):
+        mem_segment[:, i] = x[:, i] * poly_func(np.abs(x[:, i]), 2)
+        mem_segment[:, n_ts+i] = x[:, ts] * poly_func(np.abs(x[:, i] * x[: ,ts]), 1)
+    return True
+
+
 def utd_nlin_mult_infl(poly_func: Callable[..., np.ndarray],
                        x: np.ndarray, mem_segment: np.ndarray, ts: int):
     assert x.shape[0] == mem_segment.shape[0]
@@ -95,6 +106,30 @@ def utd_nlin_mult_infl_fix_pwr(poly_func: Callable[..., np.ndarray],
     return True
 
 
+def utd_nlin_mult_infl_cross_a(poly_func: Callable[..., np.ndarray],
+                      x: np.ndarray, mem_segment: np.ndarray, ts: int):
+    assert x.shape[0] == mem_segment.shape[0]
+    n_ts = x.shape[1]
+    total_x = np.sum(x, axis=1)
+    assert 2 * n_ts == mem_segment.shape[1]
+    for i in range(n_ts):
+        mem_segment[:, i] = x[:, i] * poly_func(np.abs(total_x), 2)
+        mem_segment[:, n_ts+i] = x[:, ts] * poly_func(np.abs(x[:, i]), 2)
+    return True
+
+
+def utd_nlin_mult_infl_cross_b(poly_func: Callable[..., np.ndarray],
+                      x: np.ndarray, mem_segment: np.ndarray, ts: int):
+    assert x.shape[0] == mem_segment.shape[0]
+    n_ts = x.shape[1]
+    total_x = np.sum(x, axis=1)
+    assert 2 * n_ts == mem_segment.shape[1]
+    for i in range(n_ts):
+        mem_segment[:, i] = x[:, i] * poly_func(np.abs(total_x), 2)
+        mem_segment[:, n_ts+i] = x[:, ts] * poly_func(np.abs(x[:, i] * x[: ,ts]), 1)
+    return True
+
+
 def utd_nlin_self_infl(poly_func: Callable[..., np.ndarray],
              x: np.ndarray, mem_segment: np.ndarray, ts: int):
     assert x.shape[0] == mem_segment.shape[0]
@@ -105,7 +140,7 @@ def utd_nlin_self_infl(poly_func: Callable[..., np.ndarray],
     return True
 
 
-def utd_nlin_self_infl_fix_power(poly_func: Callable[..., np.ndarray],
+def utd_nlin_self_infl_fix_pwr(poly_func: Callable[..., np.ndarray],
              x: np.ndarray, mem_segment: np.ndarray, ts: int):
     assert x.shape[0] == mem_segment.shape[0]
     total_x = np.sum(x, axis=1)
