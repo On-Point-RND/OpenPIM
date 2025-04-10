@@ -51,32 +51,45 @@ def model_from_wts(rxa, txa, model_wts, conv4metrics, bf_len: int,
     pred_test = np.empty(
         (n_test,n_trans), dtype=np.complex128, order='F'
     )
+    res_test = np.empty(
+        (n_test,n_trans), dtype=np.complex128, order='F'
+    )
     conv_rxa_test = np.empty(
         (n_test+254,n_trans), dtype=np.complex128, order='F'
     )
     conv_pred_test = np.empty(
         (n_test+254,n_trans), dtype=np.complex128, order='F'
     )
-    convolve_tensor(rxa_test, conv4metrics, conv_rxa_test)
+    conv_res_test = np.empty(
+        (n_test+254,n_trans), dtype=np.complex128, order='F'
+    )
+
     mtn_test = create_model_tensor(
         model_func, poly_func,
         txa_test_mem,bf_len, n_back, n_fwd
     )
-    pred_test[...] = (-1) * np.copy(rxa_test)
+
     contract(mtn_test, model_wts, pred_test)
+    res_test[...] = np.copy(pred_test)
+    res_test[...] -= rxa_test
+
+    convolve_tensor(rxa_test, conv4metrics, conv_rxa_test)
+    convolve_tensor(res_test, conv4metrics, conv_res_test)
     convolve_tensor(pred_test, conv4metrics, conv_pred_test)
     test_metric = calculate_avg_metrics(
-        conv_rxa_test, conv_pred_test, fs, pim_sft, pim_bw)
-    
+        conv_rxa_test, conv_res_test, fs, pim_sft, pim_bw
+    )
+
     result = dict()
     result["test_metric"] = test_metric
     result["true_test"] = conv_rxa_test
     result["pred_test"] = conv_pred_test
+    result["res_test"] = conv_res_test
     return result
 
 
 def model(rxa, txa, conv4metrics, bf_len: int,
-                   config: ModelConfig, sig_config: SignalConfig):
+          config: ModelConfig, sig_config: SignalConfig):
     fs, pim_sft, pim_bw = sig_config.fs, sig_config.pim_sft, sig_config.pim_bw
     model_func = globals()[config.model]
     poly_func = globals()[config.poly]
@@ -93,8 +106,11 @@ def model(rxa, txa, conv4metrics, bf_len: int,
     n_train = rxa_train.shape[0]
     n_test = rxa_test.shape[0]
 
-    pred_train = np.empty(
+    res_train = np.empty(
         (n_train,n_trans), dtype=np.complex128, order='F'
+    )
+    res_test = np.empty(
+        (n_test,n_trans), dtype=np.complex128, order='F'
     )
     pred_test = np.empty(
         (n_test,n_trans), dtype=np.complex128, order='F'
@@ -107,11 +123,16 @@ def model(rxa, txa, conv4metrics, bf_len: int,
         (n_test+254,n_trans), dtype=np.complex128, order='F'
     )
 
+    # Perform convolution with filter and write the result
+    # into previously allocated memory
     convolve_tensor(rxa_train, conv4metrics, conv_rxa_train)
     convolve_tensor(rxa_test, conv4metrics, conv_rxa_test)
 
-    conv_pred_train = np.empty(
+    conv_res_train = np.empty(
         (n_train+254,n_trans), dtype=np.complex128, order='F'
+    )
+    conv_res_test = np.empty(
+        (n_test+254,n_trans), dtype=np.complex128, order='F'
     )
     conv_pred_test = np.empty(
         (n_test+254,n_trans), dtype=np.complex128, order='F'
@@ -121,28 +142,34 @@ def model(rxa, txa, conv4metrics, bf_len: int,
         model_func, poly_func,
         txa_train_mem, bf_len, n_back, n_fwd
     )
-
     mtn_test = create_model_tensor(
         model_func, poly_func,
         txa_test_mem,bf_len, n_back, n_fwd
     )
     model_wts = ls_solve(mtn_train, rxa_train)
-    pred_train[...] = (-1) * np.copy(rxa_train)
-    pred_test[...] = (-1) * np.copy(rxa_test)
-    contract(mtn_train, model_wts, pred_train)
+
+    contract(mtn_train, model_wts, res_train)
     contract(mtn_test, model_wts, pred_test)
-    convolve_tensor(pred_train, conv4metrics, conv_pred_train)
+
+    res_train[...] -= rxa_train
+    res_test[...] = np.copy(pred_test)
+    res_test[...] -= rxa_test
+
+    convolve_tensor(res_train, conv4metrics, conv_res_train)
+    convolve_tensor(res_test, conv4metrics, conv_res_test)
     convolve_tensor(pred_test, conv4metrics, conv_pred_test)
+
     train_metric = calculate_avg_metrics(
-        conv_rxa_train, conv_pred_train, fs, pim_sft, pim_bw
+        conv_rxa_train, conv_res_train, fs, pim_sft, pim_bw
     )
     test_metric = calculate_avg_metrics(
-        conv_rxa_test, conv_pred_test, fs, pim_sft, pim_bw)
-    
+        conv_rxa_test, conv_res_test, fs, pim_sft, pim_bw)
+
     result = dict()
     result["train_metric"] = train_metric
     result["test_metric"] = test_metric
-    result["pred_train"] = conv_pred_train
+    result["res_train"] = conv_res_train
+    result["res_test"] = conv_res_test
     result["pred_test"] = conv_pred_test
     return result
 

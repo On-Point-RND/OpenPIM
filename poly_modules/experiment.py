@@ -69,15 +69,17 @@ def experiment(experiment_name, output_dir = './results/'):
     txa = np.empty((n,m), dtype=np.complex128, order='F')
     txa[...] = np.copy(data["txa"].T)
     signal_config = SignalConfig(data)
-    model_config.bf_lengths = {"utd_nlin_mult_infl_fix_pwr": [16],
+    model_config.bf_lengths = {
+        "combi_nlin_mult_infl_fix_pwr": [32],
         "sep_nlin_mult_infl_fix_pwr": [16],
-        "utd_nlin_mult_infl": [48],
         "sep_nlin_mult_infl": [48],
-        "utd_nlin_self_infl_fix_pwr": [1],
-        "utd_nlin_self_infl": [2],
+        "sep_nlin_mult_infl_cross_b": [32],
+        "utd_nlin_mult_infl": [48],
+        "utd_nlin_mult_infl_fix_pwr": [16],
         "utd_nlin_mult_infl_cross_a": [32],
         "utd_nlin_mult_infl_cross_b": [32],
-        "combi_nlin_mult_infl_fix_pwr": [32],
+        "utd_nlin_self_infl_fix_pwr": [1],
+        "utd_nlin_self_infl": [2],
         "poly_fix_power": [1],
         "poly_series": [3]}
     exp_scheme = product(
@@ -138,8 +140,12 @@ def window_experiment(
     n_train = rxa_train.shape[0]
     n_test = rxa_test.shape[0]
 
-    pred_train = np.empty((n_train,n_trans), dtype=np.complex128, order='F')
-    pred_test = np.empty((n_test,n_trans), dtype=np.complex128, order='F')
+    res_train = np.empty(
+        (n_train,n_trans), dtype=np.complex128, order='F'
+    )
+    res_test = np.empty(
+        (n_test,n_trans), dtype=np.complex128, order='F'
+    )
 
     conv_rxa_train = np.empty(
         (n_train+254,n_trans), dtype=np.complex128, order='F'
@@ -147,10 +153,10 @@ def window_experiment(
     conv_rxa_test = np.empty(
         (n_test+254,n_trans), dtype=np.complex128, order='F'
     )
-    conv_pred_train = np.empty(
+    conv_res_train = np.empty(
         (n_train+254,n_trans), dtype=np.complex128, order='F'
     )
-    conv_pred_test = np.empty(
+    conv_res_test = np.empty(
         (n_test+254,n_trans), dtype=np.complex128, order='F'
     )
 
@@ -178,17 +184,19 @@ def window_experiment(
             mtn_train_slice = mtn_train[:, idx_start:idx_end, :]
             mtn_test_slice = mtn_test[:, idx_start:idx_end, :]
             model_wts = ls_solve(mtn_train_slice, rxa_train)
-            pred_train[...] = (-1) * np.copy(rxa_train)
-            pred_test[...] = (-1) * np.copy(rxa_test)
-            contract(mtn_train_slice, model_wts, pred_train)
-            contract(mtn_test_slice, model_wts, pred_test)
-            convolve_tensor(pred_train, conv4metrics, conv_pred_train)
-            convolve_tensor(pred_test, conv4metrics, conv_pred_test)
+
+            contract(mtn_train_slice, model_wts, res_train)
+            contract(mtn_test_slice, model_wts, res_test)
+            res_train[...] -= rxa_train
+            res_test[...] -= rxa_test
+
+            convolve_tensor(res_train, conv4metrics, conv_res_train)
+            convolve_tensor(res_test, conv4metrics, conv_res_test)
             train_metric_value = calculate_avg_metrics(
-                conv_rxa_train, conv_pred_train, fs, pim_sft, pim_bw
+                conv_rxa_train, conv_res_train, fs, pim_sft, pim_bw
             )
             test_metric_value = calculate_avg_metrics(
-                conv_rxa_test, conv_pred_test, fs, pim_sft, pim_bw)
+                conv_rxa_test, conv_res_test, fs, pim_sft, pim_bw)
             wts_dict[(i_back, i_fwd, bf_len)] = [model_wts]
             train_metrics.append(train_metric_value)
             test_metrics.append(test_metric_value)
