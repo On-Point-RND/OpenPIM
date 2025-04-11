@@ -146,6 +146,7 @@ class Runner:
             self.args.batch_size,
             self.args.batch_size_eval,
             path_dir_save=self.path_dir_log_best,
+            specific_channels=self.args.specific_channels,
         )
 
     def build_model(self):

@@ -133,6 +133,7 @@ class CoreModel(nn.Module):
                 input_size=self.input_size,
                 output_size=self.output_size,
                 batch_size=self.batch_size,
+                n_channels=n_channels,
             )
 
         elif backbone_type == "linexp":
@@ -149,6 +150,16 @@ class CoreModel(nn.Module):
             from backbones.lin_poly import Linear
 
             self.backbone = Linear(
+                input_size=self.input_size,
+                output_size=self.output_size,
+                batch_size=self.batch_size,
+                n_channels=n_channels,
+            )
+
+        elif backbone_type == "convx":
+            from backbones.conv import ConvModel
+
+            self.backbone = ConvModel(
                 input_size=self.input_size,
                 output_size=self.output_size,
                 batch_size=self.batch_size,

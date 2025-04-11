@@ -22,10 +22,13 @@ def load_resources(
     batch_size: int,
     batch_size_eval: int,
     path_dir_save: str,
+    specific_channels,
 ):
     # Load dataset
     path = os.path.join(dataset_path, dataset_name, f"{dataset_name}.mat")
-    data = load_and_split_data(path, filter_path, train_ratio, val_ratio, test_ratio)
+    data = load_and_split_data(
+        path, filter_path, train_ratio, val_ratio, test_ratio, specific_channels
+    )
 
     input_size = 1 + n_back + n_fwd
     n_channels = data["X"]["Train"].shape[1]
@@ -73,15 +76,26 @@ def load_resources(
 
 # INFO: This is used in the previous script, mainly to split the data
 def load_and_split_data(
-    data_path, filter_path, train_ratio=0.6, val_ratio=0.2, test_ratio=0.2
+    data_path,
+    filter_path,
+    train_ratio=0.6,
+    val_ratio=0.2,
+    test_ratio=0.2,
+    specific_channels="all",
 ):
 
     fil = loadmat(filter_path)["flt_coeff"]
     data = loadmat(data_path)
 
-    rxa = to2Dreal(data["rxa"])
-    txa = to2Dreal(data["txa"])
-    nfa = to2Dreal(data["nfa"])
+    if specific_channels == "all":
+        rxa = to2Dreal(data["rxa"])
+        txa = to2Dreal(data["txa"])
+        nfa = to2Dreal(data["nfa"])
+
+    else:
+        rxa = to2Dreal(data["rxa"][specific_channels][None, ...])
+        txa = to2Dreal(data["txa"][specific_channels][None, ...])
+        nfa = to2Dreal(data["nfa"][specific_channels][None, ...])
 
     FC_TX = data["BANDS_DL"][0][0][0][0][0] / 10**6
     FC_RX = data["BANDS_UL"][0][0][0][0][0] / 10**6

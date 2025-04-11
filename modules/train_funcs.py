@@ -54,9 +54,9 @@ def train_model(
     step_logger = make_logger()
 
     paths = (path_dir_save, path_dir_log_hist, path_dir_log_best)
-    path_dir_save = path_dir_save + "/CH_" + str(n_channel)
-    path_dir_log_hist = path_dir_log_hist + "/CH_" + str(n_channel)
-    path_dir_log_best = path_dir_log_best + "/CH_" + str(n_channel)
+    path_dir_save = path_dir_save  # + "/CH_" + str(n_channel)
+    path_dir_log_hist = path_dir_log_hist  # + "/CH_" + str(n_channel)
+    path_dir_log_best = path_dir_log_best  # + "/CH_" + str(n_channel)
 
     [
         os.makedirs(p, exist_ok=True)
@@ -82,6 +82,7 @@ def train_model(
 
     log_shape = True
     for iteration, (features, targets) in enumerate(train_loader):
+        # if device == "cuda":
         features, targets = features.to(device), targets.to(device)
         if log_shape:
             step_logger.info(
