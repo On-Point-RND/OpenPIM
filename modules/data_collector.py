@@ -14,6 +14,7 @@ def load_resources(
     dataset_path: str,
     dataset_name: str,
     filter_path: str,
+    pim_type: str,
     train_ratio: float,
     val_ratio: float,
     test_ratio: float,
@@ -25,8 +26,11 @@ def load_resources(
 ):
     # Load dataset
     path = os.path.join(dataset_path, dataset_name, f"{dataset_name}.mat")
-    data = load_and_split_data(path, filter_path, train_ratio, val_ratio, test_ratio)
-
+    data = load_and_split_data(
+        path, filter_path,
+        train_ratio, val_ratio, test_ratio,
+        pim_type
+    )
     input_size = 1 + n_back + n_fwd
     n_channels = data["X"]["Train"].shape[1]
 
@@ -73,13 +77,26 @@ def load_resources(
 
 # INFO: This is used in the previous script, mainly to split the data
 def load_and_split_data(
-    data_path, filter_path, train_ratio=0.6, val_ratio=0.2, test_ratio=0.2
+    data_path, filter_path,
+    train_ratio=0.6, val_ratio=0.2, test_ratio=0.2,
+    pim_type='total'
 ):
 
     fil = loadmat(filter_path)["flt_coeff"]
     data = loadmat(data_path)
+    if pim_type == 'int':
+        try:
+            int_pim = data["PIM_COND"] + data["PIM_COND_LEAK"]
+        except:
+            int_pim = data["PIM_COND"]
+        rxa = to2Dreal(data["nfa"] + int_pim)
+    elif pim_type == 'ext':
+        rxa = to2Dreal(data["nfa"] + data["PIM_EXT"])
+    elif pim_type == 'total':
+        rxa = to2Dreal(data["rxa"])
+    else:
+        raise ValueError(f"PIM type '{pim_type}' is not supported.")
 
-    rxa = to2Dreal(data["rxa"])
     txa = to2Dreal(data["txa"])
     nfa = to2Dreal(data["nfa"])
 

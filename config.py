@@ -7,15 +7,16 @@ class Config:
     """Configuration class for PIM model training"""
 
     # Dataset & Log
-    dataset_path: str = "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/"
+    dataset_path: str = "./Data/FOR_COOPERATION/"
     dataset_name: str = (
         "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"  #  "1TR_C20Nc1CD_E20Ne1CD_20250117_5m"
     )
+    pim_type: str = 'total'
 
     log_out_dir: str = "./results"
     log_precision: int = 8
     filter_path: str = (
-        "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
+        "./Data/FOR_COOPERATION/rx_filter.mat"
     )
 
     # PIM Model Settings
@@ -27,7 +28,7 @@ class Config:
     step: str = "train_pim_single"
     n_back: int = 128
     n_fwd: int = 1
-    accelerator: str = "cuda"
+    accelerator: str = "cpu"
     devices: int = 0
     re_level: str = "soft"
 
@@ -38,7 +39,7 @@ class Config:
     opt_type: str = "adabound"
     batch_size: int = 64
     batch_size_eval: int = 64
-    n_iterations: int = 20e3
+    n_iterations: int = 2e3
     n_log_steps: int = 1e3
     lr_schedule: int = 1
     lr: float = 1e-4
