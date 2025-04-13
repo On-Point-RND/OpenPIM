@@ -51,6 +51,8 @@ class CoreModel(nn.Module):
                 bidirectional=self.bidirectional,
                 batch_first=self.batch_first,
                 bias=self.bias,
+                input_len=input_size,
+                n_channels=n_channels,
             )
         elif backbone_type == "qgru":
             from backbones.qgru import QGRU
@@ -157,7 +159,7 @@ class CoreModel(nn.Module):
             )
 
         elif backbone_type == "convx":
-            from backbones.conv import ConvModel
+            from OpenPIM.backbones.conv import ConvModel
 
             self.backbone = ConvModel(
                 input_size=self.input_size,

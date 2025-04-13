@@ -1,3 +1,5 @@
+could you draw a scheme of this model?
+
 import torch
 import torch.nn as nn
 
@@ -38,9 +40,7 @@ class ComplexConv1d(nn.Module):
 
 
 class SineActivation(nn.Module):
-    def __init__(
-        self, num_channels=1, scale_init=0.001, period_init=1.0, phase_init=0.0
-    ):
+    def __init__(self, num_channels=1, scale_init=1.0, period_init=1.0, phase_init=0.0):
         super().__init__()
         self.num_channels = num_channels
 
@@ -80,20 +80,22 @@ class ConvModel(nn.Module):
         self.conv5 = ComplexConv1d(n_channels, n_channels, kernel_size=5, padding=2)
         self.conv8 = ComplexConv1d(n_channels, n_channels, kernel_size=9, padding=4)
 
-        self.act_one_real = SineActivation()
-        self.act_one_imag = SineActivation()
-
         self.conv_final = ComplexConv1d(
             n_channels * 3, n_channels, kernel_size=3, padding=1
         )
 
+        self.act_one_real = SineActivation()
+        self.act_one_imag = SineActivation()
+
         self.act_two_real = SineActivation()
         self.act_two_imag = SineActivation()
 
-        # self.poly_expand = PolynomialExpansion(poly_degree)
-        # expanded_size = input_size * poly_degree * n_channels  # Compute expanded size
-        # self.complex_fc = ComplexLinear(expanded_size, n_channels * output_size // 2)
-        self.cross_channel_fc = ComplexLinear(n_channels * input_size, n_channels)
+        self.poly_expand = PolynomialExpansion(poly_degree)
+        expanded_size = input_size * poly_degree * n_channels  # Compute expanded size
+        self.complex_fc = ComplexLinear(expanded_size, n_channels * output_size // 2)
+        self.cross_channel_fc = ComplexLinear(
+            n_channels * (output_size // 2), n_channels
+        )
 
         self.bn_output = nn.BatchNorm1d(n_channels * 2)
 
@@ -119,9 +121,6 @@ class ConvModel(nn.Module):
             components_real.append(out[0])  # Real part
             components_imag.append(out[1])  # Imaginary part
 
-        x_real = self.act_one_real(x_real)
-        x_imag = self.act_one_imag(x_imag)
-
         # Concatenate along channel dimension: 6*n_channels total
         x_real = torch.cat(components_real, dim=1)  # (B, 6*n_channels, L)
         x_imag = torch.cat(components_imag, dim=1)  # (B, 6*n_channels, L)
@@ -131,16 +130,19 @@ class ConvModel(nn.Module):
 
         x_real, x_imag = self.conv_final(x_real, x_real)
 
+        # x_real = self.act(x_real)
+        # x_imag = self.act(x_imag)
+
         x_real, x_imag = x_r_init + self.alpha * x_real.reshape(
             B, -1
         ), x_i_init + self.alpha * x_imag.reshape(B, -1)
 
-        # x_real, x_imag = self.poly_expand(
-        #     x_real, x_imag
-        # )  # Output shape: (B, expanded_size)
+        x_real, x_imag = self.poly_expand(
+            x_real, x_imag
+        )  # Output shape: (B, expanded_size)
 
-        # # Further processing
-        # x_real, x_imag = self.complex_fc(x_real, x_imag)
+        # Further processing
+        x_real, x_imag = self.complex_fc(x_real, x_imag)
 
         # Cross-channel processing
         x_real = (

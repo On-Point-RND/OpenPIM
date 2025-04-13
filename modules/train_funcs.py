@@ -117,7 +117,7 @@ def train_model(
                     _, pred, gt = net_eval(
                         logs[phase_name], net, loaders[phase_name], criterion, device
                     )
-
+                    net.train()
                     logs[phase_name] = calculate_metrics(
                         pred,
                         gt,

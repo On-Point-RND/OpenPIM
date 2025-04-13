@@ -16,6 +16,6 @@ for n_back in $(seq 10 16 128); do
         --lr 0.0001 \
         --batch_size 64 \
         --n_back $n_back \
-        --exp_name "$SYNTH_{model_name}_${n_back}_16TR" \
-        --model_name "$model_name"
+        --exp_name "pareto_SYNTH-${model_name}-${n_back}_16TR" \
+        --PIM_backbone "$model_name"
 done
