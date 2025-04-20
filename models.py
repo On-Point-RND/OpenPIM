@@ -13,12 +13,12 @@ class EndFilter(nn.Module):
         super(EndFilter, self).__init__()
         Fs = 245.76e6  # Sampling frequency
         freq = [
-            0,          # Start of passband
-            35.08e6,    # Start of first stopband (aliased 1950 MHz)
-            35.08e6,    # End of first stopband start
-            99.68e6,    # Start of passband
-            99.68e6,    # End of passband start
-            Fs/2        # Nyquist frequency
+            0,  # Start of passband
+            35.08e6,  # Start of first stopband (aliased 1950 MHz)
+            35.08e6,  # End of first stopband start
+            99.68e6,  # Start of passband
+            99.68e6,  # End of passband start
+            Fs / 2,  # Nyquist frequency
         ]
         gain = [1, 1, 0, 0, 0, 0]  # 1=pass, 0=stop
         # Design filter with 255 taps
@@ -26,8 +26,12 @@ class EndFilter(nn.Module):
         wts = torch.from_numpy(filter_coeff).to(torch.complex64)
         wts_expand = wts.unsqueeze(0).unsqueeze(0).expand(n_channels, 1, 255)
         self.end_filter = torch.nn.Conv1d(
-            in_channels=n_channels, out_channels=n_channels,
-            kernel_size=255, padding='valid', groups=n_channels, bias=False
+            in_channels=n_channels,
+            out_channels=n_channels,
+            kernel_size=255,
+            padding="valid",
+            groups=n_channels,
+            bias=False,
         )
         self.end_filter.weight.data = wts_expand
         self.end_filter.weight.requires_grad = False
@@ -166,20 +170,22 @@ class CoreModel(nn.Module):
 
         elif backbone_type == "linear_internal":
             from backbones.linear_internal import Linear
+
             self.backbone = Linear(
                 input_size=self.input_size,
                 output_size=self.output_size,
                 n_channels=n_channels,
-                batch_size=self.batch_size
+                batch_size=self.batch_size,
             )
 
         elif backbone_type == "linear_external":
             from backbones.linear_external import Linear
+
             self.backbone = Linear(
                 input_size=self.input_size,
                 output_size=self.output_size,
                 n_channels=n_channels,
-                batch_size=self.batch_size
+                batch_size=self.batch_size,
             )
 
         elif backbone_type == "linseq":
@@ -213,7 +219,7 @@ class CoreModel(nn.Module):
             )
 
         elif backbone_type == "convx":
-            from OpenPIM.backbones.conv import ConvModel
+            from backbones.conv import ConvModel
 
             self.backbone = ConvModel(
                 input_size=self.input_size,
