@@ -5,6 +5,41 @@ __email__ = "yizhuo.wu@tudelft.nl, chang.gao@tudelft.nl"
 import torch
 import torch.nn as nn
 from backbones.rvtdcnn import RVTDCNN
+from scipy.signal import firwin2
+
+
+class EndFilter(nn.Module):
+    def __init__(self, n_channels):
+        super(EndFilter, self).__init__()
+        Fs = 245.76e6  # Sampling frequency
+        freq = [
+            0,          # Start of passband
+            35.08e6,    # Start of first stopband (aliased 1950 MHz)
+            35.08e6,    # End of first stopband start
+            99.68e6,    # Start of passband
+            99.68e6,    # End of passband start
+            Fs/2        # Nyquist frequency
+        ]
+        gain = [1, 1, 0, 0, 0, 0]  # 1=pass, 0=stop
+        # Design filter with 255 taps
+        filter_coeff = firwin2(255, freq, gain, fs=Fs)
+        wts = torch.from_numpy(filter_coeff).to(torch.complex64)
+        wts_expand = wts.unsqueeze(0).unsqueeze(0).expand(n_channels, 1, 255)
+        self.end_filter = torch.nn.Conv1d(
+            in_channels=n_channels, out_channels=n_channels,
+            kernel_size=255, padding='valid', groups=n_channels, bias=False
+        )
+        self.end_filter.weight.data = wts_expand
+        self.end_filter.weight.requires_grad = False
+
+    def forward(self, x):
+        cmplx_tensor = x[..., 0] + 1j * x[..., 1]
+        cmplx_tensor = cmplx_tensor.permute(1, 0).unsqueeze(0)
+        filt_cmplx = self.end_filter(cmplx_tensor)
+
+        output = torch.stack((filt_cmplx.real, filt_cmplx.imag), dim=-1)
+        output = output.squeeze(0).permute(1, 0, 2)
+        return output.to(torch.float32)
 
 
 class CoreModel(nn.Module):
@@ -22,6 +57,7 @@ class CoreModel(nn.Module):
         self.batch_first = True  # Force batch first
         self.bidirectional = False
         self.bias = True
+        self.filter = EndFilter(n_channels)
 
         if backbone_type == "gmp":
             from backbones.gmp import GMP
@@ -128,6 +164,24 @@ class CoreModel(nn.Module):
                 n_channels=n_channels,
             )
 
+        elif backbone_type == "linear_internal":
+            from backbones.linear_internal import Linear
+            self.backbone = Linear(
+                input_size=self.input_size,
+                output_size=self.output_size,
+                n_channels=n_channels,
+                batch_size=self.batch_size
+            )
+
+        elif backbone_type == "linear_external":
+            from backbones.linear_external import Linear
+            self.backbone = Linear(
+                input_size=self.input_size,
+                output_size=self.output_size,
+                n_channels=n_channels,
+                batch_size=self.batch_size
+            )
+
         elif backbone_type == "linseq":
             from backbones.sequential_linear import SequentialLinear
 
@@ -201,8 +255,8 @@ class CoreModel(nn.Module):
         # Forward Propagate through the RNN
         # print('x.shape: ', x.shape)
         out = self.backbone(x, h_0)
-
-        return out
+        filtered_output = self.filter(out)
+        return filtered_output
 
 
 class CascadedModel(nn.Module):

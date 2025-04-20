@@ -1,0 +1,8 @@
+{
+    "models": ["sep_nlin_mult_infl_cross_b"],
+    "poly_list": ["cheb"],
+    "back_list": [16, 18, 20, 22, 24, 26, 28, 30],
+    "fwd_list": [1, 2, 3, 5, 8],
+    "pim_type": ["total", "ext", "int"],
+    "data_prefix": "16L"
+}

@@ -14,6 +14,7 @@ def load_resources(
     dataset_path: str,
     dataset_name: str,
     filter_path: str,
+    pim_type: str,
     train_ratio: float,
     val_ratio: float,
     test_ratio: float,
@@ -27,9 +28,8 @@ def load_resources(
     # Load dataset
     path = os.path.join(dataset_path, dataset_name, f"{dataset_name}.mat")
     data = load_and_split_data(
-        path, filter_path, train_ratio, val_ratio, test_ratio, specific_channels
+        path, filter_path, train_ratio, val_ratio, test_ratio, pim_type
     )
-
     input_size = 1 + n_back + n_fwd
     n_channels = data["X"]["Train"].shape[1]
 
@@ -81,21 +81,26 @@ def load_and_split_data(
     train_ratio=0.6,
     val_ratio=0.2,
     test_ratio=0.2,
-    specific_channels="all",
+    pim_type="total",
 ):
 
     fil = loadmat(filter_path)["flt_coeff"]
     data = loadmat(data_path)
-
-    if specific_channels == "all":
+    if pim_type == "int":
+        try:
+            int_pim = data["PIM_COND"] + data["PIM_COND_LEAK"]
+        except:
+            int_pim = data["PIM_COND"]
+        rxa = to2Dreal(data["nfa"] + int_pim)
+    elif pim_type == "ext":
+        rxa = to2Dreal(data["nfa"] + data["PIM_EXT"])
+    elif pim_type == "total":
         rxa = to2Dreal(data["rxa"])
-        txa = to2Dreal(data["txa"])
-        nfa = to2Dreal(data["nfa"])
-
     else:
-        rxa = to2Dreal(data["rxa"][specific_channels][None, ...])
-        txa = to2Dreal(data["txa"][specific_channels][None, ...])
-        nfa = to2Dreal(data["nfa"][specific_channels][None, ...])
+        raise ValueError(f"PIM type '{pim_type}' is not supported.")
+
+    txa = to2Dreal(data["txa"])
+    nfa = to2Dreal(data["nfa"])
 
     FC_TX = data["BANDS_DL"][0][0][0][0][0] / 10**6
     FC_RX = data["BANDS_UL"][0][0][0][0][0] / 10**6

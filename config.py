@@ -7,6 +7,7 @@ class Config:
     """Configuration class for PIM model training"""
 
     # Dataset & Log
+    dataset_path: str = "./Data/FOR_COOPERATION/"
     dataset_path: str = (
         "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/"  # "/home/dev/public-datasets/e.shvetsov/PIM/REAL/Real_data/16TR/"  #   #
     )
@@ -32,6 +33,9 @@ class Config:
     # Training Process
     step: str = "train_pim_single"
     n_back: int = 128
+    n_fwd: int = 1
+    accelerator: str = "cpu"
+    devices: int = 0
     n_fwd: int = 3
     accelerator: str = "cuda"
     devices: int = 2
@@ -45,6 +49,8 @@ class Config:
     opt_type: str = "adam"
     batch_size: int = 64
     batch_size_eval: int = 64
+    n_iterations: int = 2e3
+    n_log_steps: int = 1e3
     n_iterations: int = 1e6
     n_log_steps: int = 5e4
     lr_schedule: int = 1

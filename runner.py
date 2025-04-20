@@ -138,6 +138,7 @@ class Runner:
             self.args.dataset_path,
             self.args.dataset_name,
             self.args.filter_path,
+            self.args.pim_type,
             self.args.train_ratio,
             self.args.val_ratio,
             self.args.test_ratio,
