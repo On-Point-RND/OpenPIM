@@ -92,8 +92,10 @@ def train_model(
         if log_shape:
             log_shape = False
             step_logger.info(f"out shape: {out.shape} target shape: {targets.shape}")
-        out_batch_size = out.shape[0]
-        loss = criterion(out, targets[:out_batch_size, ...])
+        conv_targets = net.filter(targets)
+        # out_batch_size = out.shape[0]
+        # loss = criterion(out, targets[:out_batch_size, ...])
+        loss = criterion(out, conv_targets)
         loss.backward()
 
         if grad_clip_val != 0:
@@ -248,12 +250,17 @@ def net_eval(
             features = features.to(device)
             targets = targets.to(device)
             outputs = net(features)
-            out_batch_size = outputs.shape[0]
             # Calculate loss function
-            loss = criterion(outputs, targets[:out_batch_size, ...])
+            conv_targets = net.filter(targets)
+            loss = criterion(outputs, conv_targets)
+            # out_batch_size = outputs.shape[0]
+            # loss = criterion(outputs, targets[:out_batch_size, ...])
+
             # Collect prediction and ground truth for metric calculation
             prediction.append(outputs.cpu())
-            ground_truth.append(targets[:out_batch_size, ...].cpu())
+            # ground_truth.append(targets[:out_batch_size, ...].cpu())
+            ground_truth.append(conv_targets.cpu())
+
             # Collect losses to calculate the average loss per epoch
             losses.append(loss.item())
     # Average loss per epoch

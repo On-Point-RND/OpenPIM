@@ -8,22 +8,9 @@ from backbones.rvtdcnn import RVTDCNN
 from scipy.signal import firwin2
 
 
-class CoreModel(nn.Module):
-    def __init__(
-        self, n_channels, input_size, hidden_size, num_layers, backbone_type, batch_size
-    ):
-        super(CoreModel, self).__init__()
-        self.output_size = 2  # PIM outputs: I & Q
-        self.input_size = input_size
-        self.hidden_size = hidden_size
-        self.num_layers = num_layers
-        self.backbone_type = backbone_type
-        self.batch_size = batch_size
-        self.n_channels = n_channels
-        self.batch_first = True  # Force batch first
-        self.bidirectional = False
-        self.bias = True
-
+class EndFilter(nn.Module):
+    def __init__(self, n_channels):
+        super(EndFilter, self).__init__()
         Fs = 245.76e6  # Sampling frequency
         freq = [
             0,          # Start of passband
@@ -44,6 +31,33 @@ class CoreModel(nn.Module):
         )
         self.end_filter.weight.data = wts_expand
         self.end_filter.weight.requires_grad = False
+
+    def forward(self, x):
+        cmplx_tensor = x[..., 0] + 1j * x[..., 1]
+        cmplx_tensor = cmplx_tensor.permute(1, 0).unsqueeze(0)
+        filt_cmplx = self.end_filter(cmplx_tensor)
+
+        output = torch.stack((filt_cmplx.real, filt_cmplx.imag), dim=-1)
+        output = output.squeeze(0).permute(1, 0, 2)
+        return output.to(torch.float32)
+
+
+class CoreModel(nn.Module):
+    def __init__(
+        self, n_channels, input_size, hidden_size, num_layers, backbone_type, batch_size
+    ):
+        super(CoreModel, self).__init__()
+        self.output_size = 2  # PIM outputs: I & Q
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.backbone_type = backbone_type
+        self.batch_size = batch_size
+        self.n_channels = n_channels
+        self.batch_first = True  # Force batch first
+        self.bidirectional = False
+        self.bias = True
+        self.filter = EndFilter(n_channels)
 
         if backbone_type == "gmp":
             from backbones.gmp import GMP
@@ -218,19 +232,8 @@ class CoreModel(nn.Module):
         # Forward Propagate through the RNN
         # print('x.shape: ', x.shape)
         out = self.backbone(x, h_0)
-
-        cmplx_tensor = out[..., 0] + 1j * out[..., 1]
-        cmplx_tensor = cmplx_tensor.to(torch.complex64)
-        y = cmplx_tensor.permute(1, 0).unsqueeze(0)
-        filt_cmplx = self.end_filter(y)
-
-        real_part = filt_cmplx.real
-        imag_part = filt_cmplx.imag
-
-        output = torch.stack((real_part, imag_part), dim=-1)
-        output = output.squeeze(0).permute(1, 0, 2)
-        output = output.to(torch.float32)
-        return output
+        filtered_output = self.filter(out)
+        return filtered_output
 
 
 class CascadedModel(nn.Module):
