@@ -51,13 +51,27 @@ def gen_log_stat(
 
 def gen_dir_paths(args: argparse.Namespace):
     path_dir_save = os.path.join(
-        args.log_out_dir, "save", args.dataset_name, args.PIM_backbone
+        args.log_out_dir,
+        args.exp_name,
+        "save",
+        args.dataset_name,
+        args.PIM_backbone,
     )  # Best model save dir
     path_dir_log_hist = os.path.join(
-        args.log_out_dir, "log", args.dataset_name, args.PIM_backbone, "history"
+        args.log_out_dir,
+        args.exp_name,
+        "log",
+        args.dataset_name,
+        args.PIM_backbone,
+        "history",
     )  # Log dir to save training history
     path_dir_log_best = os.path.join(
-        args.log_out_dir, "log", args.dataset_name, args.PIM_backbone, "best"
+        args.log_out_dir,
+        args.exp_name,
+        "log",
+        args.dataset_name,
+        args.PIM_backbone,
+        "best",
     )  # Log dir to save info of the best epoch
     dir_paths = (path_dir_save, path_dir_log_hist, path_dir_log_best)
     return dir_paths

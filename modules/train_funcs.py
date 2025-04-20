@@ -3,8 +3,6 @@ import time
 import torch
 import torch.nn as nn
 import numpy as np
-import matplotlib.pyplot as plt
-import pandas as pd
 from torch.utils.data import DataLoader
 from typing import Dict, Any, Callable
 from pim_utils.pim_metrics import compute_power
@@ -54,9 +52,9 @@ def train_model(
     step_logger = make_logger()
 
     paths = (path_dir_save, path_dir_log_hist, path_dir_log_best)
-    path_dir_save = path_dir_save + "/CH_" + str(n_channel)
-    path_dir_log_hist = path_dir_log_hist + "/CH_" + str(n_channel)
-    path_dir_log_best = path_dir_log_best + "/CH_" + str(n_channel)
+    path_dir_save = path_dir_save  # + "/CH_" + str(n_channel)
+    path_dir_log_hist = path_dir_log_hist  # + "/CH_" + str(n_channel)
+    path_dir_log_best = path_dir_log_best  # + "/CH_" + str(n_channel)
 
     [
         os.makedirs(p, exist_ok=True)
@@ -82,6 +80,7 @@ def train_model(
 
     log_shape = True
     for iteration, (features, targets) in enumerate(train_loader):
+        # if device == "cuda":
         features, targets = features.to(device), targets.to(device)
         if log_shape:
             step_logger.info(
@@ -94,8 +93,10 @@ def train_model(
         if log_shape:
             log_shape = False
             step_logger.info(f"out shape: {out.shape} target shape: {targets.shape}")
-
-        loss = criterion(out, targets)
+        conv_targets = net.filter(targets)
+        # out_batch_size = out.shape[0]
+        # loss = criterion(out, targets[:out_batch_size, ...])
+        loss = criterion(out, conv_targets)
         loss.backward()
 
         if grad_clip_val != 0:
@@ -116,7 +117,7 @@ def train_model(
                     _, pred, gt = net_eval(
                         logs[phase_name], net, loaders[phase_name], criterion, device
                     )
-
+                    net.train()
                     logs[phase_name] = calculate_metrics(
                         pred,
                         gt,
@@ -130,26 +131,24 @@ def train_model(
                         logs[phase_name],
                     )
 
-                if phase_name == "test" and test_ratio > 0:
-                    pred = CScaler.rescale(pred, key="Y")
-                    gt = CScaler.rescale(gt, key="Y")
+            step_logger.success(f"Reduction_level: {logs['test']['Reduction_level']}")
 
-                    for FT in [False, True]:
-                        plot_spectrums(
-                            toComplex(pred),  # .squeeze(-1),
-                            toComplex(gt),  # .squeeze(-1),
-                            FS,
-                            FC_TX,
-                            PIM_SFT,
-                            PIM_BW,
-                            iteration,
-                            logs["test"]["Reduction_level"],
-                            path_dir_save,
-                            cut=FT,
-                        )
+            if phase_name == "test" and test_ratio > 0:
+                pred = CScaler.rescale(pred, key="Y")
+                gt = CScaler.rescale(gt, key="Y")
 
-                    step_logger.success(
-                        f"Reduction_level: {logs['test']['Reduction_level']}"
+                for FT in [False, True]:
+                    plot_spectrums(
+                        toComplex(pred),  # .squeeze(-1),
+                        toComplex(gt),  # .squeeze(-1),
+                        FS,
+                        FC_TX,
+                        PIM_SFT,
+                        PIM_BW,
+                        iteration,
+                        logs["test"]["Reduction_level"],
+                        path_dir_save,
+                        cut=FT,
                     )
 
             # Logging
@@ -189,19 +188,21 @@ def train_model(
         "Test loss": test_loss_values,
         "Reduction level": red_levels,
     }
-    for k in loss_dict.keys():
+    # for k in loss_dict.keys():
 
-        fig = plt.figure(figsize=(10, 7))
-        plt.plot(all_iterations, loss_dict[k], linewidth=2, color="red")
-        plt.xlabel("Iterations", fontsize=16)
-        plt.ylabel(k, fontsize=16)
-        plt.grid()
-        plt.savefig(f"{path_dir_save}/" + k + ".png", bbox_inches="tight")
-        plt.close()
+    #     fig = plt.figure(figsize=(10, 7))
+    #     plt.plot(all_iterations, loss_dict[k], linewidth=2, color="red")
+    #     plt.xlabel("Iterations", fontsize=16)
+    #     plt.ylabel(k, fontsize=16)
+    #     plt.grid()
+    #     plt.savefig(f"{path_dir_save}/" + k + ".png", bbox_inches="tight")
+    #     plt.close()
+
+    loss_dict["Reduction level"] = red_levels
 
     max_metrics = calculate_metrics(
         pred,
-        gt + noise["Test"],
+        gt,
         noise["Test"],
         filter,
         CScaler,
@@ -209,18 +210,24 @@ def train_model(
         FC_TX,
         PIM_SFT,
         PIM_BW,
-        logs["Test"],
+        logs["test"],
     )
 
     powers = dict()
     for key, value in (("gt", gt), ("err", gt - pred), ("noise", noise["Test"])):
-        powers["key"] = compute_power(toComplex(value), FS, FC_TX, PIM_SFT, PIM_BW)
+        compl = toComplex(value)
+        powers[key] = [
+            compute_power(compl[:, id], FS, FC_TX, PIM_SFT, PIM_BW) for id in range(compl.shape[1])
+        ]
 
     path_dir_save, path_dir_log_hist, path_dir_log_best = paths
+    red_level = loss_dict["Reduction level"][-1]
+    mean_rel_level = np.mean([red_level[id] for id in red_level.keys()])
+    max_rel_level = np.max([red_level[id] for id in red_level.keys()])
     return (
         log_all,
-        loss_dict["Reduction level"][-1],
-        max_metrics["Reduction_level"],
+        mean_rel_level,
+        max_rel_level,
         powers,
     )
 
@@ -243,10 +250,16 @@ def net_eval(
             targets = targets.to(device)
             outputs = net(features)
             # Calculate loss function
-            loss = criterion(outputs, targets)
+            conv_targets = net.filter(targets)
+            loss = criterion(outputs, conv_targets)
+            # out_batch_size = outputs.shape[0]
+            # loss = criterion(outputs, targets[:out_batch_size, ...])
+
             # Collect prediction and ground truth for metric calculation
             prediction.append(outputs.cpu())
-            ground_truth.append(targets.cpu())
+            # ground_truth.append(targets[:out_batch_size, ...].cpu())
+            ground_truth.append(conv_targets.cpu())
+
             # Collect losses to calculate the average loss per epoch
             losses.append(loss.item())
     # Average loss per epoch

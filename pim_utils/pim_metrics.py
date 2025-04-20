@@ -169,7 +169,9 @@ def compute_power(x, fs, fc_tx, pim_sft, pim_bw, return_db=True):
     """
     n = 2048
     # Compute PSD using Scipy's optimized Welch implementation
-    f, psd = welch(x, fs, window=np.kaiser(2048, 10), nperseg=n, noverlap=1)
+    f, psd = welch(
+        x, fs, window=np.kaiser(2048, 10), nperseg=n, noverlap=1, return_onesided=False
+    )
     # Calculate frequency mask directly
     freq_mask = np.where((f > pim_sft - pim_bw / 2) & (f < pim_sft + pim_bw / 2))
 
@@ -252,7 +254,7 @@ def reduction_level(
     # min_len = min(noise_level.shape[0], prediction.shape[0])
 
     convolved_initial_signal = convolve(initial_signal, filt_conv)
-    # residual =  convolve(PIM_pred[:min_len], filt_conv) - convolve(initial_signal[:min_len], filt_conv)
+
     residual = convolve(PIM_pred, filt_conv) - convolve(initial_signal, filt_conv)
 
     # # TODO: some bug with noise level, need to investigate

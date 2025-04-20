@@ -138,6 +138,7 @@ class Runner:
             self.args.dataset_path,
             self.args.dataset_name,
             self.args.filter_path,
+            self.args.pim_type,
             self.args.train_ratio,
             self.args.val_ratio,
             self.args.test_ratio,
@@ -146,6 +147,7 @@ class Runner:
             self.args.batch_size,
             self.args.batch_size_eval,
             path_dir_save=self.path_dir_log_best,
+            specific_channels=self.args.specific_channels,
         )
 
     def build_model(self):
