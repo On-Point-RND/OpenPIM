@@ -1,5 +1,3 @@
-could you draw a scheme of this model?
-
 import torch
 import torch.nn as nn
 
@@ -70,7 +68,7 @@ class PolynomialExpansion(nn.Module):
         return torch.cat(outputs_real, dim=-1), torch.cat(outputs_imag, dim=-1)
 
 
-class ConvModel(nn.Module):
+class Mix(nn.Module):
     def __init__(self, input_size, output_size, n_channels, batch_size, poly_degree=4):
         super().__init__()
         self.n_channels = n_channels

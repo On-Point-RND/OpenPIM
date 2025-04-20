@@ -168,6 +168,16 @@ class CoreModel(nn.Module):
                 n_channels=n_channels,
             )
 
+        elif backbone_type == "mix":
+            from backbones.mix import Mix
+
+            self.backbone = Mix(
+                input_size=self.input_size,
+                output_size=self.output_size,
+                batch_size=self.batch_size,
+                n_channels=n_channels,
+            )
+
         else:
             raise ValueError(
                 f"The backbone type '{self.backbone_type}' is not supported. Please add your own "
