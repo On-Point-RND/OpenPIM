@@ -133,7 +133,7 @@ def train_model(
                 mean_reduction = (
                     sum(
                         [
-                            logs["phase_name"]["Reduction_level"][k]
+                            logs[phase_name]["Reduction_level"][k]
                             for k in logs[phase_name]["Reduction_level"]
                         ]
                     )
