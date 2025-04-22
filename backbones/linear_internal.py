@@ -24,23 +24,23 @@ class Linear(nn.Module):
         self.bn_output = nn.BatchNorm1d(n_channels)  # For complex output
 
         self.filter_layers_in = nn.ModuleList()
-        for i in range(0, n_channels):
+        for _ in range(n_channels):
             layer = FiltLinear(input_size - out_window + 1)
             self.filter_layers_in.append(layer)
 
         self.nonlin_layers = nn.ModuleList()
-        for i in range(0, n_channels):
-            layer = nn.Linear(output_size * n_channels, output_size, bias=False)
+        for _ in range(n_channels):
+            layer = nn.Linear(output_size, output_size, bias=False)
             self.nonlin_layers.append(layer)
 
         self.coeff = nn.Linear(output_size, output_size, bias=False)
         self.filter_layers_out = nn.ModuleList()
-        for i in range(0, n_channels):
+        for _ in range(n_channels):
             layer = FiltLinear(out_window)
             self.filter_layers_out.append(layer)
 
     def forward(self, x, h_0=None):
-        # INFO: input tensors of sizes B x N x C x 2
+        # Input tensors of sizes B x N x C x 2
         B, N, C, _ = x.shape
 
         # INFO: resulting tensors of sizes B x C
@@ -58,23 +58,25 @@ class Linear(nn.Module):
             x_real, x_imag = x_init_real[:, :, c], x_init_imag[:, :, c]
             for id in range(self.out_window):
                 f_real, f_imag = filt_layer(
-                    x_real[:, id:N - self.out_window + id + 1],
-                    x_imag[:, id:N - self.out_window + id + 1]
+                    x_real[:, id:N-self.out_window+id+1],
+                    x_imag[:, id:N-self.out_window+id+1]
                 )
 
                 filtered_real[:, id, c] = f_real.squeeze(-1)  # (B,)
                 filtered_imag[:, id, c] = f_imag.squeeze(-1)
 
-        nonlin_real = torch.zeros((B, self.out_window, C), device=x.device)
+        nonlin_real = torch.zeros(
+            (B, self.out_window, C),
+            device=x.device
+        )
         nonlin_imag = torch.zeros_like(nonlin_real)
 
         for id in range(self.out_window):
-            total_filtered = torch.cat(
-                [filtered_real[:, id, :], filtered_imag[:, id, :]],
-                dim=-1
-            )
-
             for c, nonlin_layer in enumerate(self.nonlin_layers):
+                total_filtered = torch.stack(
+                    [filtered_real[:, id, c], filtered_imag[:, id, c]],
+                    dim=-1
+                )
                 c_output = nonlin_layer(total_filtered)
 
                 c_real = c_output[:, 0]
@@ -92,8 +94,13 @@ class Linear(nn.Module):
 
         output = torch.zeros((B, self.n_channels, 2), device=x.device)
         for c, filt_layer in enumerate(self.filter_layers_out):
-            out_real, out_imag = filt_layer(nonlin_real[:, :, c], nonlin_imag[:, :, c])
+            out_real, out_imag = filt_layer(
+                nonlin_real[:, :, c],
+                nonlin_imag[:, :, c]
+            )
             output[:, c, 0] = out_real.squeeze(-1)
             output[:, c, 1] = out_imag.squeeze(-1)
+
         output = self.bn_output(output)
+
         return output
