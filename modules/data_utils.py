@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import os
 from modules.loggers import make_logger
 
 logger = make_logger()
@@ -35,62 +36,71 @@ def back_fwd_feature_prepare(sequence_x, sequence_t, n_back, n_fwd):
 
 
 # INFO: This is used in modules.data_collector
+import numpy as np
+import pandas as pd
+import os
+
+
 class ComplexScaler:
-    def __init__(self, data, path_dir_save):
-        self.scales = self.get_mean_var(data, path_dir_save)
+    def __init__(self, data, path_dir_save, scaler_type="magnitude"):
+        """
+        Args:
+            data (dict): Data dictionary containing 'X', 'Y', 'N' with 'Train' splits
+            path_dir_save (str): Directory to save scaler parameters
+            scaler_type (str): 'power' for power normalization, 'magnitude' for magnitude-based
+        """
+        self.scaler_type = scaler_type
+        self.epsilon = 1e-8  # Prevent division by zero
+        self.scales = self.get_scalers(data, path_dir_save)
 
-    def get_mean_var(self, data, path_dir_save):
-        # Vectorized computation for X
+    def get_scalers(self, data, path_dir_save):
+        x_train = np.stack(data["X"]["Train"], axis=0)
+        y_train = np.stack(data["Y"]["Train"], axis=0)
+        noise = np.stack(data["N"]["Train"], axis=0)
 
-        x_train = data["X"][
-            "Train"
-        ]  # np.stack(data["X"]["Train"], axis=0)  # Stack all IDs into a 3D array
+        if self.scaler_type == "power":
+            scaling_x = self._compute_power_scale(x_train)
+            scaling_y = self._compute_power_scale(y_train)
+            scaling_n = self._compute_power_scale(noise)
+            value_name = "power_scale"
 
-        means_X = x_train.mean(axis=0)  # Compute mean along the sample axis
-        sd_X = x_train.std(axis=0, ddof=0)  # Compute population standard deviation
+        elif self.scaler_type == "magnitude":
+            scaling_x = self._compute_magnitude_scale(x_train)
+            scaling_y = self._compute_magnitude_scale(y_train)
+            scaling_n = self._compute_magnitude_scale(noise)
+            value_name = "magnitude_scale"
 
-        # Vectorized computation for Y
-        y_train = data["Y"]["Train"]  # np.stack(data["Y"]["Train"], axis=0)
-        means_Y = y_train.mean(axis=0)
-        sd_Y = y_train.std(axis=0, ddof=0)
-        # Return results as dictionaries
+        else:
+            raise ValueError("Unsupported scaler type. Use 'power' or 'magnitude'.")
 
-        noise = data["N"]["Train"]  # np.stack(data["Y"]["Train"], axis=0)
-        means_N = noise.mean(axis=0)
-        sd_N = noise.std(axis=0, ddof=0)
-
-        pd.DataFrame(
+        # Save to CSV
+        df = pd.DataFrame(
             {
-                "Value": ["real", "imag"],
-                "mean_X": [
-                    means_X[..., 0],
-                    means_X[..., 1],
-                ],
-                "mean_Y": [
-                    means_Y[..., 0],
-                    means_Y[..., 1],
-                ],
-                "sd_X": [
-                    sd_X[..., 0],
-                    sd_X[..., 1],
-                ],
-                "sd_Y": [
-                    sd_Y[..., 0],
-                    sd_Y[..., 1],
-                ],
+                "Value": [value_name],
+                "X_scale": [scaling_x],
+                "Y_scale": [scaling_y],
+                "N_scale": [scaling_n],
             }
-        ).to_csv(path_dir_save + "/means_sd.csv", index=False)
+        )
+        df.to_csv(os.path.join(path_dir_save, "scalers.csv"), index=False)
+        return {"X": scaling_x, "Y": scaling_y, "N": scaling_n}
 
-        logger.success(f"Scaler was initiated, scaler shapes: {means_X.shape}")
-        return {
-            "means": {"X": means_X, "Y": means_Y, "N": means_N},
-            "sd": {"X": sd_X, "Y": sd_Y, "N": sd_N},
-        }
+    def _compute_power_scale(self, data):
+        """Compute scaling factor for power normalization (1/sqrt(avg_power))"""
+        power = np.square(data[..., 0]) + np.square(data[..., 1])
+        avg_power = np.mean(power)
+        return np.sqrt(avg_power) + self.epsilon
+
+    def _compute_magnitude_scale(self, data):
+        """Compute scaling factor for magnitude-based normalization (1/max_magnitude)"""
+        magnitudes = np.sqrt(np.square(data[..., 0]) + np.square(data[..., 1]))
+        max_magnitude = np.max(magnitudes)
+        return max_magnitude + self.epsilon
 
     def normalize(self, x, key="X"):
-        x = (x - self.scales["means"][key]) / self.scales["sd"][key]
-        return x
+        """Normalize using the selected scaler type"""
+        return x / self.scales[key]
 
     def rescale(self, x, key="X"):
-        x = x * self.scales["sd"][key] + self.scales["means"][key]
-        return x
+        """Rescale to original scale"""
+        return x * self.scales[key]

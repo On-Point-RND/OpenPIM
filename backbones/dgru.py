@@ -107,5 +107,4 @@ class DGRU(nn.Module):
         out = out.view(B, C, 2)  # Back to (B, C, 2)
 
         out = self.bn_out(out)
-
         return out

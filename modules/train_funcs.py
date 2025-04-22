@@ -94,8 +94,7 @@ def train_model(
             log_shape = False
             step_logger.info(f"out shape: {out.shape} target shape: {targets.shape}")
         conv_targets = net.filter(targets)
-        # out_batch_size = out.shape[0]
-        # loss = criterion(out, targets[:out_batch_size, ...])
+
         loss = criterion(out, conv_targets)
         loss.backward()
 
@@ -121,7 +120,6 @@ def train_model(
                     logs[phase_name] = calculate_metrics(
                         pred,
                         gt,
-                        noise[phase_name.title()],
                         filter,
                         CScaler,
                         FS,
@@ -130,10 +128,18 @@ def train_model(
                         PIM_BW,
                         logs[phase_name],
                     )
+                mean_reduction = sum(
+                    logs[phase_name]["Reduction_level"].values()
+                ) / len(logs[phase_name]["Reduction_level"])
 
-            step_logger.success(f"Reduction_level: {logs['test']['Reduction_level']}")
+                step_logger.success(
+                    f"Mean Reduction_level {phase_name}: {mean_reduction}"
+                )
+                step_logger.success(
+                    f"Reduction_level {phase_name}: {logs[phase_name]['Reduction_level']}"
+                )
 
-            if phase_name == "test" and test_ratio > 0:
+            if phase_name in ["test", "train"] and test_ratio > 0:
                 pred = CScaler.rescale(pred, key="Y")
                 gt = CScaler.rescale(gt, key="Y")
 
@@ -149,6 +155,7 @@ def train_model(
                         logs["test"]["Reduction_level"],
                         path_dir_save,
                         cut=FT,
+                        phase_name=phase_name,
                     )
 
             # Logging
@@ -160,7 +167,7 @@ def train_model(
                 elapsed_time,
                 iteration,
                 logs["train"],
-                logs["val"],
+                logs["train"],
                 logs["test"],
             )
 
@@ -173,9 +180,9 @@ def train_model(
 
             # Learning rate & model saving
             if lr_schedule:
-                lr_scheduler.step(logs["val"]["loss"])
+                lr_scheduler.step(logs["test"]["loss"])
             if save_results:
-                writer.save_best_model(net, log_epoch, logs["val"], "loss")
+                writer.save_best_model(net, log_epoch, logs["test"], "loss")
 
         log_epoch += 1
         if iteration > n_iterations:
@@ -217,7 +224,8 @@ def train_model(
     for key, value in (("gt", gt), ("err", gt - pred), ("noise", noise["Test"])):
         compl = toComplex(value)
         powers[key] = [
-            compute_power(compl[:, id], FS, FC_TX, PIM_SFT, PIM_BW) for id in range(compl.shape[1])
+            compute_power(compl[:, id], FS, FC_TX, PIM_SFT, PIM_BW)
+            for id in range(compl.shape[1])
         ]
 
     path_dir_save, path_dir_log_hist, path_dir_log_best = paths
@@ -274,7 +282,7 @@ def net_eval(
 
 
 def calculate_metrics(
-    prediction, ground_truth, noise, filter, СScaler, FS, FC_TX, PIM_SFT, PIM_BW, stat
+    prediction, ground_truth, filter, СScaler, FS, FC_TX, PIM_SFT, PIM_BW, stat
 ):
     if not "NMSE" in stat:
         stat["NMSE"] = dict()
@@ -297,7 +305,6 @@ def calculate_metrics(
             FC_TX=FC_TX,
             PIM_SFT=PIM_SFT,
             PIM_BW=PIM_BW,
-            noise=noise,
             filter=filter,
         )
     return stat
