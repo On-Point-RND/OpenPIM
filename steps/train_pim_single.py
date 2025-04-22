@@ -10,7 +10,7 @@ def main(exp: Runner):
 
     # Build Dataloaders
     (
-        (train_loader, val_loader, test_loader),
+        (train_loader, train_set_val_loader, test_loader),
         input_size,
         n_channels,
         noise,
@@ -42,17 +42,13 @@ def main(exp: Runner):
     # Create Optimizer and Learning Rate Scheduler
     optimizer, lr_scheduler = exp.build_optimizer(net=net)
 
-    train_loader = train_loader
-    val_loader = val_loader
-    test_loader = test_loader
-
     exp.train(
         net=net,
         criterion=criterion,
         optimizer=optimizer,
         lr_scheduler=lr_scheduler,
         train_loader=train_loader,
-        val_loader=val_loader,
+        train_set_val_loader=train_set_val_loader,
         test_loader=test_loader,
         best_model_metric="Reduction_level",
         noise={"Train": noise["Train"], "Val": noise["Val"], "Test": noise["Test"]},

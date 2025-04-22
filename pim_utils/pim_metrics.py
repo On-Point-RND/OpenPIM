@@ -21,6 +21,7 @@ def plot_spectrums(
     save_dir,
     path_dir_save="",
     cut=False,
+    phase_name="test",
 ):
 
     n_channels = prediction.shape[1]
@@ -39,6 +40,7 @@ def plot_spectrums(
             save_dir,
             path_dir_save,
             cut,
+            phase_name,
         )
 
 
@@ -57,6 +59,7 @@ def plot_spectrum(
     cut=False,
     initial=False,
     initial_ground_truth=[],
+    phase_name="",
 ):
     # Create new figure with legend
     plt.figure(figsize=(10, 6))
@@ -146,7 +149,7 @@ def plot_spectrum(
             FC_TX + FS / 10 + PIM_SFT + PIM_BW / 2,
         )
     ax.set_title(
-        f"Power Spectral Density - Iteration: {iteration}, Reduction: {reduction_level:.3f} dB, CH_{c_number}"
+        f"{phase_name} Power Spectral Density - Iteration: {iteration}, Reduction: {reduction_level:.3f} dB, CH_{c_number}"
     )
     ax.legend(loc="upper left")
 
@@ -235,9 +238,7 @@ def main_metrics(prediction, ground_truth, FS, FC_TX, PIM_SFT, PIM_total_BW):
     return main_metric
 
 
-def reduction_level(
-    prediction, ground_truth, FS, FC_TX, PIM_SFT, PIM_BW, noise, filter
-):
+def reduction_level(prediction, ground_truth, FS, FC_TX, PIM_SFT, PIM_BW, filter):
 
     initial_signal = (
         ground_truth[..., 0].reshape(1, -1)[0]
@@ -247,18 +248,11 @@ def reduction_level(
         prediction[..., 0].reshape(1, -1)[0] + 1j * prediction[..., 1].reshape(1, -1)[0]
     )
 
-    noise_level = noise[..., 0].reshape(1, -1)[0] + 1j * noise[..., 1].reshape(1, -1)[0]
-
     filt_conv = filter.astype(complex).flatten()
-
-    # min_len = min(noise_level.shape[0], prediction.shape[0])
 
     convolved_initial_signal = convolve(initial_signal, filt_conv)
 
     residual = convolve(PIM_pred, filt_conv) - convolve(initial_signal, filt_conv)
-
-    # # TODO: some bug with noise level, need to investigate
-    # residual =  convolve(PIM_pred, filt_conv) + convolve(noise_level, filt_conv) - convolve(initial_signal, filt_conv)
 
     red_level = calculate_res(
         convolved_initial_signal, residual, FS, FC_TX, PIM_SFT, PIM_BW

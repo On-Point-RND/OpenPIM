@@ -23,7 +23,7 @@ def train_model(
     optimizer: torch.optim.Optimizer,
     lr_scheduler: torch.optim.lr_scheduler._LRScheduler,
     train_loader: DataLoader,
-    val_loader: DataLoader,
+    train_set_val_loader: DataLoader,
     test_loader: DataLoader,
     best_model_metric: str,
     noise: Dict[str, Any],
@@ -74,9 +74,9 @@ def train_model(
     red_levels = []
     all_iterations = []
 
-    phases = {"val": val_ratio, "test": test_ratio}
-    loaders = {"val": val_loader, "test": test_loader}
-    logs = {"val": dict(), "test": dict(), "train": dict()}
+    phases = {"train_val": val_ratio, "test": test_ratio}
+    loaders = {"train_val": train_set_val_loader, "test": test_loader}
+    logs = {"train_val": dict(), "test": dict(), "train": dict()}
 
     log_shape = True
     for iteration, (features, targets) in enumerate(train_loader):
@@ -112,6 +112,7 @@ def train_model(
 
             # Validation/Test evaluation
             for phase_name in phases:
+                print(phase_name)
                 if phases[phase_name] > 0:
 
                     _, pred, gt = net_eval(
@@ -121,7 +122,6 @@ def train_model(
                     logs[phase_name] = calculate_metrics(
                         pred,
                         gt,
-                        noise[phase_name.title()],
                         filter,
                         CScaler,
                         FS,
@@ -130,10 +130,24 @@ def train_model(
                         PIM_BW,
                         logs[phase_name],
                     )
+                mean_reduction = (
+                    sum(
+                        [
+                            logs["phase_name"]["Reduction_level"][k]
+                            for k in logs[phase_name]["Reduction_level"]
+                        ]
+                    )
+                    / n_channel
+                )
 
-            step_logger.success(f"Reduction_level: {logs['test']['Reduction_level']}")
+                step_logger.success(
+                    f"Mean Reduction_level {phase_name}: {mean_reduction}"
+                )
+                step_logger.success(
+                    f"Reduction_level {phase_name}: {logs[phase_name]['Reduction_level']}"
+                )
 
-            if phase_name == "test" and test_ratio > 0:
+            if phase_name in ["test", "train_val"] and test_ratio > 0:
                 pred = CScaler.rescale(pred, key="Y")
                 gt = CScaler.rescale(gt, key="Y")
 
@@ -149,6 +163,7 @@ def train_model(
                         logs["test"]["Reduction_level"],
                         path_dir_save,
                         cut=FT,
+                        phase_name=phase_name,
                     )
 
             # Logging
@@ -160,7 +175,7 @@ def train_model(
                 elapsed_time,
                 iteration,
                 logs["train"],
-                logs["val"],
+                logs["train_val"],
                 logs["test"],
             )
 
@@ -173,9 +188,9 @@ def train_model(
 
             # Learning rate & model saving
             if lr_schedule:
-                lr_scheduler.step(logs["val"]["loss"])
+                lr_scheduler.step(logs["test"]["loss"])
             if save_results:
-                writer.save_best_model(net, log_epoch, logs["val"], "loss")
+                writer.save_best_model(net, log_epoch, logs["test"], "loss")
 
         log_epoch += 1
         if iteration > n_iterations:
@@ -275,7 +290,7 @@ def net_eval(
 
 
 def calculate_metrics(
-    prediction, ground_truth, noise, filter, СScaler, FS, FC_TX, PIM_SFT, PIM_BW, stat
+    prediction, ground_truth, filter, СScaler, FS, FC_TX, PIM_SFT, PIM_BW, stat
 ):
     if not "NMSE" in stat:
         stat["NMSE"] = dict()
@@ -298,7 +313,6 @@ def calculate_metrics(
             FC_TX=FC_TX,
             PIM_SFT=PIM_SFT,
             PIM_BW=PIM_BW,
-            noise=noise,
             filter=filter,
         )
     return stat
