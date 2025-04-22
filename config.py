@@ -29,19 +29,19 @@ class Config:
     # PIM Type options: "total", "cond", "leak", "ext"
     PIM_type: str = "total"
     specific_channels = "all"
-    out_filtration: bool = False
+    out_filtration: bool = True
 
     # Training Process
     step: str = "train_pim_single"
-    n_back: int = 128
-    n_fwd: int = 3
+    n_back: int = 1
+    n_fwd: int = 0
     accelerator: str = "cuda"
     devices: int = 0
     re_level: str = "soft"
 
     # General Hyperparameters
     seed: int = 0
-    loss_type: str = "hybrid"
+    loss_type: str = "joint"
     pim_type: str = "total"
     opt_type: str = "adabound"
     batch_size: int = 64

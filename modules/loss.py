@@ -60,10 +60,6 @@ class IQComponentWiseLoss(nn.Module):
             raise ValueError("Invalid reduction type. Use 'mean' or 'sum'.")
 
 
-import torch
-import torch.nn as nn
-
-
 class HybridLoss(nn.Module):
     def __init__(self, alpha=0.5, fft_weight=0.5):
         super().__init__()
@@ -83,4 +79,59 @@ class HybridLoss(nn.Module):
         # Physics term (e.g., enforce 3rd-order nonlinearity)
         # Example: PIM power ∝ input_power^3
         total_loss = (1 - self.fft_weight) * time_loss + self.fft_weight * freq_loss
+        return total_loss
+
+
+class JointLoss(nn.Module):
+    def __init__(
+        self, alpha=0.3, fft_weight=0.5, odd_order_weight=0.2, compress_weight=0.4
+    ):
+        super().__init__()
+        self.mse = nn.MSELoss()
+        self.alpha = alpha  # Weight for physics-guided terms
+        self.fft_weight = fft_weight  # Spectral loss weight
+        self.odd_order_weight = odd_order_weight  # Odd-order penalty strength
+        self.compress_weight = compress_weight  # Dynamic range compression weight
+
+    def forward(self, pred, target):
+        # --- Time-domain MSE ---
+        time_loss = self.mse(pred, target)
+
+        # --- Frequency-domain MSE (magnitude) ---
+        pred_fft = torch.abs(torch.fft.rfft(pred))
+        target_fft = torch.abs(torch.fft.rfft(target))
+        freq_loss = self.mse(pred_fft, target_fft)
+
+        # --- Odd-Order Term Penalty ---
+        # Create mask to penalize even-order frequency components
+        n_freq = pred_fft.size(-1)
+        even_order_mask = torch.zeros(n_freq, device=pred.device)
+        even_order_mask[::2] = (
+            1  # Simple even-index mask (customize for your PIM frequencies)
+        )
+
+        # Penalize predicted even-order components (should be near zero)
+        even_loss = torch.mean(pred_fft * even_order_mask)
+
+        # --- Dynamic Range Compression ---
+        # Compress time-domain signals
+        compressed_pred = torch.log1p(torch.abs(pred))
+        compressed_target = torch.log1p(torch.abs(target))
+        compressed_time_loss = self.mse(compressed_pred, compressed_target)
+
+        # Compress frequency magnitudes
+        compressed_pred_fft = torch.log1p(pred_fft)
+        compressed_target_fft = torch.log1p(target_fft)
+        compressed_freq_loss = self.mse(compressed_pred_fft, compressed_target_fft)
+
+        # --- Combine Losses ---
+        total_loss = (
+            (1 - self.fft_weight) * time_loss
+            + self.fft_weight * freq_loss
+            + self.alpha
+            * (
+                self.odd_order_weight * even_loss
+                + self.compress_weight * (compressed_time_loss + compressed_freq_loss)
+            )
+        )
         return total_loss

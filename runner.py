@@ -15,7 +15,7 @@ from modules.data_collector import load_resources
 from modules.paths import gen_dir_paths, gen_file_paths
 from modules.train_funcs import train_model
 from modules.loggers import make_logger
-from modules.loss import IQComponentWiseLoss, HybridLoss
+from modules.loss import IQComponentWiseLoss, HybridLoss, JointLoss
 
 
 class Runner:
@@ -173,6 +173,7 @@ class Runner:
 
     def build_criterion(self):
         dict_loss = {
+            "joint": JointLoss(),
             "hybrid": HybridLoss(),
             "angle": IQComponentWiseLoss(),
             "l2": nn.MSELoss(reduction="mean"),

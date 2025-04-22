@@ -9,46 +9,58 @@ from scipy.signal import firwin2
 
 
 class EndFilter(nn.Module):
-    def __init__(self, n_channels):
+    def __init__(self, n_channels, out_filtration):
         super(EndFilter, self).__init__()
-        Fs = 245.76e6  # Sampling frequency
-        freq = [
-            0,  # Start of passband
-            35.08e6,  # Start of first stopband (aliased 1950 MHz)
-            35.08e6,  # End of first stopband start
-            99.68e6,  # Start of passband
-            99.68e6,  # End of passband start
-            Fs / 2,  # Nyquist frequency
-        ]
-        gain = [1, 1, 0, 0, 0, 0]  # 1=pass, 0=stop
-        # Design filter with 255 taps
-        filter_coeff = firwin2(255, freq, gain, fs=Fs)
-        wts = torch.from_numpy(filter_coeff).to(torch.complex64)
-        wts_expand = wts.unsqueeze(0).unsqueeze(0).expand(n_channels, 1, 255)
-        self.end_filter = torch.nn.Conv1d(
-            in_channels=n_channels,
-            out_channels=n_channels,
-            kernel_size=255,
-            padding="valid",
-            groups=n_channels,
-            bias=False,
-        )
-        self.end_filter.weight.data = wts_expand
-        self.end_filter.weight.requires_grad = False
+
+        if out_filtration:
+            Fs = 245.76e6  # Sampling frequency
+            freq = [
+                0,  # Start of passband
+                35.08e6,  # Start of first stopband (aliased 1950 MHz)
+                35.08e6,  # End of first stopband start
+                99.68e6,  # Start of passband
+                99.68e6,  # End of passband start
+                Fs / 2,  # Nyquist frequency
+            ]
+            gain = [1, 1, 0, 0, 0, 0]  # 1=pass, 0=stop
+            # Design filter with 255 taps
+            filter_coeff = firwin2(255, freq, gain, fs=Fs)
+            wts = torch.from_numpy(filter_coeff).to(torch.complex64)
+            wts_expand = wts.unsqueeze(0).unsqueeze(0).expand(n_channels, 1, 255)
+            self.end_filter = torch.nn.Conv1d(
+                in_channels=n_channels,
+                out_channels=n_channels,
+                kernel_size=255,
+                padding="valid",
+                groups=n_channels,
+                bias=False,
+            )
+            self.end_filter.weight.data = wts_expand
+            self.end_filter.weight.requires_grad = False
+
+        self.out_filtration = out_filtration
 
     def forward(self, x):
-        cmplx_tensor = x[..., 0] + 1j * x[..., 1]
-        cmplx_tensor = cmplx_tensor.permute(1, 0).unsqueeze(0)
-        filt_cmplx = self.end_filter(cmplx_tensor)
+        if self.out_filtration:
+            cmplx_tensor = x[..., 0] + 1j * x[..., 1]
+            cmplx_tensor = cmplx_tensor.permute(1, 0).unsqueeze(0)
+            filt_cmplx = self.end_filter(cmplx_tensor)
 
-        output = torch.stack((filt_cmplx.real, filt_cmplx.imag), dim=-1)
-        output = output.squeeze(0).permute(1, 0, 2)
-        return output.to(torch.float32)
+            output = torch.stack((filt_cmplx.real, filt_cmplx.imag), dim=-1)
+            x = output.squeeze(0).permute(1, 0, 2)
+        return x.to(torch.float32)
 
 
 class CoreModel(nn.Module):
     def __init__(
-        self, n_channels, input_size, hidden_size, num_layers, backbone_type, batch_size, out_filtration
+        self,
+        n_channels,
+        input_size,
+        hidden_size,
+        num_layers,
+        backbone_type,
+        batch_size,
+        out_filtration,
     ):
         super(CoreModel, self).__init__()
         self.output_size = 2  # PIM outputs: I & Q
@@ -61,7 +73,7 @@ class CoreModel(nn.Module):
         self.batch_first = True  # Force batch first
         self.bidirectional = False
         self.bias = True
-        self.filter = EndFilter(n_channels)
+        self.filter = EndFilter(n_channels, out_filtration)
         self.out_filtration = out_filtration
 
         if backbone_type == "gmp":
@@ -282,11 +294,8 @@ class CoreModel(nn.Module):
         # Forward Propagate through the RNN
         # print('x.shape: ', x.shape)
         output = self.backbone(x, h_0)
-        if self.out_filtration:
-            filtered_output = self.filter(output)
-            return filtered_output
-        else:
-            return output
+        filtered_output = self.filter(output)
+        return filtered_output
 
 
 class CascadedModel(nn.Module):

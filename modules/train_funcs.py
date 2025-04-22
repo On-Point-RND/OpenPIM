@@ -94,8 +94,7 @@ def train_model(
             log_shape = False
             step_logger.info(f"out shape: {out.shape} target shape: {targets.shape}")
         conv_targets = net.filter(targets)
-        # out_batch_size = out.shape[0]
-        # loss = criterion(out, targets[:out_batch_size, ...])
+
         loss = criterion(out, conv_targets)
         loss.backward()
 

@@ -87,16 +87,7 @@ def plot_spectrum(
             pad_to=2048,
             label="Initial Signal",
         )
-        psd_NF, f = ax.psd(
-            ground_truth,
-            Fs=FS,
-            Fc=FC_TX,
-            NFFT=2048,
-            window=np.kaiser(2048, 10),
-            noverlap=1,
-            pad_to=2048,
-            label="Residual Signal",
-        )
+
         psd_NF, f = ax.psd(
             ground_truth - prediction,
             Fs=FS,
@@ -155,12 +146,16 @@ def plot_spectrum(
 
     if cut:
         plt.savefig(
-            f"{save_dir}/img_{iteration}_cut_CH{c_number}" + path_dir_save + ".png",
+            f"{save_dir}/img_{phase_name}_{iteration}_cut_CH{c_number}"
+            + path_dir_save
+            + ".png",
             bbox_inches="tight",
         )
     else:
         plt.savefig(
-            f"{save_dir}/img_{iteration}_CH{c_number}" + path_dir_save + ".png",
+            f"{save_dir}/img_{phase_name}_{iteration}_CH{c_number}"
+            + path_dir_save
+            + ".png",
             bbox_inches="tight",
         )
     plt.close()  # Prevent figure accumulation

@@ -46,14 +46,6 @@ class Simple(nn.Module):
         x_init_real = x[:, -1, :, 0]  # (B, L, C)
         x_init_imag = x[:, -1, :, 1]  # (B, L, C)
 
-        # filtered_real = torch.zeros((B, self.n_channels), device=x.device)
-        # filtered_imag = torch.zeros_like(filtered_real)
-        # for c, filt_layer in enumerate(self.filter_layers_in):
-        #     x_real, x_imag = x_init_real[:, :, c], x_init_imag[:, :, c]
-        #     f_real, f_imag = filt_layer(x_real, x_imag)
-        #     filtered_real[:, c] = f_real.squeeze(-1)
-        #     filtered_imag[:, c] = f_imag.squeeze(-1)
-
         amp2 = x_init_real.pow(2) + x_init_imag.pow(2)
 
         amp_scaled = self.amp_weight * amp2 ** (1 / 2)
