@@ -20,12 +20,13 @@ def main(exp: Runner):
     ) = exp.load_resources()
 
     net = model.CoreModel(
+        n_channels=n_channels,
         input_size=input_size,
         hidden_size=exp.args.PIM_hidden_size,
         num_layers=exp.args.PIM_num_layers,
         backbone_type=exp.args.PIM_backbone,
         batch_size=exp.args.batch_size,
-        n_channels=n_channels,
+        out_filtration=exp.args.out_filtration,
     )
 
     logger = make_logger()

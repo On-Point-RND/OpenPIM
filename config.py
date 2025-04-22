@@ -26,11 +26,15 @@ class Config:
     PIM_backbone: str = "linear"
     PIM_hidden_size: int = 8
     PIM_num_layers: int = 1
+    # PIM Type options: "total", "cond", "leak", "ext"
+    PIM_type: str = "total"
+    specific_channels = "all"
+    out_filtration: bool = False
 
     # Training Process
     step: str = "train_pim_single"
     n_back: int = 128
-    n_fwd: int = 0
+    n_fwd: int = 3
     accelerator: str = "cuda"
     devices: int = 0
     re_level: str = "soft"

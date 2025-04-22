@@ -88,14 +88,14 @@ def model_from_wts(rxa, txa, model_wts, conv4metrics, bf_len: int,
     return result
 
 
-def model(rxa, txa, conv4metrics, bf_len: int,
-          config: ModelConfig, sig_config: SignalConfig):
-    fs, pim_sft, pim_bw = sig_config.fs, sig_config.pim_sft, sig_config.pim_bw
+def model(rxa, txa, bf_len: int,
+          config: ModelConfig):
     model_func = globals()[config.model]
     poly_func = globals()[config.poly]
     n_back = config.n_back
     n_fwd = config.n_fwd
-    n_cut = int(rxa.shape[0] * 0.8)
+    n_cut = int(rxa.shape[0] * 0.6)
+    # n_cut_end = int(rxa.shape[0] * 0.8)
     n_trans = rxa.shape[1]
     rxa_train_mem = rxa[:n_cut]
     txa_train_mem = txa[:n_cut]
@@ -106,36 +106,11 @@ def model(rxa, txa, conv4metrics, bf_len: int,
     n_train = rxa_train.shape[0]
     n_test = rxa_test.shape[0]
 
-    res_train = np.empty(
-        (n_train,n_trans), dtype=np.complex128, order='F'
-    )
     res_test = np.empty(
         (n_test,n_trans), dtype=np.complex128, order='F'
     )
     pred_test = np.empty(
         (n_test,n_trans), dtype=np.complex128, order='F'
-    )
-
-    conv_rxa_train = np.empty(
-        (n_train+254,n_trans), dtype=np.complex128, order='F'
-    )
-    conv_rxa_test = np.empty(
-        (n_test+254,n_trans), dtype=np.complex128, order='F'
-    )
-
-    # Perform convolution with filter and write the result
-    # into previously allocated memory
-    convolve_tensor(rxa_train, conv4metrics, conv_rxa_train)
-    convolve_tensor(rxa_test, conv4metrics, conv_rxa_test)
-
-    conv_res_train = np.empty(
-        (n_train+254,n_trans), dtype=np.complex128, order='F'
-    )
-    conv_res_test = np.empty(
-        (n_test+254,n_trans), dtype=np.complex128, order='F'
-    )
-    conv_pred_test = np.empty(
-        (n_test+254,n_trans), dtype=np.complex128, order='F'
     )
 
     mtn_train = create_model_tensor(
@@ -148,41 +123,27 @@ def model(rxa, txa, conv4metrics, bf_len: int,
     )
     model_wts = ls_solve(mtn_train, rxa_train)
 
-    contract(mtn_train, model_wts, res_train)
     contract(mtn_test, model_wts, pred_test)
 
-    res_train[...] -= rxa_train
     res_test[...] = np.copy(pred_test)
     res_test[...] -= rxa_test
 
-    convolve_tensor(res_train, conv4metrics, conv_res_train)
-    convolve_tensor(res_test, conv4metrics, conv_res_test)
-    convolve_tensor(pred_test, conv4metrics, conv_pred_test)
-
-    train_metric = calculate_avg_metrics(
-        conv_rxa_train, conv_res_train, fs, pim_sft, pim_bw
-    )
-    test_metric = calculate_avg_metrics(
-        conv_rxa_test, conv_res_test, fs, pim_sft, pim_bw)
-
     result = dict()
-    result["train_metric"] = train_metric
-    result["test_metric"] = test_metric
-    result["res_train"] = conv_res_train
-    result["res_test"] = conv_res_test
-    result["pred_test"] = conv_pred_test
+    result["true_test"] = rxa_test
+    result["pred_test"] = pred_test
+    result["res_test"] = res_test
     return result
 
 
-def poly_inference(output_dir = './results/'):
+def poly_inference(output_dir = './results/real_data'):
     print('*****************************************************************')
     config = ModelConfig('config.json')
+    print(config.model)
     result_path = os.path.join(output_dir, config.poly, config.pim_type+"_pim/")
     data_marker = config.data_prefix
-    n_back, n_fwd = config.n_back, config.n_fwd
-    wts_filename = data_marker +'_{}_wts.npz'.format(config.model)
-    wts_raw = np.load(os.path.join(result_path, wts_filename), allow_pickle=True)
-    wts_dict = wts_raw["wts_dict"].item()
+    # wts_filename = data_marker +'_{}_wts.npz'.format(config.model)
+    # wts_raw = np.load(os.path.join(result_path, wts_filename), allow_pickle=True)
+    # wts_dict = wts_raw["wts_dict"].item()
     os.makedirs(output_dir, exist_ok=True)
     if data_marker == '5m':
         data = loadmat("../Data/1TR_C20Nc1CD_E20Ne1CD_20250117_5m.mat")
@@ -192,10 +153,12 @@ def poly_inference(output_dir = './results/'):
         data = loadmat("../Data/16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L.mat")
     elif data_marker == '16L':
         data = loadmat("../Data/16TR_C25Nc16CD_CL_E20Ne1CD_20250117_16L.mat")
+    elif data_marker == 'real':
+        data = loadmat("../data/Real_data/16TR/data_16TR_0/data_16TR_0.mat")
 
-    fil = loadmat("../Data/rx_filter.mat")
+    # fil = loadmat("../Data/rx_filter.mat")
     n,m = data["rxa"].shape[1], data["rxa"].shape[0] 
-    conv_data = fil['flt_coeff'].flatten()
+    # conv_data = fil['flt_coeff'].flatten()
     rxa = np.empty((n,m), dtype=np.complex128, order='F')
     txa = np.empty((n,m), dtype=np.complex128, order='F')
     if config.pim_type == 'total':
@@ -208,19 +171,21 @@ def poly_inference(output_dir = './results/'):
         )
     txa[...] = np.copy(data["txa"].T)
     signal_config = SignalConfig(data)
-    bf_lengths = {"utd_nlin_mult_infl_fix_pwr": [16],
-        "sep_nlin_mult_infl_fix_pwr": [16],
-        "utd_nlin_mult_infl": [48],
-        "sep_nlin_mult_infl": [48],
-        "utd_nlin_self_infl_fix_power": [1],
-        "utd_nlin_self_infl": [2],
+    bf_lengths = {
         "combi_nlin_mult_infl_fix_pwr": [32],
+        "sep_nlin_mult_infl_fix_pwr": [16],
+        "sep_nlin_mult_infl": [48],
+        "sep_nlin_mult_infl_cross_b": [32],
+        "utd_nlin_mult_infl": [48],
+        "utd_nlin_mult_infl_fix_pwr": [16],
+        "utd_nlin_mult_infl_cross_a": [32],
+        "utd_nlin_mult_infl_cross_b": [32],
+        "utd_nlin_self_infl_fix_pwr": [1],
+        "utd_nlin_self_infl": [2],
         "poly_fix_power": [1],
         "poly_series": [3]}
     bf_dim = bf_lengths[config.model][0]
-    model_wts = wts_dict[(n_back, n_fwd, bf_dim)][0]
-    result = model_from_wts(rxa, txa, model_wts, conv_data,
-                            bf_dim, config, signal_config)
+    result = model(rxa, txa, bf_dim, config)
     # filename = data_marker +'_back_{}_fwd_{}.npz'.format(n_back, n_fwd)
     filename = data_marker +'_{}_signals.npz'.format(config.model)
     np.savez(os.path.join(result_path, filename), signal_dict=result)

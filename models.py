@@ -48,7 +48,7 @@ class EndFilter(nn.Module):
 
 class CoreModel(nn.Module):
     def __init__(
-        self, n_channels, input_size, hidden_size, num_layers, backbone_type, batch_size
+        self, n_channels, input_size, hidden_size, num_layers, backbone_type, batch_size, out_filtration
     ):
         super(CoreModel, self).__init__()
         self.output_size = 2  # PIM outputs: I & Q
@@ -62,6 +62,7 @@ class CoreModel(nn.Module):
         self.bidirectional = False
         self.bias = True
         self.filter = EndFilter(n_channels)
+        self.out_filtration = out_filtration
 
         if backbone_type == "gmp":
             from backbones.gmp import GMP
@@ -280,9 +281,12 @@ class CoreModel(nn.Module):
 
         # Forward Propagate through the RNN
         # print('x.shape: ', x.shape)
-        out = self.backbone(x, h_0)
-        filtered_output = self.filter(out)
-        return filtered_output
+        output = self.backbone(x, h_0)
+        if self.out_filtration:
+            filtered_output = self.filter(output)
+            return filtered_output
+        else:
+            return output
 
 
 class CascadedModel(nn.Module):
