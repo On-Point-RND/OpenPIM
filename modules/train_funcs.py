@@ -23,7 +23,7 @@ def train_model(
     optimizer: torch.optim.Optimizer,
     lr_scheduler: torch.optim.lr_scheduler._LRScheduler,
     train_loader: DataLoader,
-    train_set_val_loader: DataLoader,
+    val_loader: DataLoader,
     test_loader: DataLoader,
     best_model_metric: str,
     noise: Dict[str, Any],
@@ -74,9 +74,9 @@ def train_model(
     red_levels = []
     all_iterations = []
 
-    phases = {"train_val": val_ratio, "test": test_ratio}
-    loaders = {"train_val": train_set_val_loader, "test": test_loader}
-    logs = {"train_val": dict(), "test": dict(), "train": dict()}
+    phases = {"val": val_ratio, "test": test_ratio}
+    loaders = {"val": val_loader, "test": test_loader}
+    logs = {"val": dict(), "test": dict(), "train": dict()}
 
     log_shape = True
     for iteration, (features, targets) in enumerate(train_loader):
@@ -112,7 +112,6 @@ def train_model(
 
             # Validation/Test evaluation
             for phase_name in phases:
-                print(phase_name)
                 if phases[phase_name] > 0:
 
                     _, pred, gt = net_eval(
@@ -130,15 +129,9 @@ def train_model(
                         PIM_BW,
                         logs[phase_name],
                     )
-                mean_reduction = (
-                    sum(
-                        [
-                            logs[phase_name]["Reduction_level"][k]
-                            for k in logs[phase_name]["Reduction_level"]
-                        ]
-                    )
-                    / n_channel
-                )
+                mean_reduction = sum(
+                    logs[phase_name]["Reduction_level"].values()
+                ) / len(logs[phase_name]["Reduction_level"])
 
                 step_logger.success(
                     f"Mean Reduction_level {phase_name}: {mean_reduction}"
@@ -147,7 +140,7 @@ def train_model(
                     f"Reduction_level {phase_name}: {logs[phase_name]['Reduction_level']}"
                 )
 
-            if phase_name in ["test", "train_val"] and test_ratio > 0:
+            if phase_name in ["test", "train"] and test_ratio > 0:
                 pred = CScaler.rescale(pred, key="Y")
                 gt = CScaler.rescale(gt, key="Y")
 
@@ -175,7 +168,7 @@ def train_model(
                 elapsed_time,
                 iteration,
                 logs["train"],
-                logs["train_val"],
+                logs["train"],
                 logs["test"],
             )
 

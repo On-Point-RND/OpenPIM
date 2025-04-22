@@ -48,32 +48,23 @@ def load_resources(
         n_back=n_back,
         n_fwd=n_fwd,
     )
-
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=False)
 
     # Validation set/loader
-    train_set_val = IQSegmentDataset(
-        data["X"]["Train"],
-        data["Y"]["Train"],
-        n_back=n_back,
-        n_fwd=n_fwd,
+    val_set = IQSegmentDataset(
+        data["X"]["Val"], data["Y"]["Val"], n_back=n_back, n_fwd=n_fwd
     )
-
-    train_set_val_loader = DataLoader(
-        train_set_val, batch_size=batch_size_eval, shuffle=False, drop_last=True
-    )
+    val_loader = DataLoader(val_set, batch_size=batch_size_eval, shuffle=False)
 
     # Test set/loader
     test_set = IQSegmentDataset(
         data["X"]["Test"], data["Y"]["Test"], n_back=n_back, n_fwd=n_fwd
     )
-    test_loader = DataLoader(
-        test_set, batch_size=batch_size_eval, shuffle=False, drop_last=True
-    )
+    test_loader = DataLoader(test_set, batch_size=batch_size_eval, shuffle=False)
 
     logger.success(f"Dataloaders were created")
     return (
-        (train_loader, train_set_val_loader, test_loader),
+        (train_loader, val_loader, test_loader),
         input_size,
         n_channels,
         data["N"],
@@ -190,7 +181,7 @@ if __name__ == "__main__":
     # INFO: validate datasets and backward splits
 
     (
-        (train_loader, train_set_val_loader, test_loader),
+        (train_loader, val_loader, test_loader),
         input_size,
         n_channels,
         noise,
