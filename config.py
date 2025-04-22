@@ -7,35 +7,25 @@ class Config:
     """Configuration class for PIM model training"""
 
     # Dataset & Log
-    dataset_path: str = "./Data/FOR_COOPERATION/"
-    dataset_path: str = (
-        "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/"  # "/home/dev/public-datasets/e.shvetsov/PIM/REAL/Real_data/16TR/"  #   #
-    )
-    dataset_name: str = (
-        "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"  # "data_16TR_0"  #   #  #
-    )
+    dataset_path: str = "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/"
+    dataset_name: str = "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"
 
     log_out_dir: str = "./results"
     log_precision: int = 8
-    filter_path: str = (
-        "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
-        # "/home/dev/work_main/2025/OpenPIM/data/filter_real.mat"
-        #
-        # #
-    )
+    filter_path: str = "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
 
     # PIM Model Settings
     PIM_backbone: str = "linear"
     PIM_hidden_size: int = 8
     PIM_num_layers: int = 1
+    # PIM Type options: "total", "cond", "leak", "ext"
+    PIM_type: str = "total"
     specific_channels = "all"
+    out_filtration: bool = False
 
     # Training Process
     step: str = "train_pim_single"
     n_back: int = 128
-    n_fwd: int = 1
-    accelerator: str = "cpu"
-    devices: int = 0
     n_fwd: int = 3
     accelerator: str = "cuda"
     devices: int = 2
@@ -45,14 +35,11 @@ class Config:
     # General Hyperparameters
     seed: int = 0
     loss_type: str = "l2"
-    # opt_type: str = "adabound"
     opt_type: str = "adam"
-    batch_size: int = 64
-    batch_size_eval: int = 64
+    batch_size: int = 512
+    batch_size_eval: int = 512
     n_iterations: int = 2e3
     n_log_steps: int = 1e3
-    n_iterations: int = 1e6
-    n_log_steps: int = 5e4
     lr_schedule: int = 1
     lr: float = 1e-4
     lr_end: float = 1e-6
