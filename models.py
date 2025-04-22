@@ -80,6 +80,20 @@ class CoreModel(nn.Module):
                 batch_first=self.batch_first,
                 bias=self.bias,
             )
+
+        elif backbone_type == "lstm_cnn":
+            from backbones.lstm_cnn import CNN_LSTM_FIR
+
+            self.backbone = CNN_LSTM_FIR(
+                input_size=self.input_size,
+                hidden_size=self.hidden_size,
+                output_size=self.output_size,
+                batch_size=self.batch_size,
+                batch_first=self.batch_first,
+                bias=self.bias,
+                n_channels=self.n_channels,
+            )
+
         elif backbone_type == "dgru":
             from backbones.dgru import DGRU
 
@@ -94,10 +108,10 @@ class CoreModel(nn.Module):
                 input_len=input_size,
                 n_channels=n_channels,
             )
-        elif backbone_type == "qgru":
-            from backbones.qgru import QGRU
+        elif backbone_type == "dgruf":
+            from backbones.dgru_filter import DGRU
 
-            self.backbone = QGRU(
+            self.backbone = DGRU(
                 hidden_size=self.hidden_size,
                 output_size=self.output_size,
                 num_layers=self.num_layers,
@@ -105,6 +119,8 @@ class CoreModel(nn.Module):
                 bidirectional=self.bidirectional,
                 batch_first=self.batch_first,
                 bias=self.bias,
+                input_len=input_size,
+                n_channels=n_channels,
             )
         elif backbone_type == "qgru_amp1":
             from backbones.qgru_amp1 import QGRU
@@ -182,34 +198,38 @@ class CoreModel(nn.Module):
             from backbones.linear_external import Linear
 
             self.backbone = Linear(
-                input_size=self.input_size,
                 output_size=self.output_size,
                 n_channels=n_channels,
                 batch_size=self.batch_size,
             )
 
-        elif backbone_type == "linseq":
-            from backbones.sequential_linear import SequentialLinear
+        elif backbone_type == "simple_dimple":
+            from backbones.simple_dimple import Simple
 
-            self.backbone = SequentialLinear(
-                input_size=self.input_size,
+            self.backbone = Simple(
+                hidden_size=self.hidden_size,
                 output_size=self.output_size,
+                num_layers=self.num_layers,
                 batch_size=self.batch_size,
-                n_channels=n_channels,
-            )
-
-        elif backbone_type == "linexp":
-            from backbones.experimental_linear import EnhancedLinear
-
-            self.backbone = EnhancedLinear(
-                input_size=self.input_size,
-                output_size=self.output_size,
-                batch_size=self.batch_size,
+                bidirectional=self.bidirectional,
+                batch_first=self.batch_first,
+                bias=self.bias,
+                input_len=input_size,
                 n_channels=n_channels,
             )
 
         elif backbone_type == "linpoly":
             from backbones.lin_poly import Linear
+
+            self.backbone = Linear(
+                input_size=self.input_size,
+                output_size=self.output_size,
+                batch_size=self.batch_size,
+                n_channels=n_channels,
+            )
+
+        elif backbone_type == "linpoly_external":
+            from backbones.lin_poly_external import Linear
 
             self.backbone = Linear(
                 input_size=self.input_size,

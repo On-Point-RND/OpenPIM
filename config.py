@@ -8,16 +8,18 @@ class Config:
 
     dataset_path: str = "./Data/FOR_COOPERATION/"
     dataset_path: str = (
-        "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/"  # "/home/dev/public-datasets/e.shvetsov/PIM/REAL/Real_data/16TR/"  #   #
+        "/home/dev/public-datasets/e.shvetsov/PIM/REAL/Real_data/16TR/"
+        # "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/"  # "/home/dev/public-datasets/e.shvetsov/PIM/REAL/Real_data/16TR/"  #   #
     )
     dataset_name: str = (
-        "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"  # "data_16TR_0"  #   #  #
+        "data_16TR_3"
+        #  "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"  # "data_16TR_0"  #   #  #
     )
 
     log_out_dir: str = "./results"
     log_precision: int = 8
     filter_path: str = (
-        "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
+        "/home/dev/work_main/2025/OpenPIM/data/filter_real.mat"  # "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
     )
 
     # PIM Model Settings
@@ -28,19 +30,19 @@ class Config:
     # Training Process
     step: str = "train_pim_single"
     n_back: int = 128
-    n_fwd: int = 1
+    n_fwd: int = 0
     accelerator: str = "cuda"
     devices: int = 0
     re_level: str = "soft"
 
     # General Hyperparameters
     seed: int = 0
-    loss_type: str = "l2"
+    loss_type: str = "hybrid"
     pim_type: str = "total"
     opt_type: str = "adabound"
     batch_size: int = 64
-    batch_size_eval: int = 64
-    n_iterations: int = 2e3
+    batch_size_eval: int = 512
+    n_iterations: int = 1e5
     n_log_steps: int = 1e3
     lr_schedule: int = 1
     lr: float = 1e-4

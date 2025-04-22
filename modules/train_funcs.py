@@ -217,7 +217,8 @@ def train_model(
     for key, value in (("gt", gt), ("err", gt - pred), ("noise", noise["Test"])):
         compl = toComplex(value)
         powers[key] = [
-            compute_power(compl[:, id], FS, FC_TX, PIM_SFT, PIM_BW) for id in range(compl.shape[1])
+            compute_power(compl[:, id], FS, FC_TX, PIM_SFT, PIM_BW)
+            for id in range(compl.shape[1])
         ]
 
     path_dir_save, path_dir_log_hist, path_dir_log_best = paths
