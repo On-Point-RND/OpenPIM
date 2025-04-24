@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 
 import numpy as np
@@ -57,17 +58,15 @@ def plot_spectrum(
     save_dir,
     path_dir_save="",
     cut=False,
-    initial=False,
-    initial_ground_truth=[],
+    # initial=False,
+    # initial_ground_truth=[],
     phase_name="",
 ):
     # Create new figure with legend
     plt.figure(figsize=(10, 6))
     ax = plt.gca()
 
-    # Plot both spectra with labels
-    if initial:
-        psd_RX, f = ax.psd(
+    psd_RX, f = ax.psd(
             prediction,
             Fs=FS,
             Fc=FC_TX,
@@ -77,40 +76,7 @@ def plot_spectrum(
             pad_to=2048,
             label="Predicted Signal",
         )
-        psd_NF, f = ax.psd(
-            initial_ground_truth,
-            Fs=FS,
-            Fc=FC_TX,
-            NFFT=2048,
-            window=np.kaiser(2048, 10),
-            noverlap=1,
-            pad_to=2048,
-            label="Initial Signal",
-        )
-
-        psd_NF, f = ax.psd(
-            ground_truth - prediction,
-            Fs=FS,
-            Fc=FC_TX,
-            NFFT=2048,
-            window=np.kaiser(2048, 10),
-            noverlap=1,
-            pad_to=2048,
-            label="(Residual - Predicted) Signal",
-        )
-
-    else:
-        psd_RX, f = ax.psd(
-            prediction,
-            Fs=FS,
-            Fc=FC_TX,
-            NFFT=2048,
-            window=np.kaiser(2048, 10),
-            noverlap=1,
-            pad_to=2048,
-            label="Predicted Signal",
-        )
-        psd_NF, f = ax.psd(
+    psd_NF, f = ax.psd(
             ground_truth,
             Fs=FS,
             Fc=FC_TX,
@@ -120,7 +86,7 @@ def plot_spectrum(
             pad_to=2048,
             label="Original Signal",
         )
-        psd_NF, f = ax.psd(
+    psd_NF, f = ax.psd(
             ground_truth - prediction,
             Fs=FS,
             Fc=FC_TX,
@@ -160,6 +126,22 @@ def plot_spectrum(
         )
     plt.close()  # Prevent figure accumulation
 
+def plot_total_perf(powers, max_red_level, mean_red_level, path_save):
+    fig = plt.figure(figsize = (10, 7))
+
+    power_df = pd.DataFrame({
+    'RXA':powers['gt'],
+    'ERR':powers['err'],
+    'NFA':powers['noise']
+    })
+
+    power_df.plot.bar(color = ('red', 'blue', 'black'))
+    plt.title(f'PIM: ORIG: {round( np.mean(power_df['RXA']), 2)}, RES: {round( np.mean(power_df['ERR']), 2)}; Performance ABS: {round( max_red_level, 2)}, MEAN: {round( mean_red_level, 2)}')
+    plt.xlabel('Channel number', fontsize = 16)
+    plt.ylabel('Signal level [dB]', fontsize = 16)
+    plt.legend(loc="upper left")
+    plt.savefig(f'{path_save}/' 'barplot_perfofmance.png', bbox_inches='tight')
+    plt.close()
 
 def compute_power(x, fs, fc_tx, pim_sft, pim_bw, return_db=True):
     """

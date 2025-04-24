@@ -86,8 +86,11 @@ def load_and_split_data(
 
     fil = loadmat(filter_path)["flt_coeff"]
     data = loadmat(data_path)
+
+    print('Concidered PIM_type: ', PIM_type)
+    
     if PIM_type == "cond":
-        int_pim = data["PIM_COND"] + data["PIM_COND_LEAK"]
+        int_pim = data["PIM_COND"]
         rxa = to2Dreal(data["nfa"] + int_pim)
     elif PIM_type == "leak":
         try:

@@ -11,7 +11,7 @@ from modules.paths import gen_log_stat
 from tqdm import tqdm
 from utils import metrics
 from pim_utils import pim_metrics
-from pim_utils.pim_metrics import plot_spectrums, compute_power
+from pim_utils.pim_metrics import plot_spectrums, compute_power, plot_total_perf
 
 from modules.data_utils import toComplex
 from modules.loggers import make_logger
@@ -69,10 +69,7 @@ def train_model(
     net.train()
     losses = []
 
-    train_loss_values = []
-    test_loss_values = []
     red_levels = []
-    all_iterations = []
 
     phases = {"val": val_ratio, "test": test_ratio}
     loaders = {"val": val_loader, "test": test_loader}
@@ -173,10 +170,7 @@ def train_model(
 
             writer.write_log(log_all)
 
-            train_loss_values.append(log_all["TRAIN_LOSS"])
-            test_loss_values.append(log_all["TEST_LOSS"])
-            red_levels.append(log_all["TEST_REDUCTION_LEVEL"])
-            all_iterations.append(iteration)
+            red_levels = log_all["TEST_REDUCTION_LEVEL"]
 
             # Learning rate & model saving
             if lr_schedule:
@@ -190,36 +184,6 @@ def train_model(
 
     step_logger.info("Training Completed\n")
 
-    loss_dict = {
-        "Train loss": train_loss_values,
-        "Test loss": test_loss_values,
-        "Reduction level": red_levels,
-    }
-    # for k in loss_dict.keys():
-
-    #     fig = plt.figure(figsize=(10, 7))
-    #     plt.plot(all_iterations, loss_dict[k], linewidth=2, color="red")
-    #     plt.xlabel("Iterations", fontsize=16)
-    #     plt.ylabel(k, fontsize=16)
-    #     plt.grid()
-    #     plt.savefig(f"{path_dir_save}/" + k + ".png", bbox_inches="tight")
-    #     plt.close()
-
-    loss_dict["Reduction level"] = red_levels
-
-    max_metrics = calculate_metrics(
-        pred,
-        gt,
-        noise["Test"],
-        filter,
-        CScaler,
-        FS,
-        FC_TX,
-        PIM_SFT,
-        PIM_BW,
-        logs["test"],
-    )
-
     powers = dict()
     for key, value in (("gt", gt), ("err", gt - pred), ("noise", noise["Test"])):
         compl = toComplex(value)
@@ -227,17 +191,14 @@ def train_model(
             compute_power(compl[:, id], FS, FC_TX, PIM_SFT, PIM_BW)
             for id in range(compl.shape[1])
         ]
-
+    
     path_dir_save, path_dir_log_hist, path_dir_log_best = paths
-    red_level = loss_dict["Reduction level"][-1]
-    mean_rel_level = np.mean([red_level[id] for id in red_level.keys()])
-    max_rel_level = np.max([red_level[id] for id in red_level.keys()])
-    return (
-        log_all,
-        mean_rel_level,
-        max_rel_level,
-        powers,
-    )
+    mean_red_level = np.mean([red_levels[id] for id in red_levels.keys()])
+    max_red_level = np.max([red_levels[id] for id in red_levels.keys()])
+
+    plot_total_perf(powers, max_red_level, mean_red_level, path_save = path_dir_save )
+    
+    return log_all
 
 
 def net_eval(

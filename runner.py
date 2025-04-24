@@ -11,12 +11,13 @@ from modules.loggers import PandasLogger
 import pyrallis
 from config import Config
 
-from modules.data_collector import load_resources
+from modules.data_collector import load_resources, load_and_split_data
 from modules.paths import gen_dir_paths, gen_file_paths
 from modules.train_funcs import train_model
 from modules.loggers import make_logger
 from modules.loss import IQComponentWiseLoss, HybridLoss, JointLoss
 
+from modules.data_cascaded import prepare_dataloaders
 
 class Runner:
     def __init__(self):
@@ -249,7 +250,7 @@ class Runner:
             filter=filter,
             CScaler=CScaler,
             n_channel=n_channel_id,
-            device=self.args.devices,
+            device=self.device,
             path_dir_save=self.path_dir_save,
             path_dir_log_hist=self.path_dir_log_hist,
             path_dir_log_best=self.path_dir_log_best,
@@ -267,12 +268,26 @@ class Runner:
             test_ratio=self.args.test_ratio,
         )
 
-    # def load_for_pred(self):
-    #     return load_for_pred(
-    #         self.args.dataset_path,
-    #         self.args.dataset_name,
-    #         self.args.path_dir_save,
-    #         self.args.n_back,
-    #         self.args.n_fwd,
-    #         self.args.batch_size_eval,
-    #     )
+    def prepare_dataloaders(self, data):
+        return prepare_dataloaders(
+            data,
+            self.args.n_back,
+            self.args.n_fwd,
+            self.args.batch_size,
+            self.args.batch_size_eval,
+            path_dir_save=self.path_dir_log_best,
+            specific_channels=self.args.specific_channels,
+        )
+
+    def load_and_split_data(self):
+
+        path = os.path.join(self.args.dataset_path, self.args.dataset_name, f"{self.args.dataset_name}.mat")
+        return load_and_split_data(
+        path,
+        self.args.filter_path,
+        PIM_type=self.args.PIM_type,
+    )
+
+
+
+

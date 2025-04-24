@@ -197,23 +197,42 @@ class CoreModel(nn.Module):
                 n_channels=n_channels,
             )
 
-        elif backbone_type == "linear_internal":
+        elif backbone_type == "extlinear":
+            from backbones.linear_external import Linear
+
+            self.backbone = Linear(
+                input_size=self.input_size,
+                output_size=self.output_size,
+                batch_size=self.batch_size,
+                n_channels=n_channels,
+            )
+        elif backbone_type == "intlinear":
             from backbones.linear_internal import Linear
 
             self.backbone = Linear(
                 input_size=self.input_size,
                 output_size=self.output_size,
-                n_channels=n_channels,
                 batch_size=self.batch_size,
+                n_channels=n_channels,
             )
 
-        elif backbone_type == "linear_external":
-            from backbones.linear_external import Linear
+        elif backbone_type == "leaklinear":
+            from backbones.linear_leakage import Linear
 
             self.backbone = Linear(
+                input_size=self.input_size,
                 output_size=self.output_size,
-                n_channels=n_channels,
                 batch_size=self.batch_size,
+                n_channels=n_channels,
+            )
+        elif backbone_type == "leak_int_linear":
+            from backbones.linear_leak_int import Linear
+
+            self.backbone = Linear(
+                input_size=self.input_size,
+                output_size=self.output_size,
+                batch_size=self.batch_size,
+                n_channels=n_channels,
             )
 
         elif backbone_type == "simple_dimple":

@@ -13,34 +13,44 @@ class FiltLinear(nn.Module):
 
 
 class Linear(nn.Module):
-    def __init__(self, input_size, output_size, n_channels, batch_size, out_window = 100):
+    def __init__(self, input_size, output_size, n_channels, batch_size, out_window=10):
         super().__init__()
         self.input_size = input_size
         self.output_size = output_size
         self.n_channels = n_channels
         self.out_window = out_window
 
-        # Batch normalization layers
-        self.bn_output = nn.BatchNorm1d(n_channels)  # For complex output
+        # Instance normalization at the beginning
+        self.instance_norm_in_real = nn.InstanceNorm1d(n_channels)
+        self.instance_norm_in_imag = nn.InstanceNorm1d(n_channels)
+
+        # Batch normalization layer (existing)
+        self.bn_output = nn.BatchNorm1d(n_channels)
+
+        # Instance normalization at the end
+        self.instance_norm_out = nn.InstanceNorm1d(2)  # For real and imaginary parts
 
         self.filter_layers_in = nn.ModuleList()
-        for _ in range(n_channels):
+        for i in range(0, n_channels):
             layer = FiltLinear(input_size - out_window + 1)
             self.filter_layers_in.append(layer)
 
         self.nonlin_layers = nn.ModuleList()
-        for _ in range(n_channels):
+        for i in range(0, n_channels):
             layer = nn.Linear(output_size * n_channels, output_size, bias=False)
             self.nonlin_layers.append(layer)
 
         self.coeff = nn.Linear(output_size, output_size, bias=False)
         self.filter_layers_out = nn.ModuleList()
-        for _ in range(n_channels):
+        for i in range(0, n_channels):
             layer = FiltLinear(out_window)
             self.filter_layers_out.append(layer)
 
+        self.amp1_weight = nn.Parameter(torch.tensor(0.001))
+        self.amp2_weight = nn.Parameter(torch.tensor(0.001))
+        self.amp3_weight = nn.Parameter(torch.tensor(0.001))
+
     def forward(self, x, h_0=None):
-        # INFO: input tensors of sizes B x N x C x 2
         B, N, C, _ = x.shape
 
         # INFO: resulting tensors of sizes B x C
@@ -57,8 +67,8 @@ class Linear(nn.Module):
             x_real, x_imag = x_init_real[:, :, c], x_init_imag[:, :, c]
             for id in range(self.out_window):
                 f_real, f_imag = filt_layer(
-                    x_real[:, id:N - self.out_window + id + 1],
-                    x_imag[:, id:N - self.out_window + id + 1]
+                    x_real[:, id : N - self.out_window + id + 1],
+                    x_imag[:, id : N - self.out_window + id + 1],
                 )
 
                 filtered_real[:, id, c] = f_real.squeeze(-1)  # (B,)
@@ -90,11 +100,14 @@ class Linear(nn.Module):
 
         output = torch.zeros((B, self.n_channels, 2), device=x.device)
         for c, filt_layer in enumerate(self.filter_layers_out):
-            out_real, out_imag = filt_layer(
-                nonlin_real[:, :, c], nonlin_imag[:, :, c]
-            )
+            out_real, out_imag = filt_layer(nonlin_real[:, :, c], nonlin_imag[:, :, c])
             output[:, c, 0] = out_real.squeeze(-1)
             output[:, c, 1] = out_imag.squeeze(-1)
-
         output = self.bn_output(output)
+
+        # Apply instance normalization at the end
+        # output = output.permute(0, 2, 1)  # Shape: B x 2 x C
+        # output = self.instance_norm_out(output)
+        # output = output.permute(0, 2, 1)  # Shape: B x C x 2
+
         return output
