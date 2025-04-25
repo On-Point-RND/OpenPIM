@@ -214,23 +214,42 @@ class CoreModel(nn.Module):
                 n_channels=n_channels,
             )
 
-        elif backbone_type == "linear_leakage":
+        elif backbone_type == "extlinear":
+            from backbones.linear_external import Linear
+
+            self.backbone = Linear(
+                input_size=self.input_size,
+                output_size=self.output_size,
+                batch_size=self.batch_size,
+                n_channels=n_channels,
+            )
+        elif backbone_type == "intlinear":
+            from backbones.linear_internal import Linear
+
+            self.backbone = Linear(
+                input_size=self.input_size,
+                output_size=self.output_size,
+                batch_size=self.batch_size,
+                n_channels=n_channels,
+            )
+
+        elif backbone_type == "leaklinear":
             from backbones.linear_leakage import Linear
 
             self.backbone = Linear(
                 input_size=self.input_size,
                 output_size=self.output_size,
-                n_channels=n_channels,
                 batch_size=self.batch_size,
+                n_channels=n_channels,
             )
-
-        elif backbone_type == "linear_external":
-            from backbones.linear_external import Linear
+        elif backbone_type == "leak_int_linear":
+            from backbones.linear_leak_int import Linear
 
             self.backbone = Linear(
+                input_size=self.input_size,
                 output_size=self.output_size,
-                n_channels=n_channels,
                 batch_size=self.batch_size,
+                n_channels=n_channels,
             )
 
         elif backbone_type == "simple_dimple":
@@ -303,8 +322,28 @@ class CoreModel(nn.Module):
                 n_channels=n_channels,
             )
 
-        elif backbone_type == "linpoly_external":
+        elif backbone_type == "extlinpoly":
             from backbones.lin_poly_external import Linear
+
+            self.backbone = Linear(
+                input_size=self.input_size,
+                output_size=self.output_size,
+                batch_size=self.batch_size,
+                n_channels=n_channels,
+            )
+
+        elif backbone_type == "leaklinpoly":
+            from backbones.lin_poly_leakage import Linear
+
+            self.backbone = Linear(
+                input_size=self.input_size,
+                output_size=self.output_size,
+                batch_size=self.batch_size,
+                n_channels=n_channels,
+            )
+
+        elif backbone_type == "intlinpoly":
+            from backbones.lin_poly_internal import Linear
 
             self.backbone = Linear(
                 input_size=self.input_size,

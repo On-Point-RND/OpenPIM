@@ -31,6 +31,7 @@ class Linear(nn.Module):
         self.nonlin_layers = nn.ModuleList()
         for _ in range(n_channels):
             layer = nn.Linear(output_size * (n_channels - 1), output_size, bias=False)
+            # layer = nn.Linear(output_size * n_channels, output_size, bias=False)
             self.nonlin_layers.append(layer)
 
         self.coeff = nn.Linear(output_size, output_size, bias=False)
@@ -79,10 +80,12 @@ class Linear(nn.Module):
             for c, nonlin_layer in enumerate(self.nonlin_layers):
                 filtered_real_c = torch.stack(
                     [filtered_real[:, id, idx] for idx in range(C) if idx != c],
+                    # [filtered_real[:, id, idx] for idx in range(C)],
                     dim=-1
                 )
                 filtered_imag_c = torch.stack(
                     [filtered_imag[:, id, idx] for idx in range(C) if idx != c],
+                    # [filtered_imag[:, id, idx] for idx in range(C)],
                     dim=-1
                 )
                 total_filtered = torch.cat([filtered_real_c, filtered_imag_c], dim=-1)

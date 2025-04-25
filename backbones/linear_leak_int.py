@@ -30,14 +30,11 @@ class Linear(nn.Module):
 
         self.nonlin_layers = nn.ModuleList()
         for _ in range(n_channels):
-            layer = nn.Linear(output_size, output_size, bias=False)
+            # layer = nn.Linear(output_size * (n_channels - 1), output_size, bias=False)
+            layer = nn.Linear(output_size * n_channels, output_size, bias=False)
             self.nonlin_layers.append(layer)
 
-        self.coeff_layers = nn.ModuleList()
-        for i in range(0,n_channels):
-            layer = nn.Linear(output_size, output_size, bias=False)
-            self.coeff_layers.append(layer)
-            
+        self.coeff = nn.Linear(output_size, output_size, bias=False)
         self.filter_layers_out = nn.ModuleList()
         for _ in range(n_channels):
             layer = FiltLinear(out_window)
@@ -66,6 +63,10 @@ class Linear(nn.Module):
                     x_imag[:, id:N-self.out_window+id+1]
                 )
 
+                amp = f_real.pow(2) + f_imag.pow(2)  # (B, N)
+                f_real = amp * f_real
+                f_imag = amp * f_imag
+
                 filtered_real[:, id, c] = f_real.squeeze(-1)  # (B,)
                 filtered_imag[:, id, c] = f_imag.squeeze(-1)
 
@@ -77,22 +78,22 @@ class Linear(nn.Module):
 
         for id in range(self.out_window):
             for c, nonlin_layer in enumerate(self.nonlin_layers):
-                total_filtered = torch.stack(
-                    [filtered_real[:, id, c], filtered_imag[:, id, c]],
+                filtered_real_c = torch.stack(
+                    # [filtered_real[:, id, idx] for idx in range(C) if idx != c],
+                    [filtered_real[:, id, idx] for idx in range(C)],
                     dim=-1
                 )
+                filtered_imag_c = torch.stack(
+                    # [filtered_imag[:, id, idx] for idx in range(C) if idx != c],
+                    [filtered_imag[:, id, idx] for idx in range(C)],
+                    dim=-1
+                )
+                total_filtered = torch.cat([filtered_real_c, filtered_imag_c], dim=-1)
+
                 c_output = nonlin_layer(total_filtered)
 
                 c_real = c_output[:, 0]
                 c_imag = c_output[:, 1]
-                amp = c_real.pow(2) + c_imag.pow(2)  # (B, N)
-                c_real = amp * c_real
-                c_imag = amp * c_imag
-
-                coeff_layer = self.coeff_layers[c]
-                ci = coeff_layer(torch.stack([c_real, c_imag], dim=-1))
-                c_real = ci[:, 0]
-                c_imag = ci[:, 1]
 
                 nonlin_real[:, id, c] = c_real.squeeze(-1)  # (B,)
                 nonlin_imag[:, id, c] = c_imag.squeeze(-1)
@@ -107,5 +108,4 @@ class Linear(nn.Module):
             output[:, c, 1] = out_imag.squeeze(-1)
 
         output = self.bn_output(output)
-
         return output

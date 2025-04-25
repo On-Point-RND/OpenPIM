@@ -6,29 +6,28 @@ import pyrallis
 class Config:
     """Configuration class for PIM model training"""
 
+    # dataset_path: str = "./Data/FOR_COOPERATION/"
     dataset_path: str = (
-        "/home/dev/public-datasets/e.shvetsov/PIM/data_cooperation_21.04.25/artificial_data_cooperation/"
         # "/home/dev/public-datasets/e.shvetsov/PIM/REAL/Real_data/16TR/"
-        # "/home/dev/public-datasets/e.shvetsov/PIM/data_cooperation_21.04.25/artificial_data_cooperation/"
-        # "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/"
-        #
+        # "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/"  # "/home/dev/public-datasets/e.shvetsov/PIM/REAL/Real_data/16TR/"  #   #
+        # "../../../Data/FOR_COOPERATION/"
+        "../../../Data/data_cooperation/artificial_data_cooperation/"
     )
     dataset_name: str = (
-        "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"
-        # "16TR_C22Nc8CD_OTX_CL_E20Ne1CD_20250421_16L"  # "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"
-        #  "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"
+        # "data_16TR_3"
+        # "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"  # "data_16TR_0"  #   #  #
+        "16TR_C22Nc8CD_OTX_CL_E20Ne1CD_20250421_1L"
     )
 
     log_out_dir: str = "./results"
     log_precision: int = 8
     filter_path: str = (
-        "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
-        # "/home/dev/work_main/2025/OpenPIM/data/filter_real.mat"
-        #  "/home/dev/work_main/2025/OpenPIM/data/filter_real.mat"  # "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
+        # "/home/dev/work_main/2025/OpenPIM/data/filter_real.mat"  # "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
+        "../../../Data/FOR_COOPERATION/rx_filter.mat"
     )
 
     # PIM Model Settings
-    PIM_backbone: str = "linear"
+    PIM_backbone: str = "leaklinpoly"
     PIM_hidden_size: int = 8
     PIM_num_layers: int = 1
     # PIM Type options: "total", "cond", "leak", "ext"
@@ -37,21 +36,22 @@ class Config:
     out_filtration: bool = False
 
     # Training Process
-    step: str = "train_pim_single"
-    n_back: int = 1
+    step: str = "train_pim_cascaded"
+    n_back: int = 30
     n_fwd: int = 1
+    # accelerator: str = "cuda"
     accelerator: str = "cpu"
-    devices: int = 2
+    devices: int = 0
     re_level: str = "soft"
 
     # General Hyperparameters
     seed: int = 0
     loss_type: str = "joint"
-    pim_type: str = "total"
+    # pim_type: str = "total"
     opt_type: str = "adabound"
     batch_size: int = 64
-    batch_size_eval: int = 512
-    n_iterations: int = 1e4
+    batch_size_eval: int = 64
+    n_iterations: int = 20e3
     n_log_steps: int = 1e3
     lr_schedule: int = 1
     lr: float = 1e-4
@@ -68,6 +68,11 @@ class Config:
 
     # GMP Hyperparameters
     K: int = 4
+
+    # Parameters for cascaded model
+    ext_PIM_backbone: str = "extlinpoly"
+    leak_PIM_backbone: str = "leaklinpoly"
+    int_PIM_backbone: str = "intlinpoly"
 
 
 def main(config: Config):

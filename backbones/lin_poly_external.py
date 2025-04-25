@@ -51,7 +51,10 @@ class Linear(nn.Module):
             layer = nn.Linear(output_size*n_channels, output_size, bias=False)
             self.nonlin_layers.append(layer)
 
-        self.coeff_layer = nn.Linear(poly_degree*2, output_size, bias=False)
+        self.coeff_layers = nn.ModuleList()
+        for i in range(0,n_channels):
+            layer = nn.Linear(poly_degree*output_size, output_size, bias=False)
+            self.coeff_layers.append(layer)
 
         self.filter_layers_out = nn.ModuleList()
         for i in range(0,n_channels):
@@ -93,7 +96,10 @@ class Linear(nn.Module):
             for c,nonlin_layer in enumerate(self.nonlin_layers):
                 c_output = nonlin_layer(total_filtered)
                 c_real, c_imag = self.poly_expand(c_output[:, 0], c_output[:, 1])
-                ci = self.coeff_layer(torch.cat([c_real, c_imag], dim=-1))
+                
+                coeff_layer = self.coeff_layers[c]
+                ci = coeff_layer(torch.cat([c_real, c_imag], dim=-1))
+                
                 ci_real = ci[:, 0]
                 ci_imag = ci[:, 1]
                 nonlin_real[:, id, c] = ci_real.squeeze(-1)  # (B,)
