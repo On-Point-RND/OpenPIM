@@ -259,9 +259,29 @@ class CoreModel(nn.Module):
                 batch_size=self.batch_size,
                 n_channels=n_channels,
             )
-
-        elif backbone_type == "linpoly_external":
+            
+        elif backbone_type == "extlinpoly":
             from backbones.lin_poly_external import Linear
+
+            self.backbone = Linear(
+                input_size=self.input_size,
+                output_size=self.output_size,
+                batch_size=self.batch_size,
+                n_channels=n_channels,
+            )
+            
+        elif backbone_type == "leaklinpoly":
+            from backbones.lin_poly_leakage import Linear
+
+            self.backbone = Linear(
+                input_size=self.input_size,
+                output_size=self.output_size,
+                batch_size=self.batch_size,
+                n_channels=n_channels,
+            )
+
+        elif backbone_type == "intlinpoly":
+            from backbones.lin_poly_internal import Linear
 
             self.backbone = Linear(
                 input_size=self.input_size,

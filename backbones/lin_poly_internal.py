@@ -1,6 +1,20 @@
 import torch
 import torch.nn as nn
 
+class PolynomialExpansion(nn.Module):
+    def __init__(self, max_degree):
+        super().__init__()
+        self.max_degree = max_degree
+
+    def forward(self, x_real, x_imag):
+        outputs_real = []
+        outputs_imag = []
+        for d in range(1, self.max_degree + 1):
+            x_pow = x_real**d + x_imag**d
+            outputs_real.append(x_pow * x_real)
+            outputs_imag.append(x_pow * x_imag)
+        # return torch.cat(outputs_real, dim=-1), torch.cat(outputs_imag, dim=-1)
+        return torch.stack(outputs_real, dim=-1), torch.stack(outputs_imag, dim=-1)
 
 class FiltLinear(nn.Module):
     def __init__(self, in_features, bias=False):
@@ -11,17 +25,18 @@ class FiltLinear(nn.Module):
     def forward(self, x_real, x_imag):
         return self.filt_real(x_real), self.filt_imag(x_imag)
 
-
 class Linear(nn.Module):
-    def __init__(self, input_size, output_size, n_channels, batch_size, out_window=10):
+    def __init__(self, input_size, output_size, n_channels, batch_size, poly_degree=3, out_window=10):
         super().__init__()
         self.input_size = input_size
         self.output_size = output_size
         self.n_channels = n_channels
         self.out_window = out_window
+        self.poly_degree = poly_degree
 
         # Batch normalization layers
         self.bn_output = nn.BatchNorm1d(n_channels)  # For complex output
+        self.poly_expand = PolynomialExpansion(poly_degree)
 
         self.filter_layers_in = nn.ModuleList()
         for _ in range(n_channels):
@@ -35,7 +50,7 @@ class Linear(nn.Module):
 
         self.coeff_layers = nn.ModuleList()
         for i in range(0,n_channels):
-            layer = nn.Linear(output_size, output_size, bias=False)
+            layer = nn.Linear(poly_degree*output_size, output_size, bias=False)
             self.coeff_layers.append(layer)
             
         self.filter_layers_out = nn.ModuleList()
@@ -85,12 +100,11 @@ class Linear(nn.Module):
 
                 c_real = c_output[:, 0]
                 c_imag = c_output[:, 1]
-                amp = c_real.pow(2) + c_imag.pow(2)  # (B, N)
-                c_real = amp * c_real
-                c_imag = amp * c_imag
+                c_real, c_imag = self.poly_expand(c_output[:, 0], c_output[:, 1])
 
                 coeff_layer = self.coeff_layers[c]
-                ci = coeff_layer(torch.stack([c_real, c_imag], dim=-1))
+                ci = coeff_layer(torch.cat([c_real, c_imag], dim=-1))
+                
                 c_real = ci[:, 0]
                 c_imag = ci[:, 1]
 

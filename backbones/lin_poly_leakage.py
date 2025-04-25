@@ -1,6 +1,20 @@
 import torch
 import torch.nn as nn
 
+class PolynomialExpansion(nn.Module):
+    def __init__(self, max_degree):
+        super().__init__()
+        self.max_degree = max_degree
+
+    def forward(self, x_real, x_imag):
+        outputs_real = []
+        outputs_imag = []
+        for d in range(1, self.max_degree + 1):
+            x_pow = x_real**d + x_imag**d
+            outputs_real.append(x_pow * x_real)
+            outputs_imag.append(x_pow * x_imag)
+        # return torch.cat(outputs_real, dim=-1), torch.cat(outputs_imag, dim=-1)
+        return torch.cat(outputs_real, dim=-1), torch.cat(outputs_imag, dim=-1)
 
 class FiltLinear(nn.Module):
     def __init__(self, in_features, bias=False):
@@ -13,29 +27,26 @@ class FiltLinear(nn.Module):
 
 
 class Linear(nn.Module):
-    def __init__(self, input_size, output_size, n_channels, batch_size, out_window=10):
+    def __init__(self, input_size, output_size, n_channels, batch_size, poly_degree=3, out_window=10):
         super().__init__()
         self.input_size = input_size
         self.output_size = output_size
         self.n_channels = n_channels
         self.out_window = out_window
+        self.poly_degree = poly_degree
 
         # Batch normalization layers
         self.bn_output = nn.BatchNorm1d(n_channels)  # For complex output
+        self.poly_expand = PolynomialExpansion(poly_degree)
 
         self.filter_layers_in = nn.ModuleList()
         for _ in range(n_channels):
             layer = FiltLinear(input_size - out_window + 1)
             self.filter_layers_in.append(layer)
 
-        self.nonlin_layers = nn.ModuleList()
-        for _ in range(n_channels):
-            layer = nn.Linear(output_size, output_size, bias=False)
-            self.nonlin_layers.append(layer)
-
         self.coeff_layers = nn.ModuleList()
         for i in range(0,n_channels):
-            layer = nn.Linear(output_size, output_size, bias=False)
+            layer = nn.Linear((n_channels-1)*poly_degree*output_size, output_size, bias=False)
             self.coeff_layers.append(layer)
             
         self.filter_layers_out = nn.ModuleList()
@@ -53,7 +64,7 @@ class Linear(nn.Module):
         x_init_imag = x[:, :, :, 1]  # (B, N)
 
         filtered_real = torch.zeros(
-            (B, self.out_window, self.n_channels),
+            (B, self.out_window, self.n_channels, self.poly_degree),
             device=x.device
         )
         filtered_imag = torch.zeros_like(filtered_real)
@@ -66,8 +77,10 @@ class Linear(nn.Module):
                     x_imag[:, id:N-self.out_window+id+1]
                 )
 
-                filtered_real[:, id, c] = f_real.squeeze(-1)  # (B,)
-                filtered_imag[:, id, c] = f_imag.squeeze(-1)
+                f_real, f_imag = self.poly_expand(f_real, f_imag)
+
+                filtered_real[:, id, c, :] = f_real
+                filtered_imag[:, id, c, :] = f_imag
 
         nonlin_real = torch.zeros(
             (B, self.out_window, C),
@@ -76,23 +89,23 @@ class Linear(nn.Module):
         nonlin_imag = torch.zeros_like(nonlin_real)
 
         for id in range(self.out_window):
-            for c, nonlin_layer in enumerate(self.nonlin_layers):
-                total_filtered = torch.stack(
-                    [filtered_real[:, id, c], filtered_imag[:, id, c]],
+            for c, coeff_layer in enumerate(self.coeff_layers):
+                filtered_real_c = torch.cat(
+                    [filtered_real[:, id, idx, :] for idx in range(C) if idx != c],
+                    # [filtered_real[:, id, idx] for idx in range(C)],
                     dim=-1
                 )
-                c_output = nonlin_layer(total_filtered)
+                filtered_imag_c = torch.cat(
+                    [filtered_imag[:, id, idx, :] for idx in range(C) if idx != c],
+                    # [filtered_imag[:, id, idx] for idx in range(C)],
+                    dim=-1
+                )
+                total_filtered = torch.cat([filtered_real_c, filtered_imag_c], dim=-1)
+                
+                c_output = coeff_layer(total_filtered)
 
                 c_real = c_output[:, 0]
                 c_imag = c_output[:, 1]
-                amp = c_real.pow(2) + c_imag.pow(2)  # (B, N)
-                c_real = amp * c_real
-                c_imag = amp * c_imag
-
-                coeff_layer = self.coeff_layers[c]
-                ci = coeff_layer(torch.stack([c_real, c_imag], dim=-1))
-                c_real = ci[:, 0]
-                c_imag = ci[:, 1]
 
                 nonlin_real[:, id, c] = c_real.squeeze(-1)  # (B,)
                 nonlin_imag[:, id, c] = c_imag.squeeze(-1)
@@ -107,5 +120,4 @@ class Linear(nn.Module):
             output[:, c, 1] = out_imag.squeeze(-1)
 
         output = self.bn_output(output)
-
         return output
