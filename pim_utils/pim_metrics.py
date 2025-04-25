@@ -75,17 +75,17 @@ def plot_spectrum(
             window=np.kaiser(2048, 10),
             noverlap=1,
             pad_to=2048,
-            label="Predicted Signal",
+            label="Predicted Signal F(TXA)",
         )
         psd_NF, f = ax.psd(
-            initial_ground_truth,
+            ground_truth,
             Fs=FS,
             Fc=FC_TX,
             NFFT=2048,
             window=np.kaiser(2048, 10),
             noverlap=1,
             pad_to=2048,
-            label="Initial Signal",
+            label="Original Signal - RXA",
         )
 
         psd_NF, f = ax.psd(
@@ -108,7 +108,7 @@ def plot_spectrum(
             window=np.kaiser(2048, 10),
             noverlap=1,
             pad_to=2048,
-            label="Predicted Signal",
+            label="Predicted Signal F(TXA)",
         )
         psd_NF, f = ax.psd(
             ground_truth,
@@ -118,7 +118,7 @@ def plot_spectrum(
             window=np.kaiser(2048, 10),
             noverlap=1,
             pad_to=2048,
-            label="Original Signal",
+            label="Original Signal  - RXA",
         )
         psd_NF, f = ax.psd(
             ground_truth - prediction,

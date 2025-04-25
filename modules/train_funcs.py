@@ -210,7 +210,6 @@ def train_model(
     max_metrics = calculate_metrics(
         pred,
         gt,
-        noise["Test"],
         filter,
         CScaler,
         FS,

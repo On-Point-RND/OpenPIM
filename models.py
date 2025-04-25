@@ -1,7 +1,3 @@
-__author__ = "Yizhuo Wu, Chang Gao"
-__license__ = "Apache-2.0 License"
-__email__ = "yizhuo.wu@tudelft.nl, chang.gao@tudelft.nl"
-
 import torch
 import torch.nn as nn
 from backbones.rvtdcnn import RVTDCNN
@@ -14,18 +10,39 @@ class EndFilter(nn.Module):
 
         if out_filtration:
             Fs = 245.76e6  # Sampling frequency
+
+            # Frequency bands with transition regions
             freq = [
-                0,  # Start of passband
-                35.08e6,  # Start of first stopband (aliased 1950 MHz)
-                35.08e6,  # End of first stopband start
-                99.68e6,  # Start of passband
-                99.68e6,  # End of passband start
-                Fs / 2,  # Nyquist frequency
+                0,  # Start of first passband
+                27.08e6,  # End of first passband
+                27.08e6,  # Start of transition band (1 → 0)
+                32.08e6,  # End of transition band (now fully stopped)
+                32.08e6,  # Start of stopband
+                93.68e6,  # End of stopband
+                93.68e6,  # Start of transition band (0 → 1)
+                98.68e6,  # End of transition band (now fully passing)
+                98.68e6,  # Start of second passband
+                Fs / 2,  # Nyquist
             ]
-            gain = [1, 1, 0, 0, 0, 0]  # 1=pass, 0=stop
+
+            # Gain values for gradual transitions
+            gain = [
+                1,  # 0-27.08 MHz: pass
+                1,  # At 27.08 MHz
+                1,  # At 32.08 MHz (after 5 MHz transition)
+                0,  # 32.08-93.68 MHz: stop
+                0,  # At 93.68 MHz
+                0,  # At 98.68 MHz (after 5 MHz transition)
+                1,  # 98.68-122.88 MHz: pass
+                1,
+                1,
+                1,
+            ]
             # Design filter with 255 taps
             filter_coeff = firwin2(255, freq, gain, fs=Fs)
-            wts = torch.from_numpy(filter_coeff).to(torch.complex64)
+            wts = torch.tensor(filter_coeff[::-1].copy(), dtype=torch.float32).to(
+                torch.complex64
+            )
             wts_expand = wts.unsqueeze(0).unsqueeze(0).expand(n_channels, 1, 255)
             self.end_filter = torch.nn.Conv1d(
                 in_channels=n_channels,
@@ -197,8 +214,8 @@ class CoreModel(nn.Module):
                 n_channels=n_channels,
             )
 
-        elif backbone_type == "linear_internal":
-            from backbones.linear_internal import Linear
+        elif backbone_type == "linear_leakage":
+            from backbones.linear_leakage import Linear
 
             self.backbone = Linear(
                 input_size=self.input_size,
@@ -220,6 +237,51 @@ class CoreModel(nn.Module):
             from backbones.simple_dimple import Simple
 
             self.backbone = Simple(
+                hidden_size=self.hidden_size,
+                output_size=self.output_size,
+                num_layers=self.num_layers,
+                batch_size=self.batch_size,
+                bidirectional=self.bidirectional,
+                batch_first=self.batch_first,
+                bias=self.bias,
+                input_len=input_size,
+                n_channels=n_channels,
+            )
+
+        elif backbone_type == "simple_dimple_M":
+            from backbones.simple_dimple import SimpleMixing
+
+            self.backbone = SimpleMixing(
+                hidden_size=self.hidden_size,
+                output_size=self.output_size,
+                num_layers=self.num_layers,
+                batch_size=self.batch_size,
+                bidirectional=self.bidirectional,
+                batch_first=self.batch_first,
+                bias=self.bias,
+                input_len=input_size,
+                n_channels=n_channels,
+            )
+
+        elif backbone_type == "simple_dimple_C2":
+            from backbones.simple_dimple import SimpleNM
+
+            self.backbone = SimpleNM(
+                hidden_size=self.hidden_size,
+                output_size=self.output_size,
+                num_layers=self.num_layers,
+                batch_size=self.batch_size,
+                bidirectional=self.bidirectional,
+                batch_first=self.batch_first,
+                bias=self.bias,
+                input_len=input_size,
+                n_channels=n_channels,
+            )
+
+        elif backbone_type == "simple_dimple_C":
+            from backbones.simple_dimple import SimpleConv
+
+            self.backbone = SimpleConv(
                 hidden_size=self.hidden_size,
                 output_size=self.output_size,
                 num_layers=self.num_layers,

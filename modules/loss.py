@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from scipy.signal import firwin2
 
 
 class IQComponentWiseLoss(nn.Module):
@@ -69,8 +70,11 @@ class HybridLoss(nn.Module):
 
     def forward(self, pred, target):
         # Time-domain MSE
-        time_loss = self.mse(pred, target)
 
+        magnitude = torch.sqrt(pred[..., 0] ** 2 + pred[..., 1] ** 2)
+
+        third_order = magnitude**3  # Third-order term for PIM penalty [[5]]
+        pim_constraint = third_order.mean()  # Encourages minimal third-order distortion
         # Frequency-domain MSE (magnitude)
         pred_fft = torch.abs(torch.fft.rfft(pred))
         target_fft = torch.abs(torch.fft.rfft(target))
@@ -78,7 +82,11 @@ class HybridLoss(nn.Module):
 
         # Physics term (e.g., enforce 3rd-order nonlinearity)
         # Example: PIM power ∝ input_power^3
-        total_loss = (1 - self.fft_weight) * time_loss + self.fft_weight * freq_loss
+        total_loss = (
+            (1 - self.fft_weight) * magnitude.mean()
+            + self.fft_weight * freq_loss
+            + pim_constraint
+        )
         return total_loss
 
 
