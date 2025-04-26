@@ -1,73 +1,13 @@
-from typing import Tuple
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
 import numpy as np
-from scipy.signal import welch
-
-def magnitude_spectrum(input_signal: np.ndarray[np.complex128],
-                       sample_rate: int,
-                       nfft: int,
-                       shift: bool = False) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Compute the Fast Fourier Transform (FFT) of the input signal.
-
-    Parameters:
-    - input_signal (np.ndarray[np.complex128]): A 2D numpy array where the first dimension
-                                               represents batch size and the second dimension
-                                               represents the time sequence of complex numbers.
-    - sample_rate (int): The rate at which the input signal was sampled.
-    - shift (bool, optional): Whether or not to shift the zero-frequency component to
-                              the center of the spectrum. Defaults to False.
-
-    Returns:
-    - Tuple[np.ndarray, np.ndarray]: A tuple where the first element is the frequency components
-                                     and the second element is the FFT of the input signal for each batch.
-    """
-
-    # Compute the FFT of the input signal along the last axis (time sequence dimension)
-    spectrum = np.fft.fft(input_signal, n=nfft, axis=-1)
-
-    # Shift the zero-frequency component to the center if `shift` is True
-    if shift:
-        spectrum = np.fft.fftshift(spectrum, axes=-1)
-        freq = np.fft.fftshift(np.fft.fftfreq(input_signal.shape[1], d=1 / sample_rate))
-    else:
-        # Generate the frequencies for the unshifted spectrum
-        freq = np.linspace(0, sample_rate, input_signal.shape[1])
-
-    return freq, spectrum
+from scipy.signal import convolve, welch
 
 
-def power_spectrum(complex_signal, fs=800e6, nperseg=2560, axis=-1):
-    """
-    Compute the Power Spectral Density (PSD) of a given complex signal using the Welch method.
-
-    Parameters:
-    - complex_signal: Input complex signal for which the PSD is to be computed.
-    - fs (float, optional): Sampling frequency of the signal. Default is 800e6 (800 MHz).
-    - nperseg (int, optional): Number of datasets points to be used in each block for the Welch method. Default is 2560.
-
-    Returns:
-    - frequencies_signal_subset: Frequencies at which the PSD is computed.
-    - psd_signal_subset: PSD values.
-    """
-
-    # Compute the PSD using the Welch method
-    freq, ps = welch(complex_signal, fs=fs, nperseg=nperseg,
-                      return_onesided=False, scaling='spectrum', axis=-1)
-
-    # To make the frequency axis monotonic, we need to shift the zero frequency component to the center.
-    # This step rearranges the computed PSD and frequency values such that the negative frequencies appear first.
-    half_nfft = int(nperseg / 2)
-    freq = np.concatenate(
-        (freq[half_nfft:], freq[:half_nfft]))
-
-    # Rearrange the PSD values corresponding to the rearranged frequency values.
-    ps = np.concatenate((ps[..., half_nfft:], ps[..., :half_nfft]), axis=-1)
-
-    # Take the average of all signals
-    ps = np.mean(ps, axis=0)
-
-    return freq, ps
+def abs2(x):
+    return np.array([i**2 for i in x])
 
 
 def NMSE(prediction, ground_truth):
@@ -83,22 +23,230 @@ def NMSE(prediction, ground_truth):
     return NMSE
 
 
-def IQ_to_complex(IQ_signal):
+def plot_spectrums(
+    prediction,
+    ground_truth,
+    FS,
+    FC_TX,
+    PIM_SFT,
+    PIM_BW,
+    iteration,
+    reduction_level,
+    save_dir,
+    path_dir_save="",
+    cut=False,
+    phase_name="test",
+):
+
+    n_channels = prediction.shape[1]
+
+    for c_number in range(n_channels):
+        plot_spectrum(
+            prediction[:, c_number],
+            ground_truth[:, c_number],
+            FS,
+            FC_TX,
+            PIM_SFT,
+            PIM_BW,
+            iteration,
+            reduction_level[f"CH_{c_number}"],
+            c_number,
+            save_dir,
+            path_dir_save,
+            cut,
+            phase_name,
+        )
+
+
+def plot_spectrum(
+    prediction,
+    ground_truth,
+    FS,
+    FC_TX,
+    PIM_SFT,
+    PIM_BW,
+    iteration,
+    reduction_level,
+    c_number,
+    save_dir,
+    path_dir_save="",
+    cut=False,
+    # initial=False,
+    # initial_ground_truth=[],
+    phase_name="",
+):
+    # Create new figure with legend
+    plt.figure(figsize=(10, 6))
+    ax = plt.gca()
+
+    psd_RX, f = ax.psd(
+            prediction,
+            Fs=FS,
+            Fc=FC_TX,
+            NFFT=2048,
+            window=np.kaiser(2048, 10),
+            noverlap=1,
+            pad_to=2048,
+            label="Predicted Signal",
+        )
+    psd_NF, f = ax.psd(
+            ground_truth,
+            Fs=FS,
+            Fc=FC_TX,
+            NFFT=2048,
+            window=np.kaiser(2048, 10),
+            noverlap=1,
+            pad_to=2048,
+            label="Original Signal",
+        )
+    psd_NF, f = ax.psd(
+            ground_truth - prediction,
+            Fs=FS,
+            Fc=FC_TX,
+            NFFT=2048,
+            window=np.kaiser(2048, 10),
+            noverlap=1,
+            pad_to=2048,
+            label="(Original - Predicted) Signal",
+        )
+
+    # Add plot elements
+    ax.set_ylabel(r"PSD, $V^2$/Hz [dB]")
+    ax.set_xlabel("Frequency, MHz")
+    if cut:
+        ax.set_xlim(
+            FC_TX - FS / 10 + PIM_SFT - PIM_BW / 2,
+            FC_TX + FS / 10 + PIM_SFT + PIM_BW / 2,
+        )
+    ax.set_title(
+        f"{phase_name} Power Spectral Density - Iteration: {iteration}, Reduction: {reduction_level:.3f} dB, CH_{c_number}"
+    )
+    ax.legend(loc="upper left")
+
+    if cut:
+        plt.savefig(
+            f"{save_dir}/img_{phase_name}_{iteration}_cut_CH{c_number}"
+            + path_dir_save
+            + ".png",
+            bbox_inches="tight",
+        )
+    else:
+        plt.savefig(
+            f"{save_dir}/img_{phase_name}_{iteration}_CH{c_number}"
+            + path_dir_save
+            + ".png",
+            bbox_inches="tight",
+        )
+    plt.close()  # Prevent figure accumulation
+
+
+def plot_total_perf(powers, max_red_level, mean_red_level, path_save):
+    fig = plt.figure(figsize = (10, 7))
+
+    power_df = pd.DataFrame({
+    'RXA':powers['gt'],
+    'ERR':powers['err'],
+    'NFA':powers['noise']
+    })
+
+    power_df.plot.bar(color = ('red', 'blue', 'black'))
+    plt.title(f'PIM: ORIG: {round( np.mean(power_df['RXA']), 2)}, RES: {round( np.mean(power_df['ERR']), 2)}; Performance ABS: {round( max_red_level, 2)}, MEAN: {round( mean_red_level, 2)}')
+    plt.xlabel('Channel number', fontsize = 16)
+    plt.ylabel('Signal level [dB]', fontsize = 16)
+    plt.legend(loc="upper left")
+    plt.savefig(f'{path_save}/' 'barplot_performance.png', bbox_inches='tight')
+    plt.close()
+
+
+def compute_power(x, fs, fc_tx, pim_sft, pim_bw, return_db=True):
     """
-    Convert a multi-dimensional array of I-Q pairs into a 2D array of complex signals.
-
-    Args:
-    - IQ_in_segment (3D array): The prediction I-Q datasets with shape (#segments, frame_length, 2).
-
-    Returns:
-    - 2D array of shape (#segments, frame_length) containing complex signals.
+    Power calculation using Welch's method without matplotlib
     """
+    n = 2048
+    # Compute PSD using Scipy's optimized Welch implementation
+    f, psd = welch(
+        x, fs, window=np.kaiser(2048, 10), nperseg=n, noverlap=1, return_onesided=False
+    )
+    # Calculate frequency mask directly
+    freq_mask = np.where((f > pim_sft - pim_bw / 2) & (f < pim_sft + pim_bw / 2))
 
-    # Extract I and Q values
-    I_values = IQ_signal[..., 0]
-    Q_values = IQ_signal[..., 1]
+    psd_window = psd[freq_mask[0]]
+    power = np.mean(psd_window.real)
+    if return_db:
+        power = 10 * np.log10(power)
+    return power
 
-    # Convert to complex signals
-    complex_signals = I_values + 1j * Q_values
 
-    return complex_signals
+def calc_perf(PIM_level, RES_level):
+    perf = 10 * np.log10(10 ** ((PIM_level) / 10) - 1) - 10 * np.log10(
+        10 ** ((RES_level) / 10) - 1
+    )
+    # perf = 10*np.log10(10**((PIM_level + 100)/10) - 1) - 10*np.log10(10**((RES_level + 100)/10) - 1)
+    return perf
+
+
+def calculate_res(initial_signal, filt_signal, FS, FC_TX, PIM_SFT, PIM_total_BW):
+    initial_power = compute_power(initial_signal, FS, FC_TX, PIM_SFT, PIM_total_BW)
+    filt_power = compute_power(filt_signal, FS, FC_TX, PIM_SFT, PIM_total_BW)
+    metrics = calc_perf(initial_power, filt_power)
+    return metrics
+
+
+def calculate_avg_metrics(
+    orig_signal: np.ndarray, filt_signal: np.ndarray, fs, pim_sft, pim_bw
+):
+    """
+    Computes average metrics across n transceivers.
+    Requires signals in a shape (k x n),
+    where k is a length of a signal sample
+    """
+    assert len(orig_signal.shape) > 1
+    assert len(filt_signal.shape) > 1
+    n_trans = orig_signal.shape[1]
+    metrics = 0.0
+    for i in range(n_trans):
+        init_power = compute_power(orig_signal[:, i], fs, pim_sft, pim_bw)
+        filt_power = compute_power(filt_signal[:, i], fs, pim_sft, pim_bw)
+        metrics += calc_perf(init_power, filt_power)
+    return metrics / n_trans
+
+
+def main_metrics(prediction, ground_truth, FS, FC_TX, PIM_SFT, PIM_total_BW):
+    initial_signal = (
+        ground_truth[..., 0].reshape(1, -1)[0]
+        + 1j * ground_truth[..., 1].reshape(1, -1)[0]
+    )
+    PIM_pred = (
+        prediction[..., 0].reshape(1, -1)[0] + 1j * prediction[..., 1].reshape(1, -1)[0]
+    )
+
+    filt_signal = initial_signal - PIM_pred
+
+    main_metric = calculate_res(
+        initial_signal, filt_signal, FS, FC_TX, PIM_SFT, PIM_total_BW
+    )
+    # plot_spectrum(initial_signal, filt_signal, FS, FC_TX, PIM_SFT)
+
+    return main_metric
+
+
+def reduction_level(prediction, ground_truth, FS, FC_TX, PIM_SFT, PIM_BW, filter):
+
+    initial_signal = (
+        ground_truth[..., 0].reshape(1, -1)[0]
+        + 1j * ground_truth[..., 1].reshape(1, -1)[0]
+    )
+    PIM_pred = (
+        prediction[..., 0].reshape(1, -1)[0] + 1j * prediction[..., 1].reshape(1, -1)[0]
+    )
+
+    filt_conv = filter.astype(complex).flatten()
+
+    convolved_initial_signal = convolve(initial_signal, filt_conv)
+
+    residual = convolve(PIM_pred, filt_conv) - convolve(initial_signal, filt_conv)
+
+    red_level = calculate_res(
+        convolved_initial_signal, residual, FS, FC_TX, PIM_SFT, PIM_BW
+    )
+    return red_level

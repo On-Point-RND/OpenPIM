@@ -5,13 +5,10 @@ import torch.nn as nn
 import numpy as np
 from torch.utils.data import DataLoader
 from typing import Dict, Any, Callable
-from pim_utils.pim_metrics import compute_power
 from modules.paths import gen_log_stat
 
 from tqdm import tqdm
-from utils import metrics
-from pim_utils import pim_metrics
-from pim_utils.pim_metrics import plot_spectrums, compute_power, plot_total_perf
+from utils.metrics import *
 
 from modules.data_utils import toComplex
 from modules.loggers import make_logger
@@ -257,9 +254,9 @@ def calculate_metrics(
     gt = СScaler.rescale(ground_truth, key="Y")
 
     for c in range(n_channels):
-        stat["NMSE"][f"CH_{c}"] = metrics.NMSE(prediction, ground_truth)
+        stat["NMSE"][f"CH_{c}"] = NMSE(prediction, ground_truth)
 
-        stat["Reduction_level"][f"CH_{c}"] = pim_metrics.reduction_level(
+        stat["Reduction_level"][f"CH_{c}"] = reduction_level(
             pred[:, c],
             gt[:, c],
             FS=FS,
