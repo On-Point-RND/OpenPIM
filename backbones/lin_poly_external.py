@@ -29,7 +29,10 @@ class FiltLinear(nn.Module):
 
 
 class LinPolyExternal(nn.Module):
-    def __init__(self, input_size, output_size, n_channels, batch_size, poly_degree=3, out_window = 10):
+    def __init__(
+            self, input_size, output_size, n_channels,
+            batch_size, poly_degree=3, out_window = 10
+        ):
         super().__init__()
         self.input_size = input_size
         self.output_size = output_size
@@ -42,22 +45,22 @@ class LinPolyExternal(nn.Module):
         self.poly_expand = PolynomialExpansion(poly_degree)
 
         self.filter_layers_in = nn.ModuleList()
-        for i in range(0,n_channels):
+        for _ in range(n_channels):
             layer = FiltLinear(input_size-out_window+1)
             self.filter_layers_in.append(layer)
 
         self.nonlin_layers = nn.ModuleList()
-        for i in range(0,n_channels):
+        for _ in range(n_channels):
             layer = nn.Linear(output_size*n_channels, output_size, bias=False)
             self.nonlin_layers.append(layer)
 
         self.coeff_layers = nn.ModuleList()
-        for i in range(0,n_channels):
+        for _ in range(n_channels):
             layer = nn.Linear(poly_degree*output_size, output_size, bias=False)
             self.coeff_layers.append(layer)
 
         self.filter_layers_out = nn.ModuleList()
-        for i in range(0,n_channels):
+        for _ in range(n_channels):
             layer = FiltLinear(out_window)
             self.filter_layers_out.append(layer)
 

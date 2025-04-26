@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+
 class PolynomialExpansion(nn.Module):
     def __init__(self, max_degree):
         super().__init__()
@@ -16,6 +17,7 @@ class PolynomialExpansion(nn.Module):
         # return torch.cat(outputs_real, dim=-1), torch.cat(outputs_imag, dim=-1)
         return torch.cat(outputs_real, dim=-1), torch.cat(outputs_imag, dim=-1)
 
+
 class FiltLinear(nn.Module):
     def __init__(self, in_features, bias=False):
         super().__init__()
@@ -26,8 +28,11 @@ class FiltLinear(nn.Module):
         return self.filt_real(x_real), self.filt_imag(x_imag)
 
 
-class Linear(nn.Module):
-    def __init__(self, input_size, output_size, n_channels, batch_size, poly_degree=3, out_window=10):
+class LinPolyLeakage(nn.Module):
+    def __init__(
+            self, input_size, output_size, n_channels,
+            batch_size, poly_degree=3, out_window=10
+        ):
         super().__init__()
         self.input_size = input_size
         self.output_size = output_size
@@ -45,7 +50,7 @@ class Linear(nn.Module):
             self.filter_layers_in.append(layer)
 
         self.coeff_layers = nn.ModuleList()
-        for i in range(0,n_channels):
+        for _ in range(n_channels):
             layer = nn.Linear((n_channels-1)*poly_degree*output_size, output_size, bias=False)
             self.coeff_layers.append(layer)
             

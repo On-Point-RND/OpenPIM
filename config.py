@@ -28,7 +28,7 @@ class Config:
     )
 
     # PIM Model Settings
-    PIM_backbone: str = "leaklinpoly"
+    PIM_backbone: str = "leak_linpoly"
     PIM_hidden_size: int = 8
     PIM_num_layers: int = 1
     # PIM Type options: "total", "cond", "leak", "ext"
@@ -41,6 +41,7 @@ class Config:
     step: str = "train_pim_cascaded"
     n_back: int = 30
     n_fwd: int = 1
+    out_window: int = 10
     accelerator: str = "cpu"
     devices: int = 0
     re_level: str = "soft"
@@ -48,7 +49,6 @@ class Config:
     # General Hyperparameters
     seed: int = 0
     loss_type: str = "joint"
-    # pim_type: str = "total"
     opt_type: str = "adabound"
     batch_size: int = 64
     batch_size_eval: int = 64

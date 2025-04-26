@@ -55,6 +55,7 @@ class CoreModel(nn.Module):
         self,
         n_channels,
         input_size,
+        out_window,
         hidden_size,
         num_layers,
         backbone_type,
@@ -64,6 +65,7 @@ class CoreModel(nn.Module):
         super(CoreModel, self).__init__()
         self.output_size = 2  # PIM outputs: I & Q
         self.input_size = input_size
+        self.out_window = out_window
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.backbone_type = backbone_type
@@ -210,8 +212,9 @@ class CoreModel(nn.Module):
             self.backbone = LinearExternal(
                 input_size=self.input_size,
                 output_size=self.output_size,
-                batch_size=self.batch_size,
                 n_channels=n_channels,
+                batch_size=self.batch_size,
+                out_window=self.out_window,
             )
 
         elif backbone_type == "int_linear":
@@ -220,8 +223,9 @@ class CoreModel(nn.Module):
             self.backbone = LinearInternal(
                 input_size=self.input_size,
                 output_size=self.output_size,
-                batch_size=self.batch_size,
                 n_channels=n_channels,
+                batch_size=self.batch_size,
+                out_window=self.out_window,
             )
 
         elif backbone_type == "leak_linear":
@@ -230,8 +234,9 @@ class CoreModel(nn.Module):
             self.backbone = LinearLeakage(
                 input_size=self.input_size,
                 output_size=self.output_size,
-                batch_size=self.batch_size,
                 n_channels=n_channels,
+                batch_size=self.batch_size,
+                out_window=self.out_window,
             )
 
         elif backbone_type == "leak_int_linear":
@@ -240,8 +245,9 @@ class CoreModel(nn.Module):
             self.backbone = LinearLeakInt(
                 input_size=self.input_size,
                 output_size=self.output_size,
-                batch_size=self.batch_size,
                 n_channels=n_channels,
+                batch_size=self.batch_size,
+                out_window=self.out_window,
             )
 
         elif backbone_type == "simple_dimple":
@@ -265,8 +271,8 @@ class CoreModel(nn.Module):
             self.backbone = LinPoly(
                 input_size=self.input_size,
                 output_size=self.output_size,
-                batch_size=self.batch_size,
                 n_channels=n_channels,
+                batch_size=self.batch_size,
             )
 
         elif backbone_type == "ext_linpoly":
@@ -275,28 +281,31 @@ class CoreModel(nn.Module):
             self.backbone = LinPolyExternal(
                 input_size=self.input_size,
                 output_size=self.output_size,
-                batch_size=self.batch_size,
                 n_channels=n_channels,
+                batch_size=self.batch_size,
+                out_window=self.out_window,
             )
             
-        elif backbone_type == "leaklinpoly":
-            from backbones.lin_poly_leakage import Linear
+        elif backbone_type == "leak_linpoly":
+            from backbones.lin_poly_leakage import LinPolyLeakage
 
-            self.backbone = Linear(
+            self.backbone = LinPolyLeakage(
                 input_size=self.input_size,
                 output_size=self.output_size,
-                batch_size=self.batch_size,
                 n_channels=n_channels,
+                batch_size=self.batch_size,
+                out_window=self.out_window,
             )
 
-        elif backbone_type == "intlinpoly":
-            from backbones.lin_poly_internal import Linear
+        elif backbone_type == "int_linpoly":
+            from backbones.lin_poly_internal import LinPolyInternal
 
-            self.backbone = Linear(
+            self.backbone = LinPolyInternal(
                 input_size=self.input_size,
                 output_size=self.output_size,
-                batch_size=self.batch_size,
                 n_channels=n_channels,
+                batch_size=self.batch_size,
+                out_window=self.out_window,
             )
 
         elif backbone_type == "convx":
