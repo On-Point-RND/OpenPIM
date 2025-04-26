@@ -45,7 +45,6 @@ class EndFilter(nn.Module):
             cmplx_tensor = x[..., 0] + 1j * x[..., 1]
             cmplx_tensor = cmplx_tensor.permute(1, 0).unsqueeze(0)
             filt_cmplx = self.end_filter(cmplx_tensor)
-
             output = torch.stack((filt_cmplx.real, filt_cmplx.imag), dim=-1)
             x = output.squeeze(0).permute(1, 0, 2)
         return x.to(torch.float32)
@@ -80,6 +79,7 @@ class CoreModel(nn.Module):
             from backbones.gmp import GMP
 
             self.backbone = GMP()
+
         elif backbone_type == "gru":
             from backbones.gru import GRU
 
@@ -121,6 +121,7 @@ class CoreModel(nn.Module):
                 input_len=input_size,
                 n_channels=n_channels,
             )
+
         elif backbone_type == "dgruf":
             from backbones.dgru_filter import DGRU
 
@@ -135,6 +136,7 @@ class CoreModel(nn.Module):
                 input_len=input_size,
                 n_channels=n_channels,
             )
+
         elif backbone_type == "qgru_amp1":
             from backbones.qgru_amp1 import QGRU
 
@@ -147,6 +149,7 @@ class CoreModel(nn.Module):
                 batch_first=self.batch_first,
                 bias=self.bias,
             )
+
         elif backbone_type == "lstm":
             from backbones.lstm import LSTM
 
@@ -160,6 +163,7 @@ class CoreModel(nn.Module):
                 batch_first=self.batch_first,
                 bias=self.bias,
             )
+
         elif backbone_type == "vdlstm":
             from backbones.vdlstm import VDLSTM
 
@@ -173,8 +177,10 @@ class CoreModel(nn.Module):
                 batch_first=self.batch_first,
                 bias=self.bias,
             )
+
         elif backbone_type == "rvtdcnn":
             self.backbone = RVTDCNN(fc_hid_size=hidden_size)
+
         elif backbone_type == "dgru_abs_only":
             from backbones.dgru_abs import DGRU_abs
 
@@ -187,6 +193,7 @@ class CoreModel(nn.Module):
                 batch_first=self.batch_first,
                 bias=self.bias,
             )
+
         elif backbone_type == "linear":
             from backbones.linear import Linear
 
@@ -197,38 +204,40 @@ class CoreModel(nn.Module):
                 n_channels=n_channels,
             )
 
-        elif backbone_type == "extlinear":
-            from backbones.linear_external import Linear
+        elif backbone_type == "ext_linear":
+            from backbones.linear_external import LinearExternal
 
-            self.backbone = Linear(
-                input_size=self.input_size,
-                output_size=self.output_size,
-                batch_size=self.batch_size,
-                n_channels=n_channels,
-            )
-        elif backbone_type == "intlinear":
-            from backbones.linear_internal import Linear
-
-            self.backbone = Linear(
+            self.backbone = LinearExternal(
                 input_size=self.input_size,
                 output_size=self.output_size,
                 batch_size=self.batch_size,
                 n_channels=n_channels,
             )
 
-        elif backbone_type == "leaklinear":
-            from backbones.linear_leakage import Linear
+        elif backbone_type == "int_linear":
+            from backbones.linear_internal import LinearInternal
 
-            self.backbone = Linear(
+            self.backbone = LinearInternal(
                 input_size=self.input_size,
                 output_size=self.output_size,
                 batch_size=self.batch_size,
                 n_channels=n_channels,
             )
+
+        elif backbone_type == "leak_linear":
+            from backbones.linear_leakage import LinearLeakage
+
+            self.backbone = LinearLeakage(
+                input_size=self.input_size,
+                output_size=self.output_size,
+                batch_size=self.batch_size,
+                n_channels=n_channels,
+            )
+
         elif backbone_type == "leak_int_linear":
-            from backbones.linear_leak_int import Linear
+            from backbones.linear_leak_int import LinearLeakInt
 
-            self.backbone = Linear(
+            self.backbone = LinearLeakInt(
                 input_size=self.input_size,
                 output_size=self.output_size,
                 batch_size=self.batch_size,
@@ -251,19 +260,19 @@ class CoreModel(nn.Module):
             )
 
         elif backbone_type == "linpoly":
-            from backbones.lin_poly import Linear
+            from backbones.lin_poly import LinPoly
 
-            self.backbone = Linear(
+            self.backbone = LinPoly(
                 input_size=self.input_size,
                 output_size=self.output_size,
                 batch_size=self.batch_size,
                 n_channels=n_channels,
             )
 
-        elif backbone_type == "linpoly_external":
-            from backbones.lin_poly_external import Linear
+        elif backbone_type == "ext_linpoly":
+            from backbones.lin_poly_external import LinPolyExternal
 
-            self.backbone = Linear(
+            self.backbone = LinPolyExternal(
                 input_size=self.input_size,
                 output_size=self.output_size,
                 batch_size=self.batch_size,

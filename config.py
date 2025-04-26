@@ -6,24 +6,25 @@ import pyrallis
 class Config:
     """Configuration class for PIM model training"""
 
-    # dataset_path: str = "./Data/FOR_COOPERATION/"
     dataset_path: str = (
         # "/home/dev/public-datasets/e.shvetsov/PIM/REAL/Real_data/16TR/"
         # "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/"  # "/home/dev/public-datasets/e.shvetsov/PIM/REAL/Real_data/16TR/"  #   #
         # "../../../Data/FOR_COOPERATION/" 
-        "../../../Data/data_cooperation/artificial_data_cooperation/"
+        # "../../../Data/data_cooperation/artificial_data_cooperation/"
+        # "./data/"
     )
     dataset_name: str = (
         # "data_16TR_3"
-         # "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"  # "data_16TR_0"  #   #  #
-        "16TR_C22Nc8CD_OTX_CL_E20Ne1CD_20250421_1L"
+        # "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"  # "data_16TR_0"  #   #  #
+        # "16TR_C22Nc8CD_OTX_CL_E20Ne1CD_20250421_1L"
     )
 
     log_out_dir: str = "./results"
     log_precision: int = 8
     filter_path: str = (
         # "/home/dev/work_main/2025/OpenPIM/data/filter_real.mat"  # "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
-         "../../../Data/FOR_COOPERATION/rx_filter.mat"
+        #  "../../../Data/FOR_COOPERATION/rx_filter.mat"
+        # "./data/rx_filter.mat"
     )
 
     # PIM Model Settings
@@ -36,10 +37,10 @@ class Config:
     out_filtration: bool = False
 
     # Training Process
+    # step options: "train_pim_single", "train_pim_cascaded"
     step: str = "train_pim_cascaded"
     n_back: int = 30
     n_fwd: int = 1
-    # accelerator: str = "cuda"
     accelerator: str = "cpu"
     devices: int = 0
     re_level: str = "soft"
@@ -51,7 +52,7 @@ class Config:
     opt_type: str = "adabound"
     batch_size: int = 64
     batch_size_eval: int = 64
-    n_iterations: int = 20e3
+    n_iterations: int = 5e3
     n_log_steps: int = 1e3
     lr_schedule: int = 1
     lr: float = 1e-4
@@ -69,10 +70,10 @@ class Config:
     # GMP Hyperparameters
     K: int = 4
 
-    #Parameters for cascaded model
-    ext_PIM_backbone: str = "extlinear"
-    leak_PIM_backbone: str = "leaklinear"
-    int_PIM_backbone: str = "intlinear"
+    # Parameters for cascaded model
+    ext_PIM_backbone: str = "ext_linear"
+    leak_PIM_backbone: str = "leak_linear"
+    int_PIM_backbone: str = "int_linear"
 
 
 def main(config: Config):

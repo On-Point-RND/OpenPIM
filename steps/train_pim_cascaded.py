@@ -1,3 +1,4 @@
+import os
 import models as model
 from runner import Runner
 from utils.util import count_net_params
@@ -13,9 +14,13 @@ def main(exp: Runner):
     data = exp.load_and_split_data()
 
     ### First model iteration (external PIM) ###
-
+    # TODO: runner creates directories with PIM_backbone name,
+    # however in cascaded we do not use PIM_backbone config field
+    # This is a temporary solution
     dir = exp.path_dir_save
-    exp.path_dir_save = dir + '/first_model_ext'
+    dir_without_backbone = dir.split('/')[:-1]
+    dir_for_cascaded = os.path.join(*dir_without_backbone, 'cascaded_moe')
+    exp.path_dir_save = dir_for_cascaded + '/first_model_ext'
     exp.args.PIM_backbone = exp.args.ext_PIM_backbone
     
     # Build Dataloaders
@@ -87,7 +92,7 @@ def main(exp: Runner):
     preds = {'Train': pred_train, 'Val': pred_val, 'Test': pred_test}
     data = extract_predictions(data, preds, exp.args.n_back, exp.args.n_fwd, exp.path_dir_save)
 
-    exp.path_dir_save = dir + '/second_model_int'
+    exp.path_dir_save = dir_for_cascaded + '/second_model_int'
     (
         (train_loader, train_pred_loader, val_loader, test_loader),
         input_size,
@@ -155,7 +160,7 @@ def main(exp: Runner):
     preds = {'Train': pred_train, 'Val': pred_val, 'Test': pred_test}
     data = extract_predictions(data, preds, exp.args.n_back, exp.args.n_fwd, exp.path_dir_save)
 
-    exp.path_dir_save = dir + '/third_model_int'
+    exp.path_dir_save = dir_for_cascaded + '/third_model_int'
     (
         (train_loader, train_pred_loader, val_loader, test_loader),
         input_size,

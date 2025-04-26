@@ -140,7 +140,7 @@ def plot_total_perf(powers, max_red_level, mean_red_level, path_save):
     plt.xlabel('Channel number', fontsize = 16)
     plt.ylabel('Signal level [dB]', fontsize = 16)
     plt.legend(loc="upper left")
-    plt.savefig(f'{path_save}/' 'barplot_perfofmance.png', bbox_inches='tight')
+    plt.savefig(f'{path_save}/' 'barplot_performance.png', bbox_inches='tight')
     plt.close()
 
 def compute_power(x, fs, fc_tx, pim_sft, pim_bw, return_db=True):

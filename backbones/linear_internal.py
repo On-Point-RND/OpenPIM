@@ -12,7 +12,7 @@ class FiltLinear(nn.Module):
         return self.filt_real(x_real), self.filt_imag(x_imag)
 
 
-class Linear(nn.Module):
+class LinearInternal(nn.Module):
     def __init__(self, input_size, output_size, n_channels, batch_size, out_window=10):
         super().__init__()
         self.input_size = input_size
