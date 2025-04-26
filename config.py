@@ -28,7 +28,7 @@ class Config:
     )
 
     # PIM Model Settings
-    PIM_backbone: str = "leak_int_linear"
+    PIM_backbone: str = "leaklinpoly"
     PIM_hidden_size: int = 8
     PIM_num_layers: int = 1
     # PIM Type options: "total", "cond", "leak", "ext"
@@ -48,7 +48,7 @@ class Config:
     # General Hyperparameters
     seed: int = 0
     loss_type: str = "joint"
-    pim_type: str = "total"
+    # pim_type: str = "total"
     opt_type: str = "adabound"
     batch_size: int = 64
     batch_size_eval: int = 64

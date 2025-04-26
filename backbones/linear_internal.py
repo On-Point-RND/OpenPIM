@@ -33,7 +33,11 @@ class LinearInternal(nn.Module):
             layer = nn.Linear(output_size, output_size, bias=False)
             self.nonlin_layers.append(layer)
 
-        self.coeff = nn.Linear(output_size, output_size, bias=False)
+        self.coeff_layers = nn.ModuleList()
+        for i in range(0,n_channels):
+            layer = nn.Linear(output_size, output_size, bias=False)
+            self.coeff_layers.append(layer)
+            
         self.filter_layers_out = nn.ModuleList()
         for _ in range(n_channels):
             layer = FiltLinear(out_window)
@@ -85,7 +89,8 @@ class LinearInternal(nn.Module):
                 c_real = amp * c_real
                 c_imag = amp * c_imag
 
-                ci = self.coeff(torch.stack([c_real, c_imag], dim=-1))
+                coeff_layer = self.coeff_layers[c]
+                ci = coeff_layer(torch.stack([c_real, c_imag], dim=-1))
                 c_real = ci[:, 0]
                 c_imag = ci[:, 1]
 
