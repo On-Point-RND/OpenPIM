@@ -67,35 +67,35 @@ def plot_spectrum(
     ax = plt.gca()
 
     psd_RX, f = ax.psd(
-            prediction,
-            Fs=FS,
-            Fc=FC_TX,
-            NFFT=2048,
-            window=np.kaiser(2048, 10),
-            noverlap=1,
-            pad_to=2048,
-            label="Predicted Signal F(TXA)",
-        )
+        prediction,
+        Fs=FS,
+        Fc=FC_TX,
+        NFFT=2048,
+        window=np.kaiser(2048, 10),
+        noverlap=1,
+        pad_to=2048,
+        label="Predicted Signal F(TXA)",
+    )
     psd_NF, f = ax.psd(
-            ground_truth,
-            Fs=FS,
-            Fc=FC_TX,
-            NFFT=2048,
-            window=np.kaiser(2048, 10),
-            noverlap=1,
-            pad_to=2048,
-            label="Original Signal  - RXA",
-        )
+        ground_truth,
+        Fs=FS,
+        Fc=FC_TX,
+        NFFT=2048,
+        window=np.kaiser(2048, 10),
+        noverlap=1,
+        pad_to=2048,
+        label="Original Signal  - RXA",
+    )
     psd_NF, f = ax.psd(
-            ground_truth - prediction,
-            Fs=FS,
-            Fc=FC_TX,
-            NFFT=2048,
-            window=np.kaiser(2048, 10),
-            noverlap=1,
-            pad_to=2048,
-            label="(Original - Predicted) Signal",
-        )
+        ground_truth - prediction,
+        Fs=FS,
+        Fc=FC_TX,
+        NFFT=2048,
+        window=np.kaiser(2048, 10),
+        noverlap=1,
+        pad_to=2048,
+        label="(Original - Predicted) Signal",
+    )
 
     # Add plot elements
     ax.set_ylabel(r"PSD, $V^2$/Hz [dB]")
@@ -126,22 +126,24 @@ def plot_spectrum(
         )
     plt.close()  # Prevent figure accumulation
 
+
 def plot_total_perf(powers, max_red_level, mean_red_level, path_save):
-    fig = plt.figure(figsize = (10, 7))
+    fig = plt.figure(figsize=(10, 7))
 
-    power_df = pd.DataFrame({
-    'RXA':powers['gt'],
-    'ERR':powers['err'],
-    'NFA':powers['noise']
-    })
+    power_df = pd.DataFrame(
+        {"RXA": powers["gt"], "ERR": powers["err"], "NFA": powers["noise"]}
+    )
 
-    power_df.plot.bar(color = ('red', 'blue', 'black'))
-    plt.title(f'PIM: ORIG: {round( np.mean(power_df['RXA']), 2)}, RES: {round( np.mean(power_df['ERR']), 2)}; Performance ABS: {round( max_red_level, 2)}, MEAN: {round( mean_red_level, 2)}')
-    plt.xlabel('Channel number', fontsize = 16)
-    plt.ylabel('Signal level [dB]', fontsize = 16)
+    power_df.plot.bar(color=("red", "blue", "black"))
+    plt.title(
+        f"PIM: ORIG: {round( np.mean(power_df['RXA']), 2)}, RES: {round( np.mean(power_df['ERR']), 2)}; Performance ABS: {round( max_red_level, 2)}, MEAN: {round(mean_red_level, 2)}"
+    )
+    plt.xlabel("Channel number", fontsize=16)
+    plt.ylabel("Signal level [dB]", fontsize=16)
     plt.legend(loc="upper left")
-    plt.savefig(f'{path_save}/' 'barplot_perfofmance.png', bbox_inches='tight')
+    plt.savefig(f"{path_save}/" "barplot_perfofmance.png", bbox_inches="tight")
     plt.close()
+
 
 def compute_power(x, fs, fc_tx, pim_sft, pim_bw, return_db=True):
     """

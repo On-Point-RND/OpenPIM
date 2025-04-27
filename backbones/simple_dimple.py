@@ -12,18 +12,6 @@ class FiltLinear(nn.Module):
         return self.filt_real(x_real), self.filt_imag(x_imag)
 
 
-class ComplexLinear(nn.Module):
-    def __init__(self, in_features, out_features=1, bias=False):
-        super().__init__()
-        self.fc_real = nn.Linear(in_features, out_features, bias=bias)
-        self.fc_imag = nn.Linear(in_features, out_features, bias=bias)
-
-    def forward(self, x_real, x_imag):
-        real = self.fc_real(x_real) - self.fc_imag(x_imag)
-        imag = self.fc_real(x_imag) + self.fc_imag(x_real)
-        return real, imag
-
-
 class Simple(nn.Module):
     def __init__(
         self,

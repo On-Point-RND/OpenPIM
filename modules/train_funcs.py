@@ -109,7 +109,7 @@ def train_model(
             # Validation/Test evaluation
             for phase_name in phases:
                 if phases[phase_name] > 0:
-
+                    print(phase_name)
                     _, pred, gt = net_eval(
                         logs[phase_name], net, loaders[phase_name], criterion, device
                     )
@@ -184,38 +184,6 @@ def train_model(
 
     step_logger.info("Training Completed\n")
 
-<<<<<<< HEAD
-    loss_dict = {
-        "Train loss": train_loss_values,
-        "Test loss": test_loss_values,
-        "Reduction level": red_levels,
-    }
-    # for k in loss_dict.keys():
-
-    #     fig = plt.figure(figsize=(10, 7))
-    #     plt.plot(all_iterations, loss_dict[k], linewidth=2, color="red")
-    #     plt.xlabel("Iterations", fontsize=16)
-    #     plt.ylabel(k, fontsize=16)
-    #     plt.grid()
-    #     plt.savefig(f"{path_dir_save}/" + k + ".png", bbox_inches="tight")
-    #     plt.close()
-
-    loss_dict["Reduction level"] = red_levels
-
-    max_metrics = calculate_metrics(
-        pred,
-        gt,
-        filter,
-        CScaler,
-        FS,
-        FC_TX,
-        PIM_SFT,
-        PIM_BW,
-        logs["test"],
-    )
-
-=======
->>>>>>> c9e8ac727129de98064bbfeb84e43347c53ee608
     powers = dict()
     for key, value in (("gt", gt), ("err", gt - pred), ("noise", noise["Test"])):
         compl = toComplex(value)
@@ -223,13 +191,13 @@ def train_model(
             compute_power(compl[:, id], FS, FC_TX, PIM_SFT, PIM_BW)
             for id in range(compl.shape[1])
         ]
-    
+
     path_dir_save, path_dir_log_hist, path_dir_log_best = paths
     mean_red_level = np.mean([red_levels[id] for id in red_levels.keys()])
     max_red_level = np.max([red_levels[id] for id in red_levels.keys()])
 
-    plot_total_perf(powers, max_red_level, mean_red_level, path_save = path_dir_save )
-    
+    plot_total_perf(powers, max_red_level, mean_red_level, path_save=path_dir_save)
+
     return log_all
 
 

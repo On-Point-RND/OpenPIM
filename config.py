@@ -9,21 +9,27 @@ class Config:
     # dataset_path: str = "./Data/FOR_COOPERATION/"
     dataset_path: str = (
         # "/home/dev/public-datasets/e.shvetsov/PIM/REAL/Real_data/16TR/"
-        # "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/"  # "/home/dev/public-datasets/e.shvetsov/PIM/REAL/Real_data/16TR/"  #   #
+        # "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/"
+        # "/home/dev/public-datasets/e.shvetsov/PIM/data_cooperation_21.04.25/artificial_data_cooperation/"
+        "/home/dev/public-datasets/e.shvetsov/PIM/data_cooperation_21.04.25/real_data_cooperation/1TR"
         # "../../../Data/FOR_COOPERATION/"
-        "../../../Data/data_cooperation/artificial_data_cooperation/"
+        # "../../../Data/data_cooperation/artificial_data_cooperation/"
     )
     dataset_name: str = (
+        "data_B"
         # "data_16TR_3"
-        # "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"  # "data_16TR_0"  #   #  #
-        "16TR_C22Nc8CD_OTX_CL_E20Ne1CD_20250421_1L"
+        #  "data_16TR_0"
+        # "16TR_C22Nc8CD_OTX_CL_E20Ne1CD_20250421_16L"
+        # "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"
+        # "16TR_C22Nc8CD_OTX_CL_E20Ne1CD_20250421_1L"
     )
 
     log_out_dir: str = "./results"
     log_precision: int = 8
     filter_path: str = (
-        # "/home/dev/work_main/2025/OpenPIM/data/filter_real.mat"  # "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
-        "../../../Data/FOR_COOPERATION/rx_filter.mat"
+        "/home/dev/work_main/2025/OpenPIM/data/filter_real.mat"
+        # "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
+        # "../../../Data/FOR_COOPERATION/rx_filter.mat"
     )
 
     # PIM Model Settings
@@ -33,25 +39,24 @@ class Config:
     # PIM Type options: "total", "cond", "leak", "ext"
     PIM_type: str = "total"
     specific_channels = "all"
-    out_filtration: bool = False
+    out_filtration: bool = True
 
     # Training Process
-    step: str = "train_pim_cascaded"
+    step: str = "train_pim_single"
     n_back: int = 30
-    n_fwd: int = 1
-    # accelerator: str = "cuda"
-    accelerator: str = "cpu"
-    devices: int = 0
+    n_fwd: int = 10
+    accelerator: str = "cuda"
+    devices: int = 1
     re_level: str = "soft"
 
     # General Hyperparameters
     seed: int = 0
-    loss_type: str = "joint"
+    loss_type: str = "l2"
     # pim_type: str = "total"
     opt_type: str = "adabound"
-    batch_size: int = 64
-    batch_size_eval: int = 64
-    n_iterations: int = 20e3
+    batch_size: int = 512
+    batch_size_eval: int = 512
+    n_iterations: int = 50e3
     n_log_steps: int = 1e3
     lr_schedule: int = 1
     lr: float = 1e-4

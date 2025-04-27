@@ -23,6 +23,7 @@ from modules.loss import (
 
 from modules.data_cascaded import prepare_dataloaders
 
+
 class Runner:
     def __init__(self):
         ###########################################################################################################
@@ -172,8 +173,8 @@ class Runner:
 
         # Cast net to the target device
         net.to(self.device)
+        net = torch.compile(net)
         self.add_arg("net", net)
-
         return net
 
     def build_criterion(self):
@@ -217,7 +218,6 @@ class Runner:
             mode="min",
             factor=self.args.decay_factor,
             patience=self.args.patience,
-            verbose=True,
             threshold=1e-4,
             min_lr=self.args.lr_end,
         )
@@ -285,13 +285,13 @@ class Runner:
 
     def load_and_split_data(self):
 
-        path = os.path.join(self.args.dataset_path, self.args.dataset_name, f"{self.args.dataset_name}.mat")
+        path = os.path.join(
+            self.args.dataset_path,
+            self.args.dataset_name,
+            f"{self.args.dataset_name}.mat",
+        )
         return load_and_split_data(
-        path,
-        self.args.filter_path,
-        PIM_type=self.args.PIM_type,
-    )
-
-
-
-
+            path,
+            self.args.filter_path,
+            PIM_type=self.args.PIM_type,
+        )

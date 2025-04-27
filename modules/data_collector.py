@@ -54,13 +54,17 @@ def load_resources(
     val_set = IQSegmentDataset(
         data["X"]["Val"], data["Y"]["Val"], n_back=n_back, n_fwd=n_fwd
     )
-    val_loader = DataLoader(val_set, batch_size=batch_size_eval, shuffle=False)
+    val_loader = DataLoader(
+        val_set, batch_size=batch_size_eval, shuffle=True, drop_last=True
+    )
 
     # Test set/loader
     test_set = IQSegmentDataset(
         data["X"]["Test"], data["Y"]["Test"], n_back=n_back, n_fwd=n_fwd
     )
-    test_loader = DataLoader(test_set, batch_size=batch_size_eval, shuffle=False)
+    test_loader = DataLoader(
+        test_set, batch_size=batch_size_eval, shuffle=True, drop_last=True
+    )
 
     logger.success(f"Dataloaders were created")
     return (
@@ -87,8 +91,8 @@ def load_and_split_data(
     fil = loadmat(filter_path)["flt_coeff"]
     data = loadmat(data_path)
 
-    print('Concidered PIM_type: ', PIM_type)
-    
+    print("Concidered PIM_type: ", PIM_type)
+
     if PIM_type == "cond":
         int_pim = data["PIM_COND"]
         rxa = to2Dreal(data["nfa"] + int_pim)
