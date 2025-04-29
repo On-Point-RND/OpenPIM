@@ -213,7 +213,6 @@ class Runner:
             mode="min",
             factor=self.args.decay_factor,
             patience=self.args.patience,
-            verbose=True,
             threshold=1e-4,
             min_lr=self.args.lr_end,
         )
