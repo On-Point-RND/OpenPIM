@@ -12,6 +12,50 @@ class FiltLinear(nn.Module):
         return self.filt_real(x_real), self.filt_imag(x_imag)
 
 
+class ComplexScaling(nn.Module):
+    def __init__(self, n_channels):
+        """
+        Initialize complex scaling layer.
+        Args:
+            n_channels (int): Number of channels to process independently
+        """
+        super().__init__()
+        self.n_channels = n_channels
+
+        # Create learnable weights for each channel
+        # Each channel has its own complex scaling factor (real and imag parts)
+        self.weights = nn.Parameter(torch.randn(n_channels, 2))
+
+    def forward(self, x):
+        """
+        Apply complex scaling to input tensor.
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch_size, seq_len, n_channels, 2)
+                            where last dimension contains (real, imag) components
+
+        Returns:
+            torch.Tensor: Scaled complex numbers with same shape as input
+        """
+        # Get real and imaginary parts
+        real = x[..., 0]  # shape: (batch_size, seq_len, n_channels)
+        imag = x[..., 1]  # shape: (batch_size, seq_len, n_channels)
+
+        # Apply complex multiplication for each channel
+        # For each channel c:
+        # new_real = w_real[c] * real - w_imag[c] * imag
+        # new_imag = w_real[c] * imag + w_imag[c] * real
+        new_real = self.weights[:, 0].unsqueeze(0).unsqueeze(0) * real - \
+                   self.weights[:, 1].unsqueeze(0).unsqueeze(0) * imag
+        new_imag = self.weights[:, 0].unsqueeze(0).unsqueeze(0) * imag + \
+                   self.weights[:, 1].unsqueeze(0).unsqueeze(0) * real
+
+        # Reshape and concatenate instead of stacking
+        b, s, c = new_real.shape
+        new_real = new_real.reshape(b, s, c, 1)
+        new_imag = new_imag.reshape(b, s, c, 1)
+        return torch.cat([new_real, new_imag], dim=-1)
+
+
 class TxaFilterEnsemble(nn.Module):
     def __init__(self, n_channels, input_size, out_window):
         super().__init__()

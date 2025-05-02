@@ -206,21 +206,10 @@ class CoreModel(nn.Module):
                 n_channels=n_channels,
             )
 
-        elif backbone_type == "ext_linear":
-            from backbones.linear_external import LinearExternal
+        elif backbone_type == "cond_linear":
+            from backbones.linear_conductive import LinearConductive
 
-            self.backbone = LinearExternal(
-                input_size=self.input_size,
-                output_size=self.output_size,
-                n_channels=n_channels,
-                batch_size=self.batch_size,
-                out_window=self.out_window,
-            )
-
-        elif backbone_type == "int_linear":
-            from backbones.linear_internal import LinearInternal
-
-            self.backbone = LinearInternal(
+            self.backbone = LinearConductive(
                 input_size=self.input_size,
                 output_size=self.output_size,
                 n_channels=n_channels,
@@ -239,10 +228,21 @@ class CoreModel(nn.Module):
                 out_window=self.out_window,
             )
 
-        elif backbone_type == "leak_int_linear":
-            from backbones.linear_leak_int import LinearLeakInt
+        elif backbone_type == "ext_linear":
+            from backbones.linear_external import LinearExternal
 
-            self.backbone = LinearLeakInt(
+            self.backbone = LinearExternal(
+                input_size=self.input_size,
+                output_size=self.output_size,
+                n_channels=n_channels,
+                batch_size=self.batch_size,
+                out_window=self.out_window,
+            )
+
+        elif backbone_type == "cond_leak_linear":
+            from backbones.linear_cond_leak import LinearCondLeak
+
+            self.backbone = LinearCondLeak(
                 input_size=self.input_size,
                 output_size=self.output_size,
                 n_channels=n_channels,

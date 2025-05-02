@@ -5,37 +5,37 @@ from backbones.common_modules import (
 )
 
 
-class LinearExternalNlinCore(nn.Module):
+class LinearCLCore(nn.Module):
     def __init__(self, seq_len, output_size, n_channels):
         super().__init__()
         self.seq_len = seq_len
         self.output_size = output_size
         self.n_channels = n_channels
-        self.pre_nlin_mix = nn.Linear(
+        self.post_nlin_mix = nn.Linear(
             output_size * n_channels,
             output_size * n_channels,
             bias=False
         )
-        self.coeff = nn.Linear(output_size, output_size, bias=False)
 
     def forward(self, x, h_0=None):
+        # Reshape to combine batch and sequence dimensions
         b, s, c, _ = x.shape
-        mixed_x = self.pre_nlin_mix(
-            x.reshape(b * s, c * 2)
-        )
-        mixed_x = mixed_x.reshape(b * s, c, 2)
+        
         # Calculate nonlinearity coefficient
-        amp = mixed_x[..., 0].pow(2) + mixed_x[..., 1].pow(2)
-        amp = amp.unsqueeze(-1)
-        # Apply nonlinearity to already mixed signals to distort them
-        nlin_distorted = amp * mixed_x
-        output = self.coeff(
-            nlin_distorted.reshape(b * s * c, 2)
-        )
+        amp = x[..., 0].pow(2) + x[..., 1].pow(2)
+        
+        # Apply nonlinearity to distort signals
+        nlin_distorted = amp.unsqueeze(-1) * x
+        
+        # Reshape to combine batch and sequence,
+        # channel and complex dimensions, and apply nonlinearity
+        nlin_distorted = nlin_distorted.reshape(b * s, c * 2)
+        
+        output = self.post_nlin_mix(nlin_distorted)
         return output.reshape(b, s, c, 2)
 
 
-class LinearExternal(nn.Module):
+class LinearCondLeak(nn.Module):
     def __init__(self, input_size, output_size,
                  n_channels, batch_size, out_window=10):
         super().__init__()
@@ -48,7 +48,7 @@ class LinearExternal(nn.Module):
             n_channels, input_size, out_window
         )
 
-        self.nlin_core = LinearExternalNlinCore(
+        self.nonlin_core = LinearCLCore(
             out_window, output_size, n_channels
         )
 
@@ -56,11 +56,11 @@ class LinearExternal(nn.Module):
             n_channels, out_window
         )
 
-        self.bn_output = nn.BatchNorm1d(n_channels)
+        self.bn_output = nn.BatchNorm1d(n_channels)  # For complex output
 
     def forward(self, x, h_0=None):
         filtered_x = self.txa_filter_layers(x)
-        nonlin_output = self.nlin_core(filtered_x)
+        nonlin_output = self.nonlin_core(filtered_x)
         output = self.rxa_filter_layers(nonlin_output)
         output = self.bn_output(output)
         return output
