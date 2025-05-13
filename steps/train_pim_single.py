@@ -29,6 +29,8 @@ def main(exp: Runner):
         backbone_type=exp.args.PIM_backbone,
         batch_size=exp.args.batch_size,
         out_filtration=exp.args.out_filtration,
+        filter_path=exp.args.filter_path,
+        filter_same=exp.args.filter_same,
     )
 
     logger = make_logger()

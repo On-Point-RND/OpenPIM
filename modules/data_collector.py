@@ -23,7 +23,6 @@ def load_resources(
     batch_size: int,
     batch_size_eval: int,
     path_dir_save: str,
-    specific_channels,
 ):
     # Load dataset
     path = os.path.join(dataset_path, dataset_name, f"{dataset_name}.mat")
@@ -87,8 +86,8 @@ def load_and_split_data(
     fil = loadmat(filter_path)["flt_coeff"]
     data = loadmat(data_path)
 
-    print('Concidered PIM_type: ', PIM_type)
-    
+    print("Concidered PIM_type: ", PIM_type)
+
     if PIM_type == "cond":
         int_pim = data["PIM_COND"]
         rxa = to2Dreal(data["nfa"] + int_pim)

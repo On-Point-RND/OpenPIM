@@ -82,6 +82,23 @@ class HybridLoss(nn.Module):
         return total_loss
 
 
+class FFTLoss(nn.Module):
+    def __init__(self, bin=1900):
+        super().__init__()
+        self.bin = bin
+
+    def forward(self, pred, target):
+        fft_pred = torch.fft.rfft(pred)
+        fft_true = torch.fft.rfft(target)
+
+        print(fft_pred.shape)
+        # Focus on target frequency bin
+        loss = torch.mean(
+            torch.abs(fft_pred[:, :, self.bin] - fft_true[:, :, self.bin]) ** 2
+        )
+        return loss
+
+
 class JointLoss(nn.Module):
     def __init__(
         self, alpha=0.3, fft_weight=0.5, odd_order_weight=0.2, compress_weight=0.4
