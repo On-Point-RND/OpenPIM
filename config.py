@@ -12,9 +12,10 @@ class Config:
         # "../../../Data/FOR_COOPERATION/" 
         # "../../../Data/data_cooperation/artificial_data_cooperation/"
         # "./data/"
+        # "./data/real_data/16TR/"
     )
     dataset_name: str = (
-        # "data_16TR_3"
+        # "data_16TR_0"
         # "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"  # "data_16TR_0"  #   #  #
         # "16TR_C22Nc8CD_OTX_CL_E20Ne1CD_20250421_1L"
     )
@@ -25,10 +26,11 @@ class Config:
         # "/home/dev/work_main/2025/OpenPIM/data/filter_real.mat"  # "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
         #  "../../../Data/FOR_COOPERATION/rx_filter.mat"
         # "./data/rx_filter.mat"
+        # "./data/real_data/filter_real.mat"
     )
 
     # PIM Model Settings
-    PIM_backbone: str = "leak_linpoly"
+    PIM_backbone: str = "cond_linear"
     PIM_hidden_size: int = 8
     PIM_num_layers: int = 1
     # PIM Type options: "total", "cond", "leak", "ext"
@@ -38,10 +40,11 @@ class Config:
 
     # Training Process
     # step options: "train_pim_single", "train_pim_cascaded"
-    step: str = "train_pim_cascaded"
+    step: str = "train_pim_single"
     n_back: int = 30
     n_fwd: int = 1
     out_window: int = 10
+    medium_sim_size: int = 5
     accelerator: str = "cpu"
     devices: int = 0
     re_level: str = "soft"

@@ -1,56 +1,49 @@
 import torch.nn as nn
 
 from backbones.common_modules import (
-    TxaFilterEnsemble, RxaFilterEnsemble,
-    ComplexScaling
+    TxaFilterEnsemble, RxaFilterEnsemble
 )
 
 
-class LinearCondNlinCore(nn.Module):
-    def __init__(self, seq_len, output_size, n_channels):
+class CondNlinCore(nn.Module):
+    def __init__(self, n_channels):
         super().__init__()
-        self.seq_len = seq_len
-        self.output_size = output_size
         self.n_channels = n_channels
-        self.complex_scaling = ComplexScaling(n_channels)
 
     def forward(self, x, h_0=None):        
         # Calculate nonlinearity coefficient
         amp = x[..., 0].pow(2) + x[..., 1].pow(2)
-        
+
         # Apply nonlinearity to distort signals
         nlin_distorted = amp.unsqueeze(-1) * x
-        
-        output = self.complex_scaling(nlin_distorted)
-        return output
+
+        return nlin_distorted
 
 
 class LinearConductive(nn.Module):
-    def __init__(self, input_size, output_size,
-                 n_channels, batch_size, out_window=10):
+    def __init__(self, in_seq_size, out_seq_size, n_channels):
         super().__init__()
-        self.input_size = input_size
-        self.output_size = output_size
+        self.in_seq_size = in_seq_size
+        self.out_seq_size = out_seq_size
         self.n_channels = n_channels
-        self.out_window = out_window
 
         self.txa_filter_layers = TxaFilterEnsemble(
-            n_channels, input_size, out_window
+            n_channels, in_seq_size, out_seq_size
         )
 
-        self.nonlin_body = LinearCondNlinCore(
-            out_window, output_size, n_channels
+        self.nlin_core = CondNlinCore(
+            n_channels
         )
 
         self.rxa_filter_layers = RxaFilterEnsemble(
-            n_channels, out_window
+            n_channels, out_seq_size
         )
 
         self.bn_output = nn.BatchNorm1d(n_channels)  # For complex output
 
     def forward(self, x, h_0=None):
         filtered_x = self.txa_filter_layers(x)
-        nonlin_output = self.nonlin_body(filtered_x)
+        nonlin_output = self.nlin_core(filtered_x)
         output = self.rxa_filter_layers(nonlin_output)
         output = self.bn_output(output)
         return output

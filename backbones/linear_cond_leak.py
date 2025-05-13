@@ -5,62 +5,58 @@ from backbones.common_modules import (
 )
 
 
-class LinearCLCore(nn.Module):
-    def __init__(self, seq_len, output_size, n_channels):
+class CondLeakCore(nn.Module):
+    def __init__(self, n_channels):
         super().__init__()
-        self.seq_len = seq_len
-        self.output_size = output_size
         self.n_channels = n_channels
         self.post_nlin_mix = nn.Linear(
-            output_size * n_channels,
-            output_size * n_channels,
+            2 * n_channels,
+            2 * n_channels,
             bias=False
         )
 
     def forward(self, x, h_0=None):
         # Reshape to combine batch and sequence dimensions
         b, s, c, _ = x.shape
-        
         # Calculate nonlinearity coefficient
         amp = x[..., 0].pow(2) + x[..., 1].pow(2)
-        
         # Apply nonlinearity to distort signals
         nlin_distorted = amp.unsqueeze(-1) * x
-        
+
         # Reshape to combine batch and sequence,
-        # channel and complex dimensions, and apply nonlinearity
+        # channel and complex dimensions
         nlin_distorted = nlin_distorted.reshape(b * s, c * 2)
-        
+
+        # Mix signals with different learned weights for each channel
         output = self.post_nlin_mix(nlin_distorted)
+        # Reshape back to (batch, sequence, channel, 2)
         return output.reshape(b, s, c, 2)
 
 
 class LinearCondLeak(nn.Module):
-    def __init__(self, input_size, output_size,
-                 n_channels, batch_size, out_window=10):
+    def __init__(self, in_seq_size, out_seq_size, n_channels):
         super().__init__()
-        self.input_size = input_size
-        self.output_size = output_size
+        self.in_seq_size = in_seq_size
+        self.out_seq_size = out_seq_size
         self.n_channels = n_channels
-        self.out_window = out_window
 
         self.txa_filter_layers = TxaFilterEnsemble(
-            n_channels, input_size, out_window
+            n_channels, in_seq_size, out_seq_size
         )
 
-        self.nonlin_core = LinearCLCore(
-            out_window, output_size, n_channels
+        self.nlin_core = CondLeakCore(
+            n_channels
         )
 
         self.rxa_filter_layers = RxaFilterEnsemble(
-            n_channels, out_window
+            n_channels, out_seq_size
         )
 
         self.bn_output = nn.BatchNorm1d(n_channels)  # For complex output
 
     def forward(self, x, h_0=None):
         filtered_x = self.txa_filter_layers(x)
-        nonlin_output = self.nonlin_core(filtered_x)
+        nonlin_output = self.nlin_core(filtered_x)
         output = self.rxa_filter_layers(nonlin_output)
         output = self.bn_output(output)
         return output

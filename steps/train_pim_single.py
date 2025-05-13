@@ -23,6 +23,7 @@ def main(exp: Runner):
         n_channels=n_channels,
         input_size=input_size,
         out_window=exp.args.out_window,
+        medium_sim_size=exp.args.medium_sim_size,
         hidden_size=exp.args.PIM_hidden_size,
         num_layers=exp.args.PIM_num_layers,
         backbone_type=exp.args.PIM_backbone,

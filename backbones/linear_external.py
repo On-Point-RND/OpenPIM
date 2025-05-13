@@ -5,55 +5,47 @@ from backbones.common_modules import (
 )
 
 
-class LinearExternalNlinCore(nn.Module):
-    def __init__(self, seq_len, output_size, n_channels):
+class ExternalNlinCore(nn.Module):
+    def __init__(self, n_channels):
         super().__init__()
-        self.seq_len = seq_len
-        self.output_size = output_size
         self.n_channels = n_channels
         self.pre_nlin_mix = nn.Linear(
-            output_size * n_channels,
-            output_size * n_channels,
+            2 * n_channels,
+            2 * n_channels,
             bias=False
         )
-        self.coeff = nn.Linear(output_size, output_size, bias=False)
 
     def forward(self, x, h_0=None):
         b, s, c, _ = x.shape
         mixed_x = self.pre_nlin_mix(
             x.reshape(b * s, c * 2)
         )
-        mixed_x = mixed_x.reshape(b * s, c, 2)
+        mixed_x = mixed_x.reshape(b, s, c, 2)
         # Calculate nonlinearity coefficient
         amp = mixed_x[..., 0].pow(2) + mixed_x[..., 1].pow(2)
         amp = amp.unsqueeze(-1)
         # Apply nonlinearity to already mixed signals to distort them
         nlin_distorted = amp * mixed_x
-        output = self.coeff(
-            nlin_distorted.reshape(b * s * c, 2)
-        )
-        return output.reshape(b, s, c, 2)
+        return nlin_distorted
 
 
 class LinearExternal(nn.Module):
-    def __init__(self, input_size, output_size,
-                 n_channels, batch_size, out_window=10):
+    def __init__(self, in_seq_size, out_seq_size, n_channels):
         super().__init__()
-        self.input_size = input_size
-        self.output_size = output_size
+        self.in_seq_size = in_seq_size
+        self.out_seq_size = out_seq_size
         self.n_channels = n_channels
-        self.out_window = out_window
 
         self.txa_filter_layers = TxaFilterEnsemble(
-            n_channels, input_size, out_window
+            n_channels, in_seq_size, out_seq_size
         )
 
-        self.nlin_core = LinearExternalNlinCore(
-            out_window, output_size, n_channels
+        self.nlin_core = ExternalNlinCore(
+            n_channels
         )
 
         self.rxa_filter_layers = RxaFilterEnsemble(
-            n_channels, out_window
+            n_channels, out_seq_size
         )
 
         self.bn_output = nn.BatchNorm1d(n_channels)

@@ -71,8 +71,6 @@ def plot_spectrum(
     save_dir,
     path_dir_save="",
     cut=False,
-    # initial=False,
-    # initial_ground_truth=[],
     phase_name="",
 ):
     # Create new figure with legend
@@ -143,18 +141,29 @@ def plot_spectrum(
 def plot_total_perf(powers, max_red_level, mean_red_level, path_save):
     fig = plt.figure(figsize = (10, 7))
 
+    n_channels = len(powers['gt'])
+    nfas = [1]*n_channels
+    gt_norm = [powers['gt'][idx] - powers['noise'][idx] + 1 for idx in range(n_channels)]
+    err_norm = [powers['err'][idx] - powers['noise'][idx] + 1 for idx in range(n_channels)]
+
     power_df = pd.DataFrame({
-    'RXA':powers['gt'],
-    'ERR':powers['err'],
-    'NFA':powers['noise']
+    'RXA':gt_norm,
+    'ERR':err_norm,
+    'NFA':nfas
     })
 
     power_df.plot.bar(color = ('red', 'blue', 'black'))
-    plt.title(f'PIM: ORIG: {round( np.mean(power_df['RXA']), 2)}, RES: {round( np.mean(power_df['ERR']), 2)}; Performance ABS: {round( max_red_level, 2)}, MEAN: {round( mean_red_level, 2)}')
+    plt.title(
+        f'PIM: '
+        f'ORIG: {round(np.mean(power_df["RXA"]) - 1, 2)}, '
+        f'RES: {round(np.mean(power_df["ERR"]) - 1, 2)}; '
+        f'Performance ABS: {round(max_red_level, 2)}, '
+        f'MEAN: {round(mean_red_level, 2)}'
+    )
     plt.xlabel('Channel number', fontsize = 16)
     plt.ylabel('Signal level [dB]', fontsize = 16)
     plt.legend(loc="upper left")
-    plt.savefig(f'{path_save}/' 'barplot_performance.png', bbox_inches='tight')
+    plt.savefig(f'{path_save}/' 'barplot_perfofmance.png', bbox_inches='tight')
     plt.close()
 
 
@@ -181,7 +190,6 @@ def calc_perf(PIM_level, RES_level):
     perf = 10 * np.log10(10 ** ((PIM_level) / 10) - 1) - 10 * np.log10(
         10 ** ((RES_level) / 10) - 1
     )
-    # perf = 10*np.log10(10**((PIM_level + 100)/10) - 1) - 10*np.log10(10**((RES_level + 100)/10) - 1)
     return perf
 
 
@@ -225,8 +233,6 @@ def main_metrics(prediction, ground_truth, FS, FC_TX, PIM_SFT, PIM_total_BW):
     main_metric = calculate_res(
         initial_signal, filt_signal, FS, FC_TX, PIM_SFT, PIM_total_BW
     )
-    # plot_spectrum(initial_signal, filt_signal, FS, FC_TX, PIM_SFT)
-
     return main_metric
 
 

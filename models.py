@@ -56,6 +56,7 @@ class CoreModel(nn.Module):
         n_channels,
         input_size,
         out_window,
+        medium_sim_size,
         hidden_size,
         num_layers,
         backbone_type,
@@ -66,6 +67,7 @@ class CoreModel(nn.Module):
         self.output_size = 2  # PIM outputs: I & Q
         self.input_size = input_size
         self.out_window = out_window
+        self.medium_sim_size = medium_sim_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.backbone_type = backbone_type
@@ -210,44 +212,36 @@ class CoreModel(nn.Module):
             from backbones.linear_conductive import LinearConductive
 
             self.backbone = LinearConductive(
-                input_size=self.input_size,
-                output_size=self.output_size,
+                in_seq_size=self.input_size,
+                out_seq_size=self.out_window,
                 n_channels=n_channels,
-                batch_size=self.batch_size,
-                out_window=self.out_window,
             )
 
         elif backbone_type == "leak_linear":
             from backbones.linear_leakage import LinearLeakage
 
             self.backbone = LinearLeakage(
-                input_size=self.input_size,
-                output_size=self.output_size,
+                in_seq_size=self.input_size,
+                out_seq_size=self.out_window,
                 n_channels=n_channels,
-                batch_size=self.batch_size,
-                out_window=self.out_window,
             )
 
         elif backbone_type == "ext_linear":
             from backbones.linear_external import LinearExternal
 
             self.backbone = LinearExternal(
-                input_size=self.input_size,
-                output_size=self.output_size,
+                in_seq_size=self.input_size,
+                out_seq_size=self.out_window,
                 n_channels=n_channels,
-                batch_size=self.batch_size,
-                out_window=self.out_window,
             )
 
         elif backbone_type == "cond_leak_linear":
             from backbones.linear_cond_leak import LinearCondLeak
 
             self.backbone = LinearCondLeak(
-                input_size=self.input_size,
-                output_size=self.output_size,
+                in_seq_size=self.input_size,
+                out_seq_size=self.out_window,
                 n_channels=n_channels,
-                batch_size=self.batch_size,
-                out_window=self.out_window,
             )
 
         elif backbone_type == "simple_dimple":
