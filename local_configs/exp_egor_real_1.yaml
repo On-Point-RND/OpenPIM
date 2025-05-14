@@ -1,0 +1,17 @@
+
+
+dataset_path: /home/dev/public-datasets/e.shvetsov/PIM/data_cooperation_21.04.25/real_data_cooperation/1TR
+      
+dataset_name: "data_A"
+# data_B
+
+filter_same: True
+out_filtration: True
+filter_path: "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
+        # "./data/real_data/filter_real.mat"
+  
+
+accelerator: "cuda"
+
+exp_name: "has_filter"
+

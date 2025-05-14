@@ -14,7 +14,7 @@ out_filtration: True
 filter_path: "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
         # "./data/real_data/filter_real.mat"
   
-
 accelerator: "cuda"
-
 exp_name: "has_filter"
+
+

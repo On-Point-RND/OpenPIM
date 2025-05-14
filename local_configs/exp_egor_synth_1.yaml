@@ -1,0 +1,17 @@
+
+
+dataset_path: "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/"
+        
+dataset_name: "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"
+
+# 16TR_C25Nc16CD_CL_E20Ne1CD_20250117_16L
+# 1TR_C20Nc1CD_E20Ne1CD_20250117_0.5m
+# 1TR_C20Nc1CD_E20Ne1CD_20250117_5m
+
+filter_same: True
+out_filtration: True
+filter_path: "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
+        # "./data/real_data/filter_real.mat"
+  
+accelerator: "cuda"
+exp_name: "has_filter"

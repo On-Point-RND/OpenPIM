@@ -53,7 +53,7 @@ class Config:
     opt_type: str = "adabound"
     batch_size: int = 64
     batch_size_eval: int = 512
-    n_iterations: int = 5e3
+    n_iterations: int = 10e3
     n_log_steps: int = 2.5e3
     lr_schedule: int = 1
     lr: float = 1e-4
