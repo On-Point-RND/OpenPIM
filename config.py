@@ -7,9 +7,7 @@ class Config:
     """Configuration class for PIM model training"""
 
     dataset_path: str = (
-        # "/home/dev/public-datasets/e.shvetsov/PIM/REAL/Real_data/16TR/"
-        "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/"  # "/home/dev/public-datasets/e.shvetsov/PIM/REAL/Real_data/16TR/"  #   #
-        # "../../../Data/FOR_COOPERATION/"
+        "../../../Data/FOR_COOPERATION/"
         # "../../../Data/data_cooperation/artificial_data_cooperation/"
         # "./data/"
         # "./data/real_data/16TR/"
@@ -22,11 +20,10 @@ class Config:
 
     log_out_dir: str = "./results"
     log_precision: int = 8
-    filter_same = True
-    out_filtration: bool = False
+    filter_same: bool = True
+    out_filtration: bool = True
     filter_path: str = (
-        "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
-        # "/home/dev/work_main/2025/OpenPIM/data/filter_real.mat"  # "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
+        # "/home/dev/work_main/2025/OpenPIM/data/filter_real.mat"
         #  "../../../Data/FOR_COOPERATION/rx_filter.mat"
         # "./data/rx_filter.mat"
         # "./data/real_data/filter_real.mat"
@@ -57,7 +54,7 @@ class Config:
     batch_size: int = 64
     batch_size_eval: int = 512
     n_iterations: int = 5e3
-    n_log_steps: int = 1e3
+    n_log_steps: int = 2.5e3
     lr_schedule: int = 1
     lr: float = 1e-4
     lr_end: float = 1e-6

@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from backbones.rvtdcnn import RVTDCNN
 from scipy.signal import firwin2
 from scipy.io import loadmat
 
@@ -84,126 +83,7 @@ class CoreModel(nn.Module):
         self.filter = EndFilter(n_channels, out_filtration, filter_path, filter_same)
         self.out_filtration = out_filtration
 
-        if backbone_type == "gmp":
-            from backbones.gmp import GMP
-
-            self.backbone = GMP()
-
-        elif backbone_type == "gru":
-            from backbones.gru import GRU
-
-            self.backbone = GRU(
-                input_size=self.input_size,
-                hidden_size=self.hidden_size,
-                output_size=self.output_size,
-                num_layers=self.num_layers,
-                batch_size=self.batch_size,
-                bidirectional=self.bidirectional,
-                batch_first=self.batch_first,
-                bias=self.bias,
-            )
-
-        elif backbone_type == "lstm_cnn":
-            from backbones.lstm_cnn import CNN_LSTM_FIR
-
-            self.backbone = CNN_LSTM_FIR(
-                input_size=self.input_size,
-                hidden_size=self.hidden_size,
-                output_size=self.output_size,
-                batch_size=self.batch_size,
-                batch_first=self.batch_first,
-                bias=self.bias,
-                n_channels=self.n_channels,
-            )
-
-        elif backbone_type == "dgru":
-            from backbones.dgru import DGRU
-
-            self.backbone = DGRU(
-                hidden_size=self.hidden_size,
-                output_size=self.output_size,
-                num_layers=self.num_layers,
-                batch_size=self.batch_size,
-                bidirectional=self.bidirectional,
-                batch_first=self.batch_first,
-                bias=self.bias,
-                input_len=input_size,
-                n_channels=n_channels,
-            )
-
-        elif backbone_type == "dgruf":
-            from backbones.dgru_filter import DGRU
-
-            self.backbone = DGRU(
-                hidden_size=self.hidden_size,
-                output_size=self.output_size,
-                num_layers=self.num_layers,
-                batch_size=self.batch_size,
-                bidirectional=self.bidirectional,
-                batch_first=self.batch_first,
-                bias=self.bias,
-                input_len=input_size,
-                n_channels=n_channels,
-            )
-
-        elif backbone_type == "qgru_amp1":
-            from backbones.qgru_amp1 import QGRU
-
-            self.backbone = QGRU(
-                hidden_size=self.hidden_size,
-                output_size=self.output_size,
-                num_layers=self.num_layers,
-                batch_size=self.batch_size,
-                bidirectional=self.bidirectional,
-                batch_first=self.batch_first,
-                bias=self.bias,
-            )
-
-        elif backbone_type == "lstm":
-            from backbones.lstm import LSTM
-
-            self.backbone = LSTM(
-                input_size=self.input_size,
-                hidden_size=self.hidden_size,
-                output_size=self.output_size,
-                num_layers=self.num_layers,
-                batch_size=self.batch_size,
-                bidirectional=self.bidirectional,
-                batch_first=self.batch_first,
-                bias=self.bias,
-            )
-
-        elif backbone_type == "vdlstm":
-            from backbones.vdlstm import VDLSTM
-
-            self.backbone = VDLSTM(
-                input_size=self.input_size,
-                hidden_size=self.hidden_size,
-                output_size=self.output_size,
-                num_layers=self.num_layers,
-                batch_size=self.batch_size,
-                bidirectional=self.bidirectional,
-                batch_first=self.batch_first,
-                bias=self.bias,
-            )
-
-        elif backbone_type == "rvtdcnn":
-            self.backbone = RVTDCNN(fc_hid_size=hidden_size)
-
-        elif backbone_type == "dgru_abs_only":
-            from backbones.dgru_abs import DGRU_abs
-
-            self.backbone = DGRU_abs(
-                hidden_size=self.hidden_size,
-                output_size=self.output_size,
-                num_layers=self.num_layers,
-                batch_size=self.batch_size,
-                bidirectional=self.bidirectional,
-                batch_first=self.batch_first,
-                bias=self.bias,
-            )
-
-        elif backbone_type == "linear":
+        if backbone_type == "linear":
             from backbones.linear import Linear
 
             self.backbone = Linear(
@@ -311,16 +191,6 @@ class CoreModel(nn.Module):
             from backbones.conv import ConvModel
 
             self.backbone = ConvModel(
-                input_size=self.input_size,
-                output_size=self.output_size,
-                batch_size=self.batch_size,
-                n_channels=n_channels,
-            )
-
-        elif backbone_type == "mix":
-            from backbones.mix import Mix
-
-            self.backbone = Mix(
                 input_size=self.input_size,
                 output_size=self.output_size,
                 batch_size=self.batch_size,
