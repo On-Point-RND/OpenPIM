@@ -34,7 +34,7 @@ class EndFilter(nn.Module):
                 in_channels=n_channels,
                 out_channels=n_channels,
                 kernel_size=255,
-                padding="valid",
+                padding="same",
                 groups=n_channels,
                 bias=False,
             )

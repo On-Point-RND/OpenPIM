@@ -23,7 +23,7 @@ class Config:
     log_out_dir: str = "./results"
     log_precision: int = 8
     filter_same = True
-    out_filtration: bool = True
+    out_filtration: bool = False
     filter_path: str = (
         "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
         # "/home/dev/work_main/2025/OpenPIM/data/filter_real.mat"  # "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
