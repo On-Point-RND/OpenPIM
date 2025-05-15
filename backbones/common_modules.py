@@ -82,7 +82,7 @@ class TxaFilterEnsemble(nn.Module):
         for _ in range(n_channels):
             layer = FiltLinear(in_seq_size - out_seq_size + 1)
             self.txa_filter_layers.append(layer)
-            
+
     def forward(self, x):
         n_batch, n_timesteps, _, _ = x.shape
         output = torch.empty(
@@ -97,6 +97,40 @@ class TxaFilterEnsemble(nn.Module):
                 )
                 output[:, id, c, 0] = f_real.squeeze(-1)
                 output[:, id, c, 1] = f_imag.squeeze(-1)
+        return output
+
+
+class TxaFilterEnsembleTorch(nn.Module):
+    def __init__(self, n_channels, in_seq_size, out_seq_size):
+        super().__init__()
+        self.n_channels = n_channels
+        self.out_seq_size = out_seq_size
+        self.conv_size = in_seq_size - out_seq_size + 1
+        self.txa_filter_layers = nn.ModuleList()
+        for _ in range(n_channels):
+            layer = nn.Conv1d(
+                in_channels=2,
+                out_channels=2,
+                kernel_size=self.conv_size,
+                padding="valid",
+                groups=1,
+                bias=False,
+            )
+            self.txa_filter_layers.append(layer)
+
+    def forward(self, x):
+        n_batch, n_seq, *_ = x.shape
+        out_seq_len = n_seq - self.conv_size + 1
+        output = torch.empty(
+            (n_batch, out_seq_len, self.n_channels, 2),
+            device=x.device
+        )
+        for c, conv_layer in enumerate(self.txa_filter_layers):
+            channel_data = x[:, :, c, :]
+            channel_data = channel_data.transpose(2, 1)
+            y = conv_layer(channel_data)
+            y = y.transpose(2, 1)
+            output[:, :, c, :] = y
         return output
 
 
@@ -123,6 +157,39 @@ class RxaFilterEnsemble(nn.Module):
             output[:, c, 0] = out_real.squeeze(-1)
             output[:, c, 1] = out_imag.squeeze(-1)
         return output
+
+
+class RxaFilterEnsembleTorch(nn.Module):
+    def __init__(self, n_channels, seq_size):
+        super().__init__()
+        self.n_channels = n_channels
+        self.conv_size = seq_size
+        self.rxa_filter_layers = nn.ModuleList()
+        for _ in range(n_channels):
+            layer = nn.Conv1d(
+                in_channels=2,
+                out_channels=2,
+                kernel_size=seq_size,
+                padding="valid",
+                groups=1,
+                bias=False,
+            )
+            self.rxa_filter_layers.append(layer)
+
+    def forward(self, x):
+        n_batch, n_seq, *_ = x.shape
+        out_seq_len = n_seq - self.conv_size + 1
+        output = torch.empty(
+            (n_batch, out_seq_len, self.n_channels, 2),
+            device=x.device
+        )
+        for c, conv_layer in enumerate(self.rxa_filter_layers):
+            channel_data = x[:, :, c, :]
+            channel_data = channel_data.transpose(2, 1)
+            y = conv_layer(channel_data)
+            y = y.transpose(2, 1)
+            output[:, :, c, :] = y
+        return output[:, 0, :, :]
 
 
 class MediumSimulation(nn.Module):

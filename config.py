@@ -7,21 +7,21 @@ class Config:
     """Configuration class for PIM model training"""
 
     dataset_path: str = (
-        "../../../Data/FOR_COOPERATION/"
+        # "../../../Data/FOR_COOPERATION/"
         # "../../../Data/data_cooperation/artificial_data_cooperation/"
         # "./data/"
         # "./data/real_data/16TR/"
     )
     dataset_name: str = (
         # "data_16TR_0"
-        "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"  # "data_16TR_0"  #   #  #
+        # "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"  # "data_16TR_0"  #   #  #
         # "16TR_C22Nc8CD_OTX_CL_E20Ne1CD_20250421_1L"
     )
 
     log_out_dir: str = "./results"
     log_precision: int = 8
-    filter_same: bool = True
-    out_filtration: bool = True
+    filter_same: bool = False
+    out_filtration: bool = False
     filter_path: str = (
         # "/home/dev/work_main/2025/OpenPIM/data/filter_real.mat"
         #  "../../../Data/FOR_COOPERATION/rx_filter.mat"
@@ -52,7 +52,7 @@ class Config:
     loss_type: str = "l2"
     opt_type: str = "adabound"
     batch_size: int = 64
-    batch_size_eval: int = 512
+    batch_size_eval: int = 64
     n_iterations: int = 5e3
     n_log_steps: int = 2.5e3
     lr_schedule: int = 1
