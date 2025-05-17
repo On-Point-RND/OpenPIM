@@ -4,15 +4,15 @@ dataset_path: "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/"
         # "/home/dev/public-datasets/e.shvetsov/PIM/REAL/Real_data/16TR/"
          # "/home/dev/public-datasets/e.shvetsov/PIM/REAL/Real_data/16TR/"  
 
-dataset_name: "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"
+dataset_name: "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_16L"
         # "data_16TR_0"
         # "data_16TR_0"  
         # "16TR_C22Nc8CD_OTX_CL_E20Ne1CD_20250421_1L"
 
 filter_same: True
 out_filtration: True
-filter_path: "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
-        # "./data/real_data/filter_real.mat"
+filter_path: "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"  #"./data/filter_real.mat" 
+         
   
 accelerator: "cuda"
 exp_name: "has_filter"

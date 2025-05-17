@@ -28,6 +28,9 @@ class EndFilter(nn.Module):
                 filter_coeff = firwin2(255, freq, gain, fs=Fs)
 
             wts = torch.from_numpy(filter_coeff).to(torch.complex64)
+
+            # по
+
             wts_expand = wts.unsqueeze(0).unsqueeze(0).expand(n_channels, 1, 255)
             self.end_filter = torch.nn.Conv1d(
                 in_channels=n_channels,
@@ -95,6 +98,15 @@ class CoreModel(nn.Module):
 
         elif backbone_type == "cond_linear":
             from backbones.linear_conductive import LinearConductive
+
+            self.backbone = LinearConductive(
+                in_seq_size=self.input_size,
+                out_seq_size=self.out_window,
+                n_channels=n_channels,
+            )
+
+        elif backbone_type == "cond_linear_cx":
+            from backbones.linear_conductive_cx import LinearConductive
 
             self.backbone = LinearConductive(
                 in_seq_size=self.input_size,

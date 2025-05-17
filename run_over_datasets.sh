@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Common arguments that stay the same across all runs
-COMMON_ARGS="--lr 0.0001 --batch_size 2048 --n_back 50 --PIM_backbone cond_leak_linear --config_path ./local_configs/exp_egor.yaml"
+COMMON_ARGS="--lr 0.0001 --batch_size 2048 --PIM_backbone cond_linear --config_path ./local_configs/exp_egor.yaml"
 
 # Function to run experiments for a specific dataset path and names
 run_experiments() {
@@ -47,7 +47,7 @@ SYNTH3_NAMES=(
 )
 run_experiments "$SYNTH3_PATH" "${SYNTH3_NAMES[@]}"
 
-# # REAL 1 Experiments
+# REAL 1 Experiments
 # REAL1_PATH="/home/dev/public-datasets/e.shvetsov/PIM/data_cooperation_21.04.25/real_data_cooperation/1TR"
 # REAL1_NAMES=("data_A" "data_B")
 # run_experiments "$REAL1_PATH" "${REAL1_NAMES[@]}"

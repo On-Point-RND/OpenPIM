@@ -1,9 +1,9 @@
 import torch.nn as nn
 
 from backbones.common_modules import (
-    TxaFilterEnsembleTorch,
-    RxaFilterEnsembleTorch,
-    MediumSimulation,
+    TxaFilterComplexTorch,
+    RxaFilterComplexTorch,
+    MediumSimulationComplex,
 )
 
 
@@ -31,17 +31,17 @@ class LinearConductive(nn.Module):
         self.out_txa_filter_seq_size = out_seq_size
         if self.simulate_medium:
             self.out_txa_filter_seq_size += self.medium_sim_size - 1
-        self.txa_filter_layers = TxaFilterEnsembleTorch(
+        self.txa_filter_layers = TxaFilterComplexTorch(
             n_channels, in_seq_size, self.out_txa_filter_seq_size
         )
 
         self.nlin_layer = CondNlinCore(n_channels)
 
-        self.medium_simulation_layer = MediumSimulation(
+        self.medium_simulation_layer = MediumSimulationComplex(
             n_channels, self.medium_sim_size
         )
 
-        self.rxa_filter_layers = RxaFilterEnsembleTorch(n_channels, out_seq_size)
+        self.rxa_filter_layers = RxaFilterComplexTorch(n_channels, out_seq_size)
 
         self.bn_output = nn.BatchNorm1d(n_channels)  # For complex output
 
@@ -54,5 +54,5 @@ class LinearConductive(nn.Module):
             else:
                 nonlin_output = nonlin_output[:, : self.out_seq_size, ...]
         filt_rxa = self.rxa_filter_layers(nonlin_output)
-        output = self.bn_output(filt_rxa)
-        return output
+        # output = self.bn_output(filt_rxa)
+        return filt_rxa.squeeze(2)
