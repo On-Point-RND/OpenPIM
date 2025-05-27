@@ -2,7 +2,7 @@
 
 dataset_path: "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/"
         
-dataset_name: "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"
+dataset_name: "1TR_C20Nc1CD_E20Ne1CD_20250117_5m"
 
 # 16TR_C25Nc16CD_CL_E20Ne1CD_20250117_16L
 # 1TR_C20Nc1CD_E20Ne1CD_20250117_0.5m
@@ -15,4 +15,4 @@ filter_path:  "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filte
         
   
 accelerator: "cuda"
-exp_name: "has_filter"
+exp_name: "5m_repeat_has_filter"

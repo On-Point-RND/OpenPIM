@@ -209,6 +209,41 @@ class CoreModel(nn.Module):
                 n_channels=n_channels,
             )
 
+        elif backbone_type == "cnn_gru":
+            from backbones.cnn_gru import CNN_GRU
+
+            self.backbone = CNN_GRU(
+                hidden_size=self.hidden_size,
+                output_size=self.output_size,
+                batch_size=self.batch_size,
+                batch_first=self.batch_first,
+                bias=self.bias,
+                input_size=self.input_size,
+                n_channels=n_channels,
+            )
+
+        elif backbone_type == "cnn_only":
+            from backbones.cnn_gru import CNN_ONLY
+
+            self.backbone = CNN_ONLY(
+                hidden_size=self.hidden_size,
+                output_size=self.output_size,
+                batch_size=self.batch_size,
+                batch_first=self.batch_first,
+                bias=self.bias,
+                input_size=self.input_size,
+                n_channels=n_channels,
+            )
+
+        elif backbone_type == "learn_nonlin":
+            from backbones.dnn_non_linear import LinearConductive
+
+            self.backbone = LinearConductive(
+                in_seq_size=self.input_size,
+                out_seq_size=self.out_window,
+                n_channels=n_channels,
+            )
+
         else:
             raise ValueError(
                 f"The backbone type '{self.backbone_type}' is not supported. Please add your own "

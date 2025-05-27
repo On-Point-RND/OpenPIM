@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 from backbones.common_modules import (
@@ -11,12 +12,14 @@ class CondNlinCore(nn.Module):
     def __init__(self, n_channels):
         super().__init__()
         self.n_channels = n_channels
+        # Learnable scale parameter initialized to 1 for each channel
+        self.scale = nn.Parameter(torch.ones(n_channels))  # Shape: (n_channels,)
 
     def forward(self, x, h_0=None):
         # Calculate nonlinearity coefficient
         amp = x[..., 0].pow(2) + x[..., 1].pow(2)
-        # Apply nonlinearity to distort signals
-        nlin_distorted = amp.unsqueeze(-1) * x
+        amp = (amp.squeeze(-1) * self.scale).unsqueeze(-1).unsqueeze(-1)
+        nlin_distorted = amp * x
         return nlin_distorted
 
 

@@ -20,8 +20,8 @@ class Config:
 
     log_out_dir: str = "./results"
     log_precision: int = 8
-    filter_same: bool = False
-    out_filtration: bool = False
+    filter_same: bool = True
+    out_filtration: bool = True
     filter_path: str = (
         # "/home/dev/work_main/2025/OpenPIM/data/filter_real.mat"
         #  "../../../Data/FOR_COOPERATION/rx_filter.mat"
