@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Common arguments that stay the same across all runs
-COMMON_ARGS="--lr 0.001 --batch_size 2048 --config_path ./local_configs/exp_egor.yaml"
+COMMON_ARGS="--lr 0.01 --batch_size 4048 --config_path ./local_configs/exp_egor.yaml"
 
 # List of PIM types to iterate over
-PIM_TYPES=("total" "cond" "leak" "ext")
+PIM_TYPES=("total" "cond" "ext","leak")    #("total" "cond" "leak" "ext")
 
 # Function to run experiments for a specific dataset path, names, and PIM type
 run_experiments() {
@@ -19,10 +19,10 @@ run_experiments() {
         
         # Build full experiment name
         local full_dataset_name="${name}"
-        local exp_name="no_filter_${pim_type}"
+        local exp_name="has_filter_2048_5L_rl_0.01_${pim_type}"
 
         python main.py $COMMON_ARGS \
-            --PIM_backbone "cond_linear" \
+            --PIM_backbone "learn_nonlin" \
             --dataset_path "$path" \
             --dataset_name "$full_dataset_name" \
             --exp_name $exp_name
@@ -33,26 +33,26 @@ run_experiments() {
 # SYNTH 1 Experiments
 SYNTH1_PATH="/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/"
 SYNTH1_NAMES=(
-    "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"
+    #"16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"
     "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_16L"
-    "1TR_C20Nc1CD_E20Ne1CD_20250117_0.5m"
-    "1TR_C20Nc1CD_E20Ne1CD_20250117_5m"
+    #"1TR_C20Nc1CD_E20Ne1CD_20250117_0.5m"
+    #"1TR_C20Nc1CD_E20Ne1CD_20250117_5m"
 )
 
 # SYNTH 2 Experiments
 SYNTH2_PATH="/home/dev/public-datasets/e.shvetsov/PIM/data_cooperation_21.04.25/artificial_data_cooperation/"
 SYNTH2_NAMES=(
     "16TR_C22Nc8CD_OTX_CL_E20Ne1CD_20250421_16L"
-    "16TR_C22Nc8CD_OTX_CL_E20Ne1CD_20250421_1L"
+    #"16TR_C22Nc8CD_OTX_CL_E20Ne1CD_20250421_1L"
 )
 
 # SYNTH 3 Experiments
 SYNTH3_PATH="/home/dev/public-datasets/e.shvetsov/PIM/synt_01/16TR/"
 SYNTH3_NAMES=(
     "16TR_C22Nc4CD_CL_E20Ne1CD_20250331_16L"
-    "16TR_C22Nc4CD_CL_E20Ne1CD_20250331_1L"
+    #"16TR_C22Nc4CD_CL_E20Ne1CD_20250331_1L"
     "16TR_C22Nc8CD_CL_E20Ne1CD_20250331_16L"
-    "16TR_C22Nc8CD_CL_E20Ne1CD_20250331_1L"
+    #"16TR_C22Nc8CD_CL_E20Ne1CD_20250331_1L"
 )
 
 # REAL 1 Experiments

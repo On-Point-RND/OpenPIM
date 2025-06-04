@@ -244,6 +244,24 @@ class CoreModel(nn.Module):
                 n_channels=n_channels,
             )
 
+        elif backbone_type == "nonlin_indy":
+            from backbones.dnn_non_linear_indy import LinearConductive
+
+            self.backbone = LinearConductive(
+                in_seq_size=self.input_size,
+                out_seq_size=self.out_window,
+                n_channels=n_channels,
+            )
+
+        elif backbone_type == "nonlin_indy_E":
+            from backbones.dnn_non_linear_indy_enhanced import LinearConductive
+
+            self.backbone = LinearConductive(
+                in_seq_size=self.input_size,
+                out_seq_size=self.out_window,
+                n_channels=n_channels,
+            )
+
         else:
             raise ValueError(
                 f"The backbone type '{self.backbone_type}' is not supported. Please add your own "

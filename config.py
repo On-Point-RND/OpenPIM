@@ -18,7 +18,7 @@ class Config:
         # "16TR_C22Nc8CD_OTX_CL_E20Ne1CD_20250421_1L"
     )
 
-    log_out_dir: str = "./results"
+    log_out_dir: str = "./results_v2"
     log_precision: int = 8
     filter_same: bool = True
     out_filtration: bool = True
@@ -53,7 +53,7 @@ class Config:
     opt_type: str = "adam"
     batch_size: int = 64
     batch_size_eval: int = 64
-    n_iterations: int = 40e3
+    n_iterations: int = 10e4
     n_log_steps: int = 1e3
     lr_schedule: int = 1
     lr: float = 1e-4

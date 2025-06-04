@@ -11,46 +11,37 @@ from backbones.common_modules import (
 )
 
 
-class MatrixNonlinLayer(nn.Module):
-    def __init__(self, n_channels, nonlinearity="relu"):
+class AmplitudeAwareNonlin(nn.Module):
+    def __init__(self, hidden_size=16, num_layers=2):
         super().__init__()
-        # Store number of channels explicitly
-        self.n_channels = n_channels
-
-        # Initialize matrices as identity matrices
-        self.linear = nn.Linear(2 * n_channels, 2 * n_channels, bias=True)
-
-        # Set non-linearity
-        self.nlin = {
-            "relu": nn.ReLU(),
-            "tanh": nn.Tanh(),
-            "elu": nn.ELU(),
-            "silu": nn.SiLU(),
-            "none": nn.Identity(),
-        }[nonlinearity]
+        layers = []
+        for i in range(num_layers):
+            in_dim = 1 if i == 0 else hidden_size
+            out_dim = 1 if i == num_layers - 1 else hidden_size
+            layers.append(nn.Linear(in_dim, out_dim))
+            if i < num_layers - 1:
+                layers.append(nn.SiLU())
+        self.net = nn.Sequential(*layers)
+        # Initialize to identity: g(|x|²) ≈ |x|²
+        with torch.no_grad():
+            self.net[-1].weight.zero_()  # Zero final weight
+            self.net[-1].bias.fill_(1.0)  # Set bias=1 → g(a)=1*a
 
     def forward(self, x):
-        batch, time = x.shape[0], x.shape[1]
-        x_flat = x.view(batch * time, -1)  # Shape: (B*T, C, 2)
-        transformed = self.linear(x_flat)
-        transformed = transformed.view(batch, time, self.n_channels, 2)
-        return self.nlin(transformed)
+        # x: [..., 2]
+        amp_sq = (x[..., 0] ** 2 + x[..., 1] ** 2).unsqueeze(-1)  # [..., 1]
+        scaling = self.net(amp_sq)  # [..., 1]
+        return x * scaling  # Distort: (x_real, x_imag) * g(|x|²)
 
 
 class LearnableNlinCore(nn.Module):
-    def __init__(self, n_channels, num_layers=5, nonlinearity="silu"):
+    def __init__(self, n_channels):
         super().__init__()
-        # Store actual number of channels
         self.n_channels = n_channels
+        self.nonlin = AmplitudeAwareNonlin()
 
-        layers = []
-        for _ in range(num_layers):
-            layers.append(MatrixNonlinLayer(n_channels, nonlinearity))
-        self.model = nn.Sequential(*layers)
-
-    def forward(self, x, h_0=None):
-        # Additional input validation
-        return self.model(x)
+    def forward(self, x):
+        return self.nonlin(x)
 
 
 class LinearConductive(nn.Module):
