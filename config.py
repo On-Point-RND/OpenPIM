@@ -34,7 +34,7 @@ class Config:
     PIM_hidden_size: int = 8
     PIM_num_layers: int = 1
     # PIM Type options: "total", "cond", "leak", "ext"
-    PIM_type: str = "cond"
+    PIM_type: str = "total"  # "cond"
 
     # Training Process
     # step options: "train_pim_single", "train_pim_cascaded"
@@ -44,7 +44,7 @@ class Config:
     out_window: int = 30
     medium_sim_size: int = 5
     accelerator: str = "cuda"
-    devices: int = 0
+    devices: int = 1
     re_level: str = "soft"
 
     # General Hyperparameters
@@ -53,8 +53,8 @@ class Config:
     opt_type: str = "adam"
     batch_size: int = 64
     batch_size_eval: int = 64
-    n_iterations: int = 10e4
-    n_log_steps: int = 1e3
+    n_iterations: int = 5e4
+    n_log_steps: int = 5e3
     lr_schedule: int = 1
     lr: float = 1e-4
     lr_end: float = 1e-6

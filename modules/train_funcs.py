@@ -188,13 +188,13 @@ def train_model(
             compute_power(compl[:, id], FS, FC_TX, PIM_SFT, PIM_BW)
             for id in range(compl.shape[1])
         ]
-    
+
     path_dir_save, path_dir_log_hist, path_dir_log_best = paths
     mean_red_level = np.mean([red_levels[id] for id in red_levels.keys()])
     max_red_level = np.max([red_levels[id] for id in red_levels.keys()])
 
-    plot_total_perf(powers, max_red_level, mean_red_level, path_save = path_dir_save )
-    
+    plot_total_perf(powers, max_red_level, mean_red_level, path_save=path_dir_save)
+
     return log_all
 
 

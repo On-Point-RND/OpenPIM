@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import torch.nn.utils as utils
-
+import torch.nn.init as init
 from backbones.common_modules import (
     TxaFilterEnsembleTorch,
     RxaFilterEnsembleTorch,
@@ -14,11 +14,13 @@ from backbones.common_modules import (
 class MatrixNonlinLayer(nn.Module):
     def __init__(self, n_channels, nonlinearity="relu"):
         super().__init__()
-        # Store number of channels explicitly
         self.n_channels = n_channels
 
-        # Initialize matrices as identity matrices
+        # Linear layer: input and output are both 2 * n_channels
         self.linear = nn.Linear(2 * n_channels, 2 * n_channels, bias=True)
+
+        # Initialize weights as identity matrix
+        self._initialize_as_identity()
 
         # Set non-linearity
         self.nlin = {
@@ -29,9 +31,19 @@ class MatrixNonlinLayer(nn.Module):
             "none": nn.Identity(),
         }[nonlinearity]
 
+    def _initialize_as_identity(self):
+        # Identity matrix initialization for weight
+        assert (
+            self.linear.weight.shape[0] == self.linear.weight.shape[1]
+        ), "Weight matrix must be square"
+        init.eye_(self.linear.weight)
+        # Optional: zero out the bias
+        if self.linear.bias is not None:
+            init.zeros_(self.linear.bias)
+
     def forward(self, x):
         batch, time = x.shape[0], x.shape[1]
-        x_flat = x.view(batch * time, -1)  # Shape: (B*T, C, 2)
+        x_flat = x.view(batch * time, -1)  # Shape: (B*T, C*2)
         transformed = self.linear(x_flat)
         transformed = transformed.view(batch, time, self.n_channels, 2)
         return self.nlin(transformed)

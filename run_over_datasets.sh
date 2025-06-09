@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Common arguments that stay the same across all runs
-COMMON_ARGS="--lr 0.01 --batch_size 4048 --config_path ./local_configs/exp_egor.yaml"
+COMMON_ARGS="--lr 0.01 --batch_size 2048 --devices 0 --config_path ./local_configs/exp_egor.yaml"
 
 # List of PIM types to iterate over
-PIM_TYPES=("total" "cond" "ext","leak")    #("total" "cond" "leak" "ext")
+PIM_TYPES=("total" "ext" "leak" "cond")    #("total" "cond" "leak" "ext")
 
 # Function to run experiments for a specific dataset path, names, and PIM type
 run_experiments() {
@@ -22,10 +22,11 @@ run_experiments() {
         local exp_name="has_filter_2048_5L_rl_0.01_${pim_type}"
 
         python main.py $COMMON_ARGS \
-            --PIM_backbone "learn_nonlin" \
+            --PIM_backbone "cnn_gru" \
             --dataset_path "$path" \
             --dataset_name "$full_dataset_name" \
-            --exp_name $exp_name
+            --exp_name $exp_name \
+            --PIM_type $pim_type
         echo "----------------------------------------"
     done
 }
@@ -56,12 +57,12 @@ SYNTH3_NAMES=(
 )
 
 # REAL 1 Experiments
-# REAL1_PATH="/home/dev/public-datasets/e.shvetsov/PIM/data_cooperation_21.04.25/real_data_cooperation/1TR"
-# REAL1_NAMES=("data_A" "data_B")
+REAL1_PATH="/home/dev/public-datasets/e.shvetsov/PIM/data_cooperation_21.04.25/real_data_cooperation/1TR"
+REAL1_NAMES=("data_A" "data_B")
 
 # REAL 2 Experiments
-# REAL2_PATH="/home/dev/public-datasets/e.shvetsov/PIM/REAL/Real_data/16TR"
-# REAL2_NAMES=("data_16TR_0" "data_16TR_1" "data_16TR_2" "data_16TR_3")
+REAL2_PATH="/home/dev/public-datasets/e.shvetsov/PIM/REAL/Real_data/16TR"
+REAL2_NAMES=("data_16TR_0" "data_16TR_1" "data_16TR_2" "data_16TR_3")
 
 # Outer loop over PIM types
 for PIM_TYPE in "${PIM_TYPES[@]}"; do
