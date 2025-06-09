@@ -114,6 +114,33 @@ class CoreModel(nn.Module):
                 n_channels=n_channels,
             )
 
+        elif backbone_type == "cond_moe_indy":
+            from backbones.moe_conductive_indy import MoEConductiveIndyE
+
+            self.backbone = MoEConductiveIndyE(
+                in_seq_size=self.input_size,
+                out_seq_size=self.out_window,
+                n_channels=n_channels,
+            )
+
+        elif backbone_type == "cond_moe_indy_hard":
+            from backbones.moe_conductive_indy_hard import MoEConductiveIndyHard
+
+            self.backbone = MoEConductiveIndyHard(
+                in_seq_size=self.input_size,
+                out_seq_size=self.out_window,
+                n_channels=n_channels,
+            )
+
+        elif backbone_type == "cond_moe_func":
+            from backbones.moe_conductive_func import MoEConductiveFunc
+
+            self.backbone = MoEConductiveFunc(
+                in_seq_size=self.input_size,
+                out_seq_size=self.out_window,
+                n_channels=n_channels,
+            )
+
         elif backbone_type == "leak_linear":
             from backbones.linear_leakage import LinearLeakage
 
