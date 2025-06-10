@@ -82,7 +82,14 @@ def train_model(
             )
 
         optimizer.zero_grad()
-        out = net(features)
+        # Get auxiliary loss if available
+        has_aux_loss = net.aux_loss_present()
+        if has_aux_loss:
+            out, aux_loss = net(features)
+        else:
+            out = net(features)
+            aux_loss = None
+
 
         if log_shape:
             log_shape = False
@@ -90,6 +97,9 @@ def train_model(
         conv_targets = net.filter(targets)
 
         loss = criterion(out, conv_targets)
+        if has_aux_loss:
+            loss = loss + aux_loss  # Add auxiliary loss if available
+            
         loss.backward()
 
         if grad_clip_val != 0:
@@ -106,7 +116,6 @@ def train_model(
             # Validation/Test evaluation
             for phase_name in phases:
                 if phases[phase_name] > 0:
-
                     _, pred, gt = net_eval(
                         logs[phase_name], net, loaders[phase_name], criterion, device
                     )
@@ -139,8 +148,8 @@ def train_model(
 
                 for FT in [False, True]:
                     plot_spectrums(
-                        toComplex(pred),  # .squeeze(-1),
-                        toComplex(gt),  # .squeeze(-1),
+                        toComplex(pred),
+                        toComplex(gt),
                         FS,
                         FC_TX,
                         PIM_SFT,
@@ -214,7 +223,12 @@ def net_eval(
         for features, targets in tqdm(dataloader):
             features = features.to(device)
             targets = targets.to(device)
-            outputs = net(features)
+            has_aux_loss = net.aux_loss_present()
+            if has_aux_loss:
+                outputs, aux_loss = net(features)
+            else:
+                outputs = net(features)
+                aux_loss = None
             # Calculate loss function
             conv_targets = net.filter(targets)
             loss = criterion(outputs, conv_targets)

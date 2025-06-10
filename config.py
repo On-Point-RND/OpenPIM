@@ -9,12 +9,13 @@ class Config:
     dataset_path: str = (
         # "../../../Data/FOR_COOPERATION/"
         # "../../../Data/data_cooperation/artificial_data_cooperation/"
-        # "./data/"
+        "./data/"
         # "./data/real_data/16TR/"
     )
     dataset_name: str = (
         # "data_16TR_0"
-        # "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"  # "data_16TR_0"
+        # "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"
+        "16TR_C22Nc4CD_CL_E20Ne1CD_20250331_1L"
         # "16TR_C22Nc8CD_OTX_CL_E20Ne1CD_20250421_1L"
     )
 
@@ -25,16 +26,18 @@ class Config:
     filter_path: str = (
         # "/home/dev/work_main/2025/OpenPIM/data/filter_real.mat"
         #  "../../../Data/FOR_COOPERATION/rx_filter.mat"
-        # "./data/rx_filter.mat"
+        "./data/rx_filter.mat"
         # "./data/real_data/filter_real.mat"
     )
 
     # PIM Model Settings
-    PIM_backbone: str = "cond_moe_indy"
+    PIM_backbone: str = "total_moe"
     PIM_hidden_size: int = 8
     PIM_num_layers: int = 1
     # PIM Type options: "total", "cond", "leak", "ext"
-    PIM_type: str = "total"  # "cond"
+    PIM_type: str = "total"
+    moe_aux_loss: bool = False
+    moe_aux_loss_weight: float = 1e-6
 
     # Training Process
     # step options: "train_pim_single", "train_pim_cascaded"
@@ -43,7 +46,7 @@ class Config:
     n_fwd: int = 10
     out_window: int = 30
     medium_sim_size: int = 5
-    accelerator: str = "cuda"
+    accelerator: str = "cpu"
     devices: int = 0
     re_level: str = "soft"
 
@@ -53,8 +56,8 @@ class Config:
     opt_type: str = "adam"
     batch_size: int = 64
     batch_size_eval: int = 64
-    n_iterations: int = 5e4
-    n_log_steps: int = 5e3
+    n_iterations: int = 10e3
+    n_log_steps: int = 1e3
     lr_schedule: int = 1
     lr: float = 1e-2
     lr_end: float = 1e-6
@@ -65,7 +68,7 @@ class Config:
     val_ratio: float = 0.2
     test_ratio: float = 0.2
     save_results: bool = True
-    exp_name: str = "cond_moe_indy"
+    exp_name: str = "total_moe"
 
     # Parameters for cascaded model
     ext_PIM_backbone: str = "ext_linear"

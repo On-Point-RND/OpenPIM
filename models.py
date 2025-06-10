@@ -69,6 +69,8 @@ class CoreModel(nn.Module):
         out_filtration,
         filter_path,
         filter_same,
+        moe_aux_loss,
+        moe_aux_loss_weight,
     ):
         super(CoreModel, self).__init__()
         self.output_size = 2  # PIM outputs: I & Q
@@ -85,6 +87,8 @@ class CoreModel(nn.Module):
         self.bias = True
         self.filter = EndFilter(n_channels, out_filtration, filter_path, filter_same)
         self.out_filtration = out_filtration
+        self.moe_aux_loss = moe_aux_loss
+        self.moe_aux_loss_weight = moe_aux_loss_weight
 
         if backbone_type == "linear":
             from backbones.linear import Linear
@@ -132,13 +136,15 @@ class CoreModel(nn.Module):
                 n_channels=n_channels,
             )
 
-        elif backbone_type == "cond_moe_func":
-            from backbones.moe_conductive_func import MoEConductiveFunc
+        elif backbone_type == "total_moe":
+            from backbones.moe_mmlp import MoETotal
 
-            self.backbone = MoEConductiveFunc(
+            self.backbone = MoETotal(
                 in_seq_size=self.input_size,
                 out_seq_size=self.out_window,
                 n_channels=n_channels,
+                return_aux=self.moe_aux_loss,
+                aux_loss_weight=self.moe_aux_loss_weight,
             )
 
         elif backbone_type == "leak_linear":
@@ -310,10 +316,19 @@ class CoreModel(nn.Module):
             h_0 = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(device)
 
         # Forward Propagate through the RNN
-        # print('x.shape: ', x.shape)
-        output = self.backbone(x, h_0)
+        if self.moe_aux_loss:
+            output, aux_loss = self.backbone(x, h_0)
+        else:
+            output = self.backbone(x, h_0)
+            aux_loss = None
+            
         filtered_output = self.filter(output)
+        if self.moe_aux_loss:
+            return filtered_output, aux_loss
         return filtered_output
+
+    def aux_loss_present(self):
+        return self.moe_aux_loss
 
 
 class CascadedModel(nn.Module):
