@@ -83,13 +83,11 @@ def train_model(
 
         optimizer.zero_grad()
         # Get auxiliary loss if available
-        has_aux_loss = net.aux_loss_present()
+        has_aux_loss = net.get_aux_loss_state()
         if has_aux_loss:
             out, aux_loss = net(features)
         else:
             out = net(features)
-            aux_loss = None
-
 
         if log_shape:
             log_shape = False
@@ -223,12 +221,11 @@ def net_eval(
         for features, targets in tqdm(dataloader):
             features = features.to(device)
             targets = targets.to(device)
-            has_aux_loss = net.aux_loss_present()
+            has_aux_loss = net.get_aux_loss_state()
             if has_aux_loss:
-                outputs, aux_loss = net(features)
+                outputs, _ = net(features)
             else:
                 outputs = net(features)
-                aux_loss = None
             # Calculate loss function
             conv_targets = net.filter(targets)
             loss = criterion(outputs, conv_targets)

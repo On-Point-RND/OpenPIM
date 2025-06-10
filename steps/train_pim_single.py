@@ -31,8 +31,7 @@ def main(exp: Runner):
         out_filtration=exp.args.out_filtration,
         filter_path=exp.args.filter_path,
         filter_same=exp.args.filter_same,
-        moe_aux_loss=exp.args.moe_aux_loss,
-        moe_aux_loss_weight=exp.args.moe_aux_loss_weight,
+        aux_loss_present=exp.args.use_aux_loss_if_present,
     )
 
     logger = make_logger()

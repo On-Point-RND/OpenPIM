@@ -38,7 +38,7 @@ class Gate(nn.Module):
         self.k = k
         self.aux_loss_weight = aux_loss_weight
 
-    def forward(self, x, return_aux=False):
+    def forward(self, x, return_aux_loss=False):
         n_batch, *_ = x.shape
         x_reshaped = x.reshape(n_batch, -1)
         gate_out = self.main_gate(x_reshaped)
@@ -49,7 +49,7 @@ class Gate(nn.Module):
         # else:
         gate_out = self.gate_activation(gate_top_k)
             
-        if return_aux:
+        if return_aux_loss:
             # Calculate sums for each expert across batch
             expert_sums = torch.sum(gate_out, dim=0)  # shape: [n_experts]
             
@@ -118,33 +118,66 @@ class LearnableNlinCore(nn.Module):
             layers.append(MatrixNonlinLayer(n_channels, nonlinearity))
         self.model = nn.Sequential(*layers)
 
-    def forward(self, x, h_0=None):
-        # Additional input validation
+    def forward(self, x):
         return self.model(x)
 
 
-class MoETotal(nn.Module):
-    def __init__(self, in_seq_size, out_seq_size, n_channels,
-                 return_aux=True, aux_loss_weight=1e-6):
+class MoeNonlinearity(nn.Module):
+    def __init__(self, seq_size, n_channels, return_aux_loss=True, aux_loss_weight=1e-6):
         super().__init__()
-        self.out_seq_size = out_seq_size
         self.n_channels = n_channels
-        self.return_aux = return_aux
-        experts_nlin = [
+        self.seq_size = seq_size
+        self.return_aux_loss = return_aux_loss
+        self.aux_loss_weight = aux_loss_weight
+
+        experts_list = [
             "relu", "tanh", "elu", "silu", "none",
             "gelu", "selu", "softplus"
         ]
+
+        n_experts = len(experts_list)
         self.experts = nn.ModuleList([
             LearnableNlinCore(n_channels, nonlinearity=expert)
-            for expert in experts_nlin
+            for expert in experts_list
         ])
         self.gate = Gate(
-            out_seq_size,
+            seq_size,
             n_channels,
-            len(experts_nlin),
+            n_experts,
             k=3,
             aux_loss_weight=aux_loss_weight,
         )
+
+    def forward(self, x, h_0=None):
+        if self.return_aux_loss:
+            gate_out, aux_loss = self.gate(
+                x, return_aux_loss=self.return_aux_loss
+            )
+        else:
+            gate_out = self.gate(x)
+        experts_outputs = torch.stack(
+            [expert(x) for expert in self.experts]
+        )
+        weighted_output = torch.einsum('be,eb...->b...', gate_out, experts_outputs)
+        if self.return_aux_loss:
+            return weighted_output, aux_loss
+        return weighted_output
+        
+
+class MixtureMultiMLP(nn.Module):
+    def __init__(self, in_seq_size, out_seq_size, n_channels,
+                 return_aux_loss=True, aux_loss_weight=1e-6):
+        super().__init__()
+        self.out_seq_size = out_seq_size
+        self.n_channels = n_channels
+        self.return_aux_loss = return_aux_loss
+        self.moe_layer = MoeNonlinearity(
+            out_seq_size,
+            n_channels,
+            return_aux_loss=return_aux_loss,
+            aux_loss_weight=aux_loss_weight,
+        )
+        
         self.txa_filter_layers = TxaFilterEnsembleTorch(
             n_channels, in_seq_size, out_seq_size
         )
@@ -154,22 +187,14 @@ class MoETotal(nn.Module):
         self.bn_output = nn.BatchNorm1d(n_channels)  # For complex output
 
     def forward(self, x, h_0=None):
-        n_batch, *_ = x.shape
         filtered_x = self.txa_filter_layers(x)
-        if self.return_aux:
-            gate_out, aux_loss = self.gate(
-                filtered_x.reshape(n_batch, -1), return_aux=True
-            )
+        if self.return_aux_loss:
+            distorted_x, aux_loss = self.moe_layer(filtered_x)
         else:
-            gate_out = self.gate(filtered_x.reshape(n_batch, -1))
-            
-        experts_outputs = torch.stack(
-            [expert(filtered_x) for expert in self.experts]
-        )
-        weighted_output = torch.einsum('be,eb...->b...', gate_out, experts_outputs)
-        filt_rxa = self.rxa_filter_layers(weighted_output)
+            distorted_x = self.moe_layer(filtered_x)
+        filt_rxa = self.rxa_filter_layers(distorted_x)
         output = self.bn_output(filt_rxa)
         
-        if self.return_aux:
+        if self.return_aux_loss:
             return output, aux_loss
         return output

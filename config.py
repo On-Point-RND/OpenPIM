@@ -31,13 +31,12 @@ class Config:
     )
 
     # PIM Model Settings
-    PIM_backbone: str = "total_moe"
+    PIM_backbone: str = "mmlp_moe"
     PIM_hidden_size: int = 8
     PIM_num_layers: int = 1
     # PIM Type options: "total", "cond", "leak", "ext"
     PIM_type: str = "total"
-    moe_aux_loss: bool = False
-    moe_aux_loss_weight: float = 1e-6
+    use_aux_loss_if_present: bool = True
 
     # Training Process
     # step options: "train_pim_single", "train_pim_cascaded"
