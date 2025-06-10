@@ -18,6 +18,7 @@ from modules.loggers import make_logger
 from modules.loss import IQComponentWiseLoss, HybridLoss, JointLoss, FFTLoss
 
 from modules.data_cascaded import prepare_dataloaders
+from torch.optim.lr_scheduler import LinearLR, SequentialLR
 
 
 class Runner:
@@ -209,14 +210,34 @@ class Runner:
             raise RuntimeError("Please use a valid optimizer.")
 
         # Learning Rate Scheduler
-        lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer=optimizer,
-            mode="min",
-            factor=self.args.decay_factor,
-            patience=self.args.patience,
-            threshold=1e-4,
-            min_lr=self.args.lr_end,
+        # lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+        #     optimizer=optimizer,
+        #     mode="min",
+        #     factor=self.args.decay_factor,
+        #     patience=self.args.patience,
+        #     threshold=1e-4,
+        #     min_lr=self.args.lr_end,
+        # )
+
+        # Warmup for first 5% of training
+        warmup_steps = int(0.05 * self.args.n_iterations)
+        warmup_scheduler = LinearLR(
+            optimizer, start_factor=0.1, end_factor=1.0, total_iters=warmup_steps
         )
+
+        cosine_scheduler = optim.lr_scheduler.CosineAnnealingLR(
+            optimizer,
+            T_max=self.args.n_log_steps,
+            eta_min=self.args.lr * 1e-3,
+            last_epoch=-1,
+        )
+
+        lr_scheduler = SequentialLR(
+            optimizer,
+            schedulers=[warmup_scheduler, cosine_scheduler],
+            milestones=[warmup_steps],
+        )
+
         return optimizer, lr_scheduler
 
     def train(

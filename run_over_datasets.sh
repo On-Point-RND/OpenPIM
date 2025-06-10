@@ -4,7 +4,7 @@
 COMMON_ARGS="--lr 0.01 --batch_size 2048 --devices 0 --config_path ./local_configs/exp_egor.yaml"
 
 # List of PIM types to iterate over
-PIM_TYPES=("total" "ext" "leak" "cond")    #("total" "cond" "leak" "ext")
+PIM_TYPES=("cond")    #("total" "cond" "leak" "ext")
 
 # Function to run experiments for a specific dataset path, names, and PIM type
 run_experiments() {
@@ -19,7 +19,7 @@ run_experiments() {
         
         # Build full experiment name
         local full_dataset_name="${name}"
-        local exp_name="has_filter_2048_5L_rl_0.01_${pim_type}"
+        local exp_name="cosine_has_filter_2048_5L_rl_0.01_${pim_type}"
 
         python main.py $COMMON_ARGS \
             --PIM_backbone "cnn_gru" \

@@ -171,7 +171,7 @@ def train_model(
 
             # Learning rate & model saving
             if lr_schedule:
-                lr_scheduler.step(logs["test"]["loss"])
+                lr_scheduler.step()
             if save_results:
                 writer.save_best_model(net, log_epoch, logs["test"], "loss")
 
