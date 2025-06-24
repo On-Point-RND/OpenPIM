@@ -1,8 +1,0 @@
-{
-    "model": "sep_nlin_mult_infl_fix_pwr",
-    "poly": "cheb",
-    "n_back": 28,
-    "n_fwd": 1,
-    "pim_type": "total",
-    "data_prefix": "real"
-}
