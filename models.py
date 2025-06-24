@@ -69,7 +69,8 @@ class CoreModel(nn.Module):
         out_filtration,
         filter_path,
         filter_same,
-        aux_loss_present
+        aux_loss_present,
+        add_expert="none",
     ):
         super(CoreModel, self).__init__()
         self.output_size = 2  # PIM outputs: I & Q
@@ -87,6 +88,7 @@ class CoreModel(nn.Module):
         self.filter = EndFilter(n_channels, out_filtration, filter_path, filter_same)
         self.out_filtration = out_filtration
         self.aux_loss_present = aux_loss_present
+        self.add_expert = add_expert
 
         if backbone_type == "linear":
             from backbones.linear import Linear
@@ -116,13 +118,15 @@ class CoreModel(nn.Module):
                 n_channels=n_channels,
             )
 
-        elif backbone_type == "cond_moe_indy":
-            from backbones.moe_conductive_indy import MoEConductiveIndyE
+        elif backbone_type == "moe_mmlp_pair":
+            from backbones.moe_mmlp_pair import PairedMoE
 
-            self.backbone = MoEConductiveIndyE(
+            self.backbone = PairedMoE(
                 in_seq_size=self.input_size,
                 out_seq_size=self.out_window,
                 n_channels=n_channels,
+                add_expert=self.add_expert,
+                return_aux_loss=self.aux_loss_present,
             )
 
         elif backbone_type == "mmlp_moe":

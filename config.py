@@ -31,7 +31,7 @@ class Config:
     )
 
     # PIM Model Settings
-    PIM_backbone: str = "mmlp_moe"
+    PIM_backbone: str = "moe_mmlp_pair"
     PIM_hidden_size: int = 8
     PIM_num_layers: int = 1
     # PIM Type options: "total", "cond", "leak", "ext"
@@ -67,12 +67,15 @@ class Config:
     val_ratio: float = 0.2
     test_ratio: float = 0.2
     save_results: bool = True
-    exp_name: str = "total_moe"
+    exp_name: str = "moe_mmlp_pair"
 
     # Parameters for cascaded model
     ext_PIM_backbone: str = "ext_linear"
     leak_PIM_backbone: str = "leak_linear"
     int_PIM_backbone: str = "int_linear"
+
+    # Parameters for Paired MoE
+    add_expert: str = "relu"
 
 
 def main(config: Config):

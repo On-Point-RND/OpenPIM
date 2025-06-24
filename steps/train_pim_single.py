@@ -32,6 +32,7 @@ def main(exp: Runner):
         filter_path=exp.args.filter_path,
         filter_same=exp.args.filter_same,
         aux_loss_present=exp.args.use_aux_loss_if_present,
+        add_expert=exp.args.add_expert,
     )
 
     logger = make_logger()
