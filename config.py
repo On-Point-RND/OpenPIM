@@ -17,7 +17,7 @@ class Config:
         "data_A"
         # "data_B"
         # "data_16TR_0"
-        # "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"  # "data_16TR_0"  #   #  #
+        # "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"
         # "16TR_C22Nc8CD_OTX_CL_E20Ne1CD_20250421_1L"
     )
 
