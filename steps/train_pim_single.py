@@ -66,5 +66,5 @@ def main(exp: Runner):
         n_channel_id=0,
         spec_dictionary=specs,
         writer=PandasWriter,
-        data_type = exp.args.data_type
+        data_type=exp.args.data_type,
     )

@@ -149,10 +149,9 @@ def train_model(
                         for id in range(compl.shape[1])
                     ]
 
-
                 plot_spectrums(
-                        toComplex(pred),  # .squeeze(-1),
-                        toComplex(gt),  # .squeeze(-1),
+                        toComplex(pred),
+                        toComplex(gt),
                         FS,
                         FC_TX,
                         PIM_SFT,
@@ -245,12 +244,9 @@ def net_eval(
             # Calculate loss function
             conv_targets = net.filter(targets)
             loss = criterion(outputs, conv_targets)
-            # out_batch_size = outputs.shape[0]
-            # loss = criterion(outputs, targets[:out_batch_size, ...])
 
             # Collect prediction and ground truth for metric calculation
             prediction.append(outputs.cpu())
-            # ground_truth.append(targets[:out_batch_size, ...].cpu())
             ground_truth.append(conv_targets.cpu())
 
             # Collect losses to calculate the average loss per epoch

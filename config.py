@@ -22,7 +22,6 @@ class Config:
     )
 
     data_type: str = (
-
         'real'
         # 'synth'
     )
@@ -33,7 +32,7 @@ class Config:
     out_filtration: bool = True
     filter_path: str = (
         # "/home/dev/work_main/2025/OpenPIM/data/filter_real.mat"
-         # "../../../Data/FOR_COOPERATION/rx_filter.mat"
+        # "../../../Data/FOR_COOPERATION/rx_filter.mat"
         # "./data/rx_filter.mat"
         # "./data/real_data/filter_real.mat"
         "../data/filter_real.mat"
@@ -44,7 +43,7 @@ class Config:
     PIM_hidden_size: int = 8
     PIM_num_layers: int = 1
     # PIM Type options: "total", "cond", "leak", "ext"
-    PIM_type: str = "total"  # "cond"
+    PIM_type: str = "total"
 
     # Training Process
     # step options: "train_pim_single", "train_pim_cascaded"
@@ -53,7 +52,6 @@ class Config:
     n_fwd: int = 10
     out_window: int = 30
     medium_sim_size: int = 5
-    # accelerator: str = "cuda"
     accelerator: str = "cpu"
     devices: int = 1
     re_level: str = "soft"

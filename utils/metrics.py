@@ -33,7 +33,7 @@ def plot_spectrums(
     iteration,
     reduction_level,
     save_dir,
-    data_type = 'synth',
+    data_type='synth',
     path_dir_save="",
     cut=False,
     phase_name="test",
@@ -147,6 +147,7 @@ def plot_spectrum(
         )
     plt.close()  # Prevent figure accumulation
 
+
 def plot_final_spectrums(
     prediction,
     ground_truth,
@@ -167,7 +168,7 @@ def plot_final_spectrums(
     dim_1 = int(np.sqrt(n_channels))
     dim_2 = n_channels // dim_1
 
-    if dim_1*dim_2 >1:
+    if dim_1 * dim_2 > 1:
         fig, axes = plt.subplots(dim_1, dim_2, figsize=(15, 15))
     else: 
         fig, axes = plt.subplots(dim_1, dim_2, figsize=(7, 7))
@@ -175,11 +176,11 @@ def plot_final_spectrums(
     for ch_dim_1 in range(dim_1):
         for ch_dim_2 in range(dim_2):
 
-            if dim_1*dim_2 >1:
+            if dim_1 * dim_2 > 1:
                 ax = axes[ch_dim_1][ch_dim_2]
             else: 
                 ax = axes
-            
+
             psd_NF, f = ax.psd(
                     ground_truth[:, ch_dim_1*dim_2 + ch_dim_2],
                     Fs=FS,
@@ -229,18 +230,16 @@ def plot_final_spectrums(
                     FC_TX  - FS / 10 - 5 / 2 - 8.5,
                     FC_TX  + FS / 10 + 5 / 2 + 9.5,
                 )
-            
             ax.legend(loc="upper left", fontsize = 13)
             ax.set_title(f'CH_{ch_dim_1*4+ch_dim_2}', fontsize = 18)
             ax.grid(True)
-            
     fig.tight_layout()
     fig.show()
-
     fig.savefig(f"{save_dir}/{phase_name}_total_performance_{iteration}_iterations" + path_dir_save + ".png",
                 # bbox_inches="tight",
             )
     plt.close()
+
 
 def plot_total_perf(powers, max_red_level, mean_red_level, path_save):
     fig = plt.figure(figsize = (10, 7))

@@ -279,7 +279,7 @@ class Runner:
             path_dir_log_best=self.path_dir_log_best,
             writer=writer,
             data_type=data_type,
-            data_name = self.args.dataset_name,
+            data_name=self.args.dataset_name,
             FS=spec_dictionary["FS"],
             FC_TX=spec_dictionary["FC_TX"],
             PIM_SFT=spec_dictionary["PIM_SFT"],
