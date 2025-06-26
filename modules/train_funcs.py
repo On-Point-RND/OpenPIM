@@ -84,7 +84,11 @@ def train_model(
             )
 
         optimizer.zero_grad()
-        out = net(features)
+        # Check the presence of auxiliary loss
+        if net.get_aux_loss_state():
+            out, aux_loss = net(features)
+        else:
+            out = net(features)
 
         if log_shape:
             log_shape = False
@@ -92,6 +96,8 @@ def train_model(
         conv_targets = net.filter(targets)
 
         loss = criterion(out, conv_targets)
+        if net.get_aux_loss_state():
+            loss += aux_loss
         loss.backward()
 
         if grad_clip_val != 0:
@@ -121,7 +127,6 @@ def train_model(
                         data_name,
                         CScaler,
                         FS,
-                        FC_TX,
                         PIM_SFT,
                         PIM_BW,
                         logs[phase_name],
@@ -239,7 +244,10 @@ def net_eval(
         for features, targets in tqdm(dataloader):
             features = features.to(device)
             targets = targets.to(device)
-            outputs = net(features)
+            if net.get_aux_loss_state():
+                outputs, _ = net(features)
+            else:
+                outputs = net(features)
             # Calculate loss function
             conv_targets = net.filter(targets)
             loss = criterion(outputs, conv_targets)
@@ -262,7 +270,7 @@ def net_eval(
 
 
 def calculate_metrics(
-    prediction, ground_truth, filter, data_type, data_name, СScaler, FS, FC_TX, PIM_SFT, PIM_BW, stat
+    prediction, ground_truth, filter, data_type, data_name, СScaler, FS, PIM_SFT, PIM_BW, stat
 ):
     if not "NMSE" in stat:
         stat["NMSE"] = dict()

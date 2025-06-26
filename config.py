@@ -44,6 +44,7 @@ class Config:
     PIM_num_layers: int = 1
     # PIM Type options: "total", "cond", "leak", "ext"
     PIM_type: str = "total"
+    use_aux_loss_if_present: bool = False
 
     # Training Process
     # step options: "train_pim_single", "train_pim_cascaded"

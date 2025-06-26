@@ -28,9 +28,6 @@ class EndFilter(nn.Module):
                 filter_coeff = firwin2(255, freq, gain, fs=Fs)
 
             wts = torch.from_numpy(filter_coeff).to(torch.complex64)
-
-            # по
-
             wts_expand = wts.unsqueeze(0).unsqueeze(0).expand(n_channels, 1, 255)
             self.end_filter = torch.nn.Conv1d(
                 in_channels=n_channels,
@@ -69,6 +66,7 @@ class CoreModel(nn.Module):
         out_filtration,
         filter_path,
         filter_same,
+        aux_loss_present,
     ):
         super(CoreModel, self).__init__()
         self.output_size = 2  # PIM outputs: I & Q
@@ -85,6 +83,7 @@ class CoreModel(nn.Module):
         self.bias = True
         self.filter = EndFilter(n_channels, out_filtration, filter_path, filter_same)
         self.out_filtration = out_filtration
+        self.aux_loss_present = aux_loss_present
 
         if backbone_type == "linear":
             from backbones.linear import Linear
@@ -235,28 +234,19 @@ class CoreModel(nn.Module):
                 n_channels=n_channels,
             )
 
-        elif backbone_type == "learn_nonlin":
-            from backbones.dnn_non_linear import LinearConductive
+        elif backbone_type == "m_mlp":
+            from backbones.multi_channel_mlp import MultiChannelMLP
 
-            self.backbone = LinearConductive(
+            self.backbone = MultiChannelMLP(
                 in_seq_size=self.input_size,
                 out_seq_size=self.out_window,
                 n_channels=n_channels,
             )
 
-        elif backbone_type == "nonlin_indy":
-            from backbones.dnn_non_linear_indy import LinearConductive
+        elif backbone_type == "s_mlp":
+            from backbones.single_channel_mlp import SingleChannelMLP
 
-            self.backbone = LinearConductive(
-                in_seq_size=self.input_size,
-                out_seq_size=self.out_window,
-                n_channels=n_channels,
-            )
-
-        elif backbone_type == "nonlin_indy_E":
-            from backbones.dnn_non_linear_indy_enhanced import LinearConductive
-
-            self.backbone = LinearConductive(
+            self.backbone = SingleChannelMLP(
                 in_seq_size=self.input_size,
                 out_seq_size=self.out_window,
                 n_channels=n_channels,
@@ -281,12 +271,18 @@ class CoreModel(nn.Module):
 
         if h_0 is None:  # Create initial hidden states if necessary
             h_0 = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(device)
-
-        # Forward Propagate through the RNN
-        # print('x.shape: ', x.shape)
-        output = self.backbone(x, h_0)
+        if self.aux_loss_present:
+            output, aux_loss = self.backbone(x, h_0)
+        else:
+            output = self.backbone(x, h_0)
         filtered_output = self.filter(output)
-        return filtered_output
+        if self.aux_loss_present:
+            return filtered_output, aux_loss
+        else:
+            return filtered_output
+
+    def get_aux_loss_state(self):
+        return self.aux_loss_present
 
 
 class CascadedModel(nn.Module):
