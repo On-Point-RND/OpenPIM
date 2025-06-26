@@ -15,6 +15,7 @@ def load_resources(
     dataset_name: str,
     filter_path: str,
     PIM_type: str,
+    data_type: str,
     train_ratio: float,
     val_ratio: float,
     test_ratio: float,
@@ -27,7 +28,7 @@ def load_resources(
     # Load dataset
     path = os.path.join(dataset_path, dataset_name, f"{dataset_name}.mat")
     data = load_and_split_data(
-        path, filter_path, train_ratio, val_ratio, test_ratio, PIM_type
+        path, filter_path, train_ratio, val_ratio, test_ratio, PIM_type, data_type
     )
     input_size = 1 + n_back + n_fwd
     n_channels = data["X"]["Train"].shape[1]
@@ -81,6 +82,7 @@ def load_and_split_data(
     val_ratio=0.2,
     test_ratio=0.2,
     PIM_type="total",
+    data_type = 'synth'
 ):
 
     fil = loadmat(filter_path)["flt_coeff"]
@@ -107,12 +109,21 @@ def load_and_split_data(
     txa = to2Dreal(data["txa"])
     nfa = to2Dreal(data["nfa"])
 
-    FC_TX = data["BANDS_DL"][0][0][0][0][0] / 10**6
-    FC_RX = data["BANDS_UL"][0][0][0][0][0] / 10**6
-    FS = data["Fs"][0][0] / 10**6
-    PIM_SFT = data["PIM_sft"][0][0] / 10**6
-    PIM_BW = data["BANDS_TX"][0][0][1][0][0] / 10**6
-    PIM_total_BW = data["BANDS_TX"][0][0][3][0][0] / 10**6
+    if data_type == 'synth':
+        FC_TX = data["BANDS_DL"][0][0][0][0][0] / 10**6
+        FC_RX = data["BANDS_UL"][0][0][0][0][0] / 10**6
+        FS = data["Fs"][0][0] / 10**6
+        PIM_SFT = data["PIM_sft"][0][0] / 10**6
+        PIM_BW = data["BANDS_TX"][0][0][1][0][0] / 10**6
+        PIM_total_BW = data["BANDS_TX"][0][0][3][0][0] / 10**6
+        
+    elif data_type == 'real':
+        FC_TX = 1842.5
+        FC_RX = 0
+        FS = 245.76
+        PIM_SFT = 15
+        PIM_BW = 30
+        PIM_total_BW = 30
 
     spec_dictionary = {
         "FC_TX": FC_TX,

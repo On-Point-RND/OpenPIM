@@ -33,6 +33,7 @@ def plot_spectrums(
     iteration,
     reduction_level,
     save_dir,
+    data_type = 'synth',
     path_dir_save="",
     cut=False,
     phase_name="test",
@@ -52,6 +53,7 @@ def plot_spectrums(
             reduction_level[f"CH_{c_number}"],
             c_number,
             save_dir,
+            data_type,
             path_dir_save,
             cut,
             phase_name,
@@ -68,6 +70,7 @@ def plot_spectrum(
     iteration,
     reduction_level,
     c_number,
+    data_type,
     save_dir,
     path_dir_save="",
     cut=False,
@@ -112,10 +115,17 @@ def plot_spectrum(
     ax.set_ylabel(r"PSD, $V^2$/Hz [dB]")
     ax.set_xlabel("Frequency, MHz")
     if cut:
-        ax.set_xlim(
-            FC_TX - FS / 10 + PIM_SFT - PIM_BW / 2,
-            FC_TX + FS / 10 + PIM_SFT + PIM_BW / 2,
-        )
+        if data_type == 'synth':
+            ax.set_xlim(
+                FC_TX - FS / 10 + PIM_SFT - PIM_BW / 2,
+                FC_TX + FS / 10 + PIM_SFT + PIM_BW / 2,
+            )
+        elif data_type == 'real':
+            ax.set_xlim( 
+                FC_TX  - FS / 10 - 5 / 2 - 8.5,
+                FC_TX  + FS / 10 + 5 / 2 + 9.5,
+            )
+
     ax.set_title(
         f"{phase_name} Power Spectral Density - Iteration: {iteration}, Reduction: {reduction_level:.3f} dB, CH_{c_number}"
     )
@@ -137,6 +147,100 @@ def plot_spectrum(
         )
     plt.close()  # Prevent figure accumulation
 
+def plot_final_spectrums(
+    prediction,
+    ground_truth,
+    noise,
+    FS,
+    FC_TX,
+    PIM_SFT,
+    PIM_BW,
+    iteration,
+    reduction_level,
+    data_type,
+    save_dir,
+    path_dir_save="",
+    phase_name="test",
+):
+
+    n_channels = prediction.shape[1]
+    dim_1 = int(np.sqrt(n_channels))
+    dim_2 = n_channels // dim_1
+
+    if dim_1*dim_2 >1:
+        fig, axes = plt.subplots(dim_1, dim_2, figsize=(15, 15))
+    else: 
+        fig, axes = plt.subplots(dim_1, dim_2, figsize=(7, 7))
+    
+    for ch_dim_1 in range(dim_1):
+        for ch_dim_2 in range(dim_2):
+
+            if dim_1*dim_2 >1:
+                ax = axes[ch_dim_1][ch_dim_2]
+            else: 
+                ax = axes
+            
+            psd_NF, f = ax.psd(
+                    ground_truth[:, ch_dim_1*dim_2 + ch_dim_2],
+                    Fs=FS,
+                    Fc=FC_TX,
+                    NFFT=2048,
+                    window=np.kaiser(2048, 10),
+                    noverlap=1,
+                    pad_to=2048,
+                    label="RX",
+                    color = 'blue'
+                )
+            psd_NF, f = ax.psd(
+                    ground_truth[:, ch_dim_1*dim_2 + ch_dim_2] - prediction[:, ch_dim_1*4 + ch_dim_2],
+                    Fs=FS,
+                    Fc=FC_TX,
+                    NFFT=2048,
+                    window=np.kaiser(2048, 10),
+                    noverlap=1,
+                    pad_to=2048,
+                    label="ERR",
+                    color = 'red'
+                )
+            psd_RX, f = ax.psd(
+                    noise[:, ch_dim_1*dim_2 + ch_dim_2],
+                    Fs=FS,
+                    Fc=FC_TX,
+                    NFFT=2048,
+                    window=np.kaiser(2048, 10),
+                    noverlap=1,
+                    pad_to=2048,
+                    label="NF",
+                    color = 'black'
+                )
+
+            # Add plot elements
+            ax.set_ylabel(r"PSD, $V^2$/Hz [dB]", fontsize = 16)
+            ax.set_xlabel("Frequency, MHz", fontsize = 16)
+            ax.set_ylim(0, 48)
+        
+            if data_type == 'synth':    
+                ax.set_xlim(
+                        FC_TX - FS / 10 + PIM_SFT - PIM_BW / 2,
+                        FC_TX + FS / 10 + PIM_SFT + PIM_BW / 2,
+                    )
+            elif data_type == 'real':
+                ax.set_xlim( 
+                    FC_TX  - FS / 10 - 5 / 2 - 8.5,
+                    FC_TX  + FS / 10 + 5 / 2 + 9.5,
+                )
+            
+            ax.legend(loc="upper left", fontsize = 13)
+            ax.set_title(f'CH_{ch_dim_1*4+ch_dim_2}', fontsize = 18)
+            ax.grid(True)
+            
+    fig.tight_layout()
+    fig.show()
+
+    fig.savefig(f"{save_dir}/{phase_name}_total_performance_{iteration}_iterations" + path_dir_save + ".png",
+                # bbox_inches="tight",
+            )
+    plt.close()
 
 def plot_total_perf(powers, max_red_level, mean_red_level, path_save):
     fig = plt.figure(figsize = (10, 7))
@@ -167,7 +271,7 @@ def plot_total_perf(powers, max_red_level, mean_red_level, path_save):
     plt.close()
 
 
-def compute_power(x, fs, fc_tx, pim_sft, pim_bw, return_db=True):
+def compute_power(x, data_type, fs, fc_tx, pim_sft, pim_bw, return_db=True, real_data_name = ''):
     """
     Power calculation using Welch's method without matplotlib
     """
@@ -176,10 +280,21 @@ def compute_power(x, fs, fc_tx, pim_sft, pim_bw, return_db=True):
     f, psd = welch(
         x, fs, window=np.kaiser(2048, 10), nperseg=n, noverlap=1, return_onesided=False
     )
+
     # Calculate frequency mask directly
-    freq_mask = np.where((f > pim_sft - pim_bw / 2) & (f < pim_sft + pim_bw / 2))
+    if data_type == 'synth':
+        freq_mask = np.where((f > pim_sft - pim_bw / 2) & (f < pim_sft + pim_bw / 2))
+        
+    elif data_type == 'real':
+        if real_data_name == 'data_A':
+            freq_mask = np.where((f >  - 5 / 2 - 27.5) & (f < 5 / 2 - 27.5))
+        elif real_data_name == 'set_B':
+            freq_mask = np.where((f >  - 5 / 2 + 32.5) & (f < 5 / 2 + 32.5))
+        else:
+            freq_mask = np.where((f >  - 5 / 2 + 15) & (f < 5 / 2 + 15))
 
     psd_window = psd[freq_mask[0]]
+
     power = np.mean(psd_window.real)
     if return_db:
         power = 10 * np.log10(power)
@@ -193,15 +308,15 @@ def calc_perf(PIM_level, RES_level):
     return perf
 
 
-def calculate_res(initial_signal, filt_signal, FS, FC_TX, PIM_SFT, PIM_total_BW):
-    initial_power = compute_power(initial_signal, FS, FC_TX, PIM_SFT, PIM_total_BW)
-    filt_power = compute_power(filt_signal, FS, FC_TX, PIM_SFT, PIM_total_BW)
+def calculate_res(initial_signal, filt_signal, data_type, FS, FC_TX, PIM_SFT, PIM_total_BW, real_data_name):
+    initial_power = compute_power(initial_signal, data_type, FS, FC_TX, PIM_SFT, PIM_total_BW, real_data_name = real_data_name)
+    filt_power = compute_power(filt_signal, data_type, FS, FC_TX, PIM_SFT, PIM_total_BW, real_data_name = real_data_name)
     metrics = calc_perf(initial_power, filt_power)
     return metrics
 
 
 def calculate_avg_metrics(
-    orig_signal: np.ndarray, filt_signal: np.ndarray, fs, pim_sft, pim_bw
+    orig_signal: np.ndarray, filt_signal: np.ndarray, data_type,  fs, pim_sft, pim_bw, real_data_name
 ):
     """
     Computes average metrics across n transceivers.
@@ -213,8 +328,8 @@ def calculate_avg_metrics(
     n_trans = orig_signal.shape[1]
     metrics = 0.0
     for i in range(n_trans):
-        init_power = compute_power(orig_signal[:, i], fs, pim_sft, pim_bw)
-        filt_power = compute_power(filt_signal[:, i], fs, pim_sft, pim_bw)
+        init_power = compute_power(orig_signal[:, i], data_type, fs, pim_sft, pim_bw, real_data_name = real_data_name)
+        filt_power = compute_power(filt_signal[:, i], data_type, fs, pim_sft, pim_bw, real_data_name = real_data_name)
         metrics += calc_perf(init_power, filt_power)
     return metrics / n_trans
 
@@ -231,12 +346,12 @@ def main_metrics(prediction, ground_truth, FS, FC_TX, PIM_SFT, PIM_total_BW):
     filt_signal = initial_signal - PIM_pred
 
     main_metric = calculate_res(
-        initial_signal, filt_signal, FS, FC_TX, PIM_SFT, PIM_total_BW
+        initial_signal, filt_signal, FS, FC_TX, PIM_SFT, PIM_total_BW, real_data_name = real_data_name
     )
     return main_metric
 
 
-def reduction_level(prediction, ground_truth, FS, FC_TX, PIM_SFT, PIM_BW, filter):
+def reduction_level(prediction, ground_truth, data_type, FS, FC_TX, PIM_SFT, PIM_BW, filter, real_data_name):
 
     initial_signal = (
         ground_truth[..., 0].reshape(1, -1)[0]
@@ -251,8 +366,7 @@ def reduction_level(prediction, ground_truth, FS, FC_TX, PIM_SFT, PIM_BW, filter
     convolved_initial_signal = convolve(initial_signal, filt_conv)
 
     residual = convolve(PIM_pred, filt_conv) - convolve(initial_signal, filt_conv)
-
     red_level = calculate_res(
-        convolved_initial_signal, residual, FS, FC_TX, PIM_SFT, PIM_BW
+        convolved_initial_signal, residual, data_type, FS, FC_TX, PIM_SFT, PIM_BW, real_data_name = real_data_name
     )
     return red_level

@@ -143,6 +143,7 @@ class Runner:
             self.args.dataset_name,
             self.args.filter_path,
             self.args.PIM_type,
+            self.args.data_type,
             self.args.train_ratio,
             self.args.val_ratio,
             self.args.test_ratio,
@@ -256,6 +257,7 @@ class Runner:
         n_channel_id,
         spec_dictionary,
         writer,
+        data_type,
     ):
 
         return train_model(
@@ -276,6 +278,8 @@ class Runner:
             path_dir_log_hist=self.path_dir_log_hist,
             path_dir_log_best=self.path_dir_log_best,
             writer=writer,
+            data_type=data_type,
+            data_name = self.args.dataset_name,
             FS=spec_dictionary["FS"],
             FC_TX=spec_dictionary["FC_TX"],
             PIM_SFT=spec_dictionary["PIM_SFT"],

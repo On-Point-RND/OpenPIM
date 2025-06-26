@@ -32,6 +32,8 @@ def train_model(
     path_dir_log_hist: str,
     path_dir_log_best: str,
     writer,
+    data_type: str,
+    data_name: str,
     FS: float,
     FC_TX: float,
     PIM_SFT: float,
@@ -115,6 +117,8 @@ def train_model(
                         pred,
                         gt,
                         filter,
+                        data_type,
+                        data_name,
                         CScaler,
                         FS,
                         FC_TX,
@@ -137,8 +141,16 @@ def train_model(
                 pred = CScaler.rescale(pred, key="Y")
                 gt = CScaler.rescale(gt, key="Y")
 
-                for FT in [False, True]:
-                    plot_spectrums(
+                p = dict()
+                for key, value in (("gt", gt), ("err", gt - pred), ("noise", noise["Test"])):
+                    compl = toComplex(value)
+                    p[key] = [
+                        compute_power(compl[:, id], data_type, FS, FC_TX, PIM_SFT, PIM_BW, real_data_name = data_name)
+                        for id in range(compl.shape[1])
+                    ]
+
+
+                plot_spectrums(
                         toComplex(pred),  # .squeeze(-1),
                         toComplex(gt),  # .squeeze(-1),
                         FS,
@@ -147,10 +159,25 @@ def train_model(
                         PIM_BW,
                         iteration,
                         logs["test"]["Reduction_level"],
+                        data_type,
                         path_dir_save,
-                        cut=FT,
+                        cut=False,
                         phase_name=phase_name,
-                    )
+                )
+                plot_final_spectrums(
+                    toComplex(pred),  
+                    toComplex(gt), 
+                    toComplex(noise["Test"]),
+                    FS,
+                    FC_TX,
+                    PIM_SFT,
+                    PIM_BW,
+                    iteration,
+                    logs["test"]["Reduction_level"],
+                    data_type,
+                    path_dir_save,
+                    phase_name=phase_name,
+                )
 
             # Logging
             elapsed_time = (time.time() - start_time) / 60
@@ -185,7 +212,7 @@ def train_model(
     for key, value in (("gt", gt), ("err", gt - pred), ("noise", noise["Test"])):
         compl = toComplex(value)
         powers[key] = [
-            compute_power(compl[:, id], FS, FC_TX, PIM_SFT, PIM_BW)
+            compute_power(compl[:, id], data_type, FS, FC_TX, PIM_SFT, PIM_BW, real_data_name = data_name)
             for id in range(compl.shape[1])
         ]
 
@@ -240,7 +267,7 @@ def net_eval(
 
 
 def calculate_metrics(
-    prediction, ground_truth, filter, СScaler, FS, FC_TX, PIM_SFT, PIM_BW, stat
+    prediction, ground_truth, filter, data_type, data_name, СScaler, FS, FC_TX, PIM_SFT, PIM_BW, stat
 ):
     if not "NMSE" in stat:
         stat["NMSE"] = dict()
@@ -259,10 +286,12 @@ def calculate_metrics(
         stat["Reduction_level"][f"CH_{c}"] = reduction_level(
             pred[:, c],
             gt[:, c],
+            data_type,
             FS=FS,
             FC_TX=FC_TX,
             PIM_SFT=PIM_SFT,
             PIM_BW=PIM_BW,
             filter=filter,
+            real_data_name=data_name,
         )
     return stat
