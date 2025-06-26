@@ -4,7 +4,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch import optim
-from utils import util
 from modules.loggers import PandasLogger
 
 
@@ -153,26 +152,6 @@ class Runner:
             self.args.batch_size_eval,
             path_dir_save=self.path_dir_log_best,
         )
-
-    def build_model(self):
-        # Load Pretrained Model if Running Retrain
-        if self.args.step == "retrain":
-            net = self.net_retrain.Model(self)  # Instantiate Retrain Model
-            if self.path_net_pretrain is None:
-                print("::: Loading pretrained model: ", self.default_path_net_pretrain)
-                # net = util.load_model(self, net, self.default_path_net_pretrain)
-                net.load_pretrain_model(self.default_path_net_pretrain)
-            else:
-                print("::: Loading pretrained model: ", self.path_net_pretrain)
-                net = util.load_model(self, net, self.path_net_pretrain)
-        else:
-            net = self.net_pretrain.Model(self)  # Instantiate Pretrain Model
-
-        # Cast net to the target device
-        net.to(self.device)
-        self.add_arg("net", net)
-
-        return net
 
     def build_criterion(self):
         dict_loss = {
