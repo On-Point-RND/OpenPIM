@@ -145,7 +145,7 @@ def train_model(
                 for key, value in (("gt", gt), ("err", gt - pred), ("noise", noise["Test"])):
                     compl = toComplex(value)
                     p[key] = [
-                        compute_power(compl[:, id], data_type, FS, FC_TX, PIM_SFT, PIM_BW, real_data_name = data_name)
+                        compute_power(compl[:, id], data_type, FS, PIM_SFT, PIM_BW, data_name)
                         for id in range(compl.shape[1])
                     ]
 
@@ -172,7 +172,6 @@ def train_model(
                     PIM_SFT,
                     PIM_BW,
                     iteration,
-                    logs["test"]["Reduction_level"],
                     data_type,
                     path_dir_save,
                     phase_name=phase_name,
@@ -211,7 +210,7 @@ def train_model(
     for key, value in (("gt", gt), ("err", gt - pred), ("noise", noise["Test"])):
         compl = toComplex(value)
         powers[key] = [
-            compute_power(compl[:, id], data_type, FS, FC_TX, PIM_SFT, PIM_BW, real_data_name = data_name)
+            compute_power(compl[:, id], data_type, FS, PIM_SFT, PIM_BW, data_name)
             for id in range(compl.shape[1])
         ]
 
@@ -219,7 +218,7 @@ def train_model(
     mean_red_level = np.mean([red_levels[id] for id in red_levels.keys()])
     max_red_level = np.max([red_levels[id] for id in red_levels.keys()])
 
-    plot_total_perf(powers, max_red_level, mean_red_level, path_save=path_dir_save)
+    plot_total_perf(powers, max_red_level, mean_red_level, path_dir_save)
 
     return log_all
 
@@ -283,10 +282,9 @@ def calculate_metrics(
             pred[:, c],
             gt[:, c],
             data_type,
-            FS=FS,
-            FC_TX=FC_TX,
-            PIM_SFT=PIM_SFT,
-            PIM_BW=PIM_BW,
+            fs=FS,
+            pim_sft=PIM_SFT,
+            pim_bw=PIM_BW,
             filter=filter,
             real_data_name=data_name,
         )

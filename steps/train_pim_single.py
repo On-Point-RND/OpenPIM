@@ -1,6 +1,6 @@
 import models as model
 from runner import Runner
-from utils.util import count_net_params
+from utils.metrics import count_net_params
 from modules.loggers import make_logger
 
 
