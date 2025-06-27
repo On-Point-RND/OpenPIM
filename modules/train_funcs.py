@@ -42,6 +42,7 @@ def train_model(
     n_iterations: int,
     grad_clip_val: float,
     lr_schedule: bool,
+    lr_schedule_type: str,
     save_results: bool = True,
     val_ratio: float = 0.2,
     test_ratio: float = 0.2,
@@ -201,7 +202,10 @@ def train_model(
 
             # Learning rate & model saving
             if lr_schedule:
-                lr_scheduler.step()
+                if lr_schedule_type == "cosine":
+                    lr_scheduler.step()
+                elif lr_schedule_type == "rop":
+                    lr_scheduler.step(logs["train"]["loss"])
             if save_results:
                 writer.save_best_model(net, log_epoch, logs["test"], "loss")
 

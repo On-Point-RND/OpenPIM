@@ -11,10 +11,10 @@ class Config:
         # "../../../Data/data_cooperation/artificial_data_cooperation/"
         # "./data/"
         # "../../../Data/Real_data/16TR/"
-        "../../../Data/data_cooperation/real_data_cooperation/1TR/"
+        # "../../../Data/data_cooperation/real_data_cooperation/1TR/"
     )
     dataset_name: str = (
-        "data_A"
+        # "data_A"
         # "data_B"
         # "data_16TR_0"
         # "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"
@@ -22,11 +22,11 @@ class Config:
     )
 
     data_type: str = (
-        'real'
+        # 'real'
         # 'synth'
     )
 
-    log_out_dir: str = "./results_v2"
+    # log_out_dir: str = "./results"
     log_precision: int = 8
     filter_same: bool = True
     out_filtration: bool = True
@@ -35,7 +35,7 @@ class Config:
         # "../../../Data/FOR_COOPERATION/rx_filter.mat"
         # "./data/rx_filter.mat"
         # "./data/real_data/filter_real.mat"
-        "../data/filter_real.mat"
+        # "../data/filter_real.mat"
     )
 
     # PIM Model Settings
@@ -66,6 +66,8 @@ class Config:
     n_iterations: int = 1e3
     n_log_steps: int = 5e2
     lr_schedule: int = 1
+    # lr_schedule_type options: "cosine", "rop" (reduce on plateau)
+    lr_schedule_type: str = "cosine"
     lr: float = 1e-2
     lr_end: float = 1e-6
     decay_factor: float = 0.001
