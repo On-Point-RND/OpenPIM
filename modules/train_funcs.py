@@ -22,11 +22,9 @@ def train_model(
     train_loader: DataLoader,
     val_loader: DataLoader,
     test_loader: DataLoader,
-    best_model_metric: str,
     noise: Dict[str, Any],
     filter,
     CScaler,
-    n_channel: int,
     device: torch.device,
     path_dir_save: str,
     path_dir_log_hist: str,
@@ -51,19 +49,10 @@ def train_model(
 
     step_logger = make_logger()
 
-    paths = (path_dir_save, path_dir_log_hist, path_dir_log_best)
-    path_dir_save = path_dir_save  # + "/CH_" + str(n_channel)
-    path_dir_log_hist = path_dir_log_hist  # + "/CH_" + str(n_channel)
-    path_dir_log_best = path_dir_log_best  # + "/CH_" + str(n_channel)
-
-    [
-        os.makedirs(p, exist_ok=True)
-        for p in [
-            path_dir_save,
-            path_dir_log_hist,
-            path_dir_log_best,
-        ]
-    ]
+    # Create directories if they don't exist
+    os.makedirs(path_dir_save, exist_ok=True)
+    os.makedirs(path_dir_log_hist, exist_ok=True)
+    os.makedirs(path_dir_log_best, exist_ok=True)
 
     start_time = time.time()
     net.train()
@@ -77,7 +66,6 @@ def train_model(
 
     log_shape = True
     for iteration, (features, targets) in enumerate(train_loader):
-        # if device == "cuda":
         features, targets = features.to(device), targets.to(device)
         if log_shape:
             step_logger.info(
@@ -223,10 +211,8 @@ def train_model(
             for id in range(compl.shape[1])
         ]
 
-    path_dir_save, path_dir_log_hist, path_dir_log_best = paths
     mean_red_level = np.mean([red_levels[id] for id in red_levels.keys()])
     max_red_level = np.max([red_levels[id] for id in red_levels.keys()])
-
     plot_total_perf(powers, max_red_level, mean_red_level, path_dir_save)
 
     return log_all

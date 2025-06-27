@@ -22,11 +22,9 @@ from torch.optim.lr_scheduler import LinearLR, SequentialLR
 
 class Runner:
     def __init__(self):
-        ###########################################################################################################
+        ######################################################################
         # Initialization
-        ###########################################################################################################
-        # Dictionary for Statistics Log
-
+        ######################################################################
         # Load Hyperparameters
         self.step_logger = make_logger()
         self.args = pyrallis.parse(config_class=Config)
@@ -37,8 +35,11 @@ class Runner:
         self.reproducible()
 
         dir_paths = gen_dir_paths(self.args)
-
-        self.path_dir_save, self.path_dir_log_hist, self.path_dir_log_best = dir_paths
+        (
+            self.path_dir_save,
+            self.path_dir_log_hist,
+            self.path_dir_log_best,
+        ) = dir_paths
         [os.makedirs(p, exist_ok=True) for p in dir_paths]
 
     def gen_model_id(self, n_net_params):
@@ -62,7 +63,10 @@ class Runner:
     def build_logger(self, model_id: str):
         # Get Save and Log Paths
         file_paths = gen_file_paths(
-            self.path_dir_save, self.path_dir_log_hist, self.path_dir_log_best, model_id
+            self.path_dir_save,
+            self.path_dir_log_hist,
+            self.path_dir_log_best,
+            model_id,
         )
         (
             self.args.path_save_file_best,
@@ -168,7 +172,7 @@ class Runner:
             self.criterion = criterion
             return criterion
         except AttributeError:
-            raise AttributeError("Please use a valid loss function. Check argument.py.")
+            raise AttributeError("Please use a valid loss function.")
 
     def build_optimizer(self, net: nn.Module):
         # Optimizer
@@ -236,11 +240,9 @@ class Runner:
         train_loader,
         val_loader,
         test_loader,
-        best_model_metric,
         noise,
         filter,
         CScaler,
-        n_channel_id,
         spec_dictionary,
         writer,
         data_type,
@@ -254,11 +256,9 @@ class Runner:
             train_loader=train_loader,
             val_loader=val_loader,
             test_loader=test_loader,
-            best_model_metric=best_model_metric,
             noise=noise,
             filter=filter,
             CScaler=CScaler,
-            n_channel=n_channel_id,
             device=self.device,
             path_dir_save=self.path_dir_save,
             path_dir_log_hist=self.path_dir_log_hist,

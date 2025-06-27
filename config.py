@@ -26,7 +26,7 @@ class Config:
         # 'synth'
     )
 
-    # log_out_dir: str = "./results"
+    log_out_dir: str = "./results"
     log_precision: int = 8
     filter_same: bool = True
     out_filtration: bool = True
