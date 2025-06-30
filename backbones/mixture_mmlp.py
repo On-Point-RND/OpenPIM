@@ -174,7 +174,9 @@ class MixtureMultiMLP(nn.Module):
             n_channels, in_seq_size, out_seq_size
         )
 
-        self.rxa_filter_layers = RxaFilterEnsembleTorch(n_channels, out_seq_size)
+        self.rxa_filter_layers = RxaFilterEnsembleTorch(
+            n_channels, out_seq_size
+        )
 
         self.bn_output = nn.BatchNorm1d(n_channels)
 
@@ -186,7 +188,6 @@ class MixtureMultiMLP(nn.Module):
             distorted_x = self.moe_layer(filtered_x)
         filt_rxa = self.rxa_filter_layers(distorted_x)
         output = self.bn_output(filt_rxa)
-        
         if self.return_aux_loss:
             return output, aux_loss
         return output
