@@ -252,6 +252,16 @@ class CoreModel(nn.Module):
                 n_channels=n_channels,
             )
 
+        elif backbone_type == "mixture_mmlp":
+            from backbones.mixture_mmlp import MixtureMultiMLP
+
+            self.backbone = MixtureMultiMLP(
+                in_seq_size=self.input_size,
+                out_seq_size=self.out_window,
+                n_channels=n_channels,
+                return_aux_loss=self.aux_loss_present,
+            )
+
         else:
             raise ValueError(
                 f"The backbone type '{self.backbone_type}' is not supported. Please add your own "
