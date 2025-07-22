@@ -44,6 +44,7 @@ def train_model(
     save_results: bool = True,
     val_ratio: float = 0.2,
     test_ratio: float = 0.2,
+    seed: int = 0,
 ) -> tuple:
     """Standalone training function detached from class"""
 
@@ -59,6 +60,7 @@ def train_model(
     losses = []
 
     red_levels = []
+    mean_red_levels_for_iter = []
 
     phases = {"val": val_ratio, "test": test_ratio}
     loaders = {"val": val_loader, "test": test_loader}
@@ -111,6 +113,7 @@ def train_model(
                     logs[phase_name] = calculate_metrics(
                         pred,
                         gt,
+                        noise[phase_name],
                         filter,
                         data_type,
                         data_name,
@@ -134,33 +137,24 @@ def train_model(
             if phase_name in ["test", "train"] and test_ratio > 0:
                 pred = CScaler.rescale(pred, key="Y")
                 gt = CScaler.rescale(gt, key="Y")
-
-                p = dict()
-                for key, value in (("gt", gt), ("err", gt - pred), ("noise", noise["Test"])):
-                    compl = toComplex(value)
-                    p[key] = [
-                        compute_power(compl[:, id], data_type, FS, PIM_SFT, PIM_BW, data_name)
-                        for id in range(compl.shape[1])
-                    ]
-
                 plot_spectrums(
-                        toComplex(pred),
-                        toComplex(gt),
-                        FS,
-                        FC_TX,
-                        PIM_SFT,
-                        PIM_BW,
-                        iteration,
-                        logs["test"]["Reduction_level"],
-                        data_type,
-                        path_dir_save,
-                        cut=False,
-                        phase_name=phase_name,
+                    toComplex(pred),
+                    toComplex(gt),
+                    FS,
+                    FC_TX,
+                    PIM_SFT,
+                    PIM_BW,
+                    iteration,
+                    logs["test"]["Reduction_level"],
+                    data_type,
+                    path_dir_save,
+                    cut=False,
+                    phase_name=phase_name,
                 )
                 plot_final_spectrums(
                     toComplex(pred),  
                     toComplex(gt), 
-                    toComplex(noise["Test"]),
+                    toComplex(noise["test"]),
                     FS,
                     FC_TX,
                     PIM_SFT,
@@ -187,6 +181,13 @@ def train_model(
             writer.write_log(log_all)
 
             red_levels = log_all["TEST_REDUCTION_LEVEL"]
+            red_level_for_iter = calculate_mean_red(red_levels)
+            mean_red_levels_for_iter.append(
+                [
+                    red_level_for_iter,
+                    iteration,
+                ]
+            )
 
             # Learning rate & model saving
             if lr_schedule:
@@ -204,16 +205,27 @@ def train_model(
     step_logger.info("Training Completed\n")
 
     powers = dict()
-    for key, value in (("gt", gt), ("err", gt - pred), ("noise", noise["Test"])):
+    for key, value in (("gt", gt), ("err", gt - pred), ("noise", noise["test"])):
         compl = toComplex(value)
         powers[key] = [
             compute_power(compl[:, id], data_type, FS, PIM_SFT, PIM_BW, data_name)
             for id in range(compl.shape[1])
         ]
 
-    mean_red_level = np.mean([red_levels[id] for id in red_levels.keys()])
-    max_red_level = np.max([red_levels[id] for id in red_levels.keys()])
-    plot_total_perf(powers, max_red_level, mean_red_level, path_dir_save)
+    mean_red_level = calculate_mean_red(red_levels)
+    max_red_level = max(red_levels.values())
+
+    pd.DataFrame(
+        mean_red_levels_for_iter,
+        columns=["Mean_red_levels", "Iteration"],
+    ).to_csv(path_dir_save + f"/quality_for_iter__seed_{seed}.csv")
+
+    plot_total_perf(
+        powers,
+        max_red_level,
+        mean_red_level,
+        path_dir_save,
+    )
 
     return log_all
 
@@ -257,33 +269,3 @@ def net_eval(
     log["loss"] = avg_loss
     # End of Evaluation Epoch
     return net, prediction, ground_truth
-
-
-def calculate_metrics(
-    prediction, ground_truth, filter, data_type, data_name, СScaler, FS, PIM_SFT, PIM_BW, stat
-):
-    if not "NMSE" in stat:
-        stat["NMSE"] = dict()
-
-    if not "Reduction_level" in stat:
-        stat["Reduction_level"] = dict()
-
-    n_channels = prediction.shape[1]
-
-    pred = СScaler.rescale(prediction, key="Y")
-    gt = СScaler.rescale(ground_truth, key="Y")
-
-    for c in range(n_channels):
-        stat["NMSE"][f"CH_{c}"] = NMSE(prediction, ground_truth)
-
-        stat["Reduction_level"][f"CH_{c}"] = reduction_level(
-            pred[:, c],
-            gt[:, c],
-            data_type,
-            fs=FS,
-            pim_sft=PIM_SFT,
-            pim_bw=PIM_BW,
-            filter=filter,
-            real_data_name=data_name,
-        )
-    return stat

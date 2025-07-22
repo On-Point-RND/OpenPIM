@@ -33,20 +33,20 @@ def load_resources(
         PIM_type, data_type
     )
     input_size = 1 + n_back + n_fwd
-    n_channels = data["X"]["Train"].shape[1]
+    n_channels = data["X"]["train"].shape[1]
 
     # Calculate normalization parameters
     СScaler = ComplexScaler(data, path_dir_save)
-
+    
     # Apply normalization and slice data
-    for data_part in ["Train", "Val", "Test"]:
+    for data_part in ["train", "val", "test"]:
         data["X"][data_part] = СScaler.normalize(data["X"][data_part], key="X")
         data["Y"][data_part] = СScaler.normalize(data["Y"][data_part], key="Y")
         data["N"][data_part] = data["N"][data_part][n_back:-n_fwd, :]
-
+    
     train_set = InfiniteIQSegmentDataset(
-        data["X"]["Train"],
-        data["Y"]["Train"],
+        data["X"]["train"],
+        data["Y"]["train"],
         n_back=n_back,
         n_fwd=n_fwd,
     )
@@ -56,7 +56,7 @@ def load_resources(
 
     # Validation set/loader
     val_set = IQSegmentDataset(
-        data["X"]["Val"], data["Y"]["Val"], n_back=n_back, n_fwd=n_fwd
+        data["X"]["val"], data["Y"]["val"], n_back=n_back, n_fwd=n_fwd
     )
     val_loader = DataLoader(
         val_set, batch_size=batch_size_eval, shuffle=False
@@ -64,7 +64,7 @@ def load_resources(
 
     # Test set/loader
     test_set = IQSegmentDataset(
-        data["X"]["Test"], data["Y"]["Test"], n_back=n_back, n_fwd=n_fwd
+        data["X"]["test"], data["Y"]["test"], n_back=n_back, n_fwd=n_fwd
     )
     test_loader = DataLoader(
         test_set, batch_size=batch_size_eval, shuffle=False
@@ -150,19 +150,19 @@ def load_and_split_data(
     logger.success(f"Data load and split is done")
     return {
         "X": {
-            "Train": txa[:train_end, :],
-            "Val": txa[train_end:val_end, :],
-            "Test": txa[val_end:, :],
+            "train": txa[:train_end, :],
+            "val": txa[train_end:val_end, :],
+            "test": txa[val_end:, :],
         },
         "Y": {
-            "Train": rxa[:train_end, :],
-            "Val": rxa[train_end:val_end, :],
-            "Test": rxa[val_end:, :],
+            "train": rxa[:train_end, :],
+            "val": rxa[train_end:val_end, :],
+            "test": rxa[val_end:, :],
         },
         "N": {
-            "Train": nfa[:train_end, :],
-            "Val": nfa[train_end:val_end, :],
-            "Test": nfa[val_end:, :],
+            "train": nfa[:train_end, :],
+            "val": nfa[train_end:val_end, :],
+            "test": nfa[val_end:, :],
         },
         "specs": spec_dictionary,
         "filter": fil,
@@ -195,12 +195,12 @@ if __name__ == "__main__":
     path = os.path.join(dataset_path, dataset_name, f"{dataset_name}.mat")
     data = load_and_split_data(path, filter_path, train_ratio, val_ratio, test_ratio)
     CScaler = ComplexScaler(data, dataset_path)
-    logger.info(f"X shape:  {data['X']['Train'].shape}")
+    logger.info(f"X shape:  {data['X']['train'].shape}")
     logger.info(f"X Scales shape: {CScaler.scales['means']['X'].shape}")
-    normalized = CScaler.normalize(data["X"]["Train"], key="X")
+    normalized = CScaler.normalize(data["X"]["train"], key="X")
     rescaled = CScaler.rescale(normalized, key="X")
-    assert data["X"]["Train"].shape == rescaled.shape
-    assert np.allclose(data["X"]["Train"], rescaled, atol=1e-6) is True
+    assert data["X"]["train"].shape == rescaled.shape
+    assert np.allclose(data["X"]["train"], rescaled, atol=1e-6) is True
 
     # INFO: validate datasets and backward splits
 

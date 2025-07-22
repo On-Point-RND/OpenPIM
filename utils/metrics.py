@@ -8,7 +8,7 @@ from scipy.signal import convolve, welch
 
 def count_net_params(net):
     n_param = 0
-    for name, param in net.named_parameters():
+    for _, param in net.named_parameters():
         sizes = 1
         for el in param.size():
             sizes = sizes * el
@@ -26,8 +26,14 @@ def NMSE(prediction, ground_truth):
     q_hat = prediction[..., 1]
     q_true = ground_truth[..., 1]
 
-    MSE = np.mean(np.square(i_true - i_hat) + np.square(q_true - q_hat), axis=-1)
-    energy = np.mean(np.square(i_true) + np.square(q_true), axis=-1)
+    MSE = np.mean(
+        np.square(i_true - i_hat) + np.square(q_true - q_hat),
+        axis=-1,
+    )
+    energy = np.mean(
+        np.square(i_true) + np.square(q_true),
+        axis=-1,
+    )
 
     NMSE = np.mean(10 * np.log10(MSE / energy))
     return NMSE
@@ -137,7 +143,9 @@ def plot_spectrum(
             )
 
     ax.set_title(
-        f"{phase_name} Power Spectral Density - Iteration: {iteration}, Reduction: {reduction_level:.3f} dB, CH_{c_number}"
+        f"{phase_name} Power Spectral Density - Iteration: {iteration}, "
+        f"Reduction: {reduction_level:.3f} dB, "
+        f"CH_{c_number}"
     )
     ax.legend(loc="upper left")
 
@@ -269,8 +277,38 @@ def plot_total_perf(powers, max_red_level, mean_red_level, path_save):
         f'PIM: '
         f'ORIG: {round(np.mean(power_df["RXA"]) - 1, 2)}, '
         f'RES: {round(np.mean(power_df["ERR"]) - 1, 2)}; '
-        f'Performance ABS: {round(max_red_level, 2)}, '
+        f'Perf. ABS: {round(max_red_level, 2)}, '
         f'MEAN: {round(mean_red_level, 2)}'
+    )
+    plt.xlabel('Channel number', fontsize = 16)
+    plt.ylabel('Signal level [dB]', fontsize = 16)
+    plt.legend(loc="upper left")
+    plt.savefig(
+        f'{path_save}/' 'barplot_performance.png', bbox_inches='tight'
+    )
+    plt.close()
+
+
+# TODO: WORK IN PROGRESS
+def plot_total_perf_new(powers, max_red_level, mean_red_level, path_save):
+    fig = plt.figure(figsize = (10, 7))
+    n_channels = len(powers['gt'])
+    gt_norm = [powers['gt'][idx] for idx in range(n_channels)]
+    err_norm = [powers['err'][idx] for idx in range(n_channels)]
+    noise_norm = [powers['noise'][idx] for idx in range(n_channels)]
+    power_df = pd.DataFrame({
+    'RXA':gt_norm,
+    'ERR':err_norm,
+    'NFA':noise_norm
+    })
+
+    power_df.plot.bar(color = ('blue', 'red', 'black'))
+    plt.title(
+        f'PIM: '
+        f'ORIG: {round(calculate_mean_red(power_df["RXA"]), 2)}, '
+        f'RES: {round(calculate_mean_red(power_df["ERR"]), 2)}; '
+        f'Perf. ABS: {round(max_red_level, 2)}, '
+        f'MEAN: {round(mean_red_level, 2)} '
     )
     plt.xlabel('Channel number', fontsize = 16)
     plt.ylabel('Signal level [dB]', fontsize = 16)
@@ -345,8 +383,9 @@ def calculate_res(
 def reduction_level(
         prediction, ground_truth, data_type,
         fs, pim_sft, pim_bw,
-        filter, real_data_name
+        filter, real_data_name, with_noise = True, noise = None
     ):
+    filt_conv = filter.astype(complex).flatten()
 
     orig_signal = (
         ground_truth[..., 0].reshape(1, -1)[0]
@@ -356,14 +395,74 @@ def reduction_level(
         prediction[..., 0].reshape(1, -1)[0]
         + 1j * prediction[..., 1].reshape(1, -1)[0]
     )
+    if with_noise:
+        noised_signal = (
+            noise[..., 0].reshape(1, -1)[0]
+            + 1j * noise[..., 1].reshape(1, -1)[0]
+        )
+        convolved_noise = convolve(noised_signal, filt_conv)
 
-    filt_conv = filter.astype(complex).flatten()
     convolved_orig_signal = convolve(orig_signal, filt_conv)
     convolved_pred_signal = convolve(pred_signal, filt_conv)
     residual = convolved_pred_signal - convolved_orig_signal
 
-    red_level = calculate_res(
-        convolved_orig_signal, residual, data_type,
-        fs, pim_sft, pim_bw, real_data_name
+    orig_power = compute_power(
+        convolved_orig_signal, data_type,
+        fs, pim_sft, pim_bw,
+        real_data_name
     )
+    residual_power = compute_power(
+        residual, data_type,
+        fs, pim_sft, pim_bw,
+        real_data_name
+    )
+    if with_noise:
+        noise_power = compute_power(
+        convolved_noise, data_type,
+        fs, pim_sft, pim_bw,
+        real_data_name
+    )
+        orig_power = orig_power - noise_power
+        residual_power = residual_power - noise_power
+
+    red_level = calc_perf(orig_power, residual_power)
     return red_level
+
+
+def calculate_mean_red(red_levels: dict[str, float]) -> float:
+    power_levels = []
+    for red_level in red_levels.values():
+        power_levels.append(10 ** (red_level / 10))
+    return 10 * np.log10(np.mean(power_levels))
+
+
+def calculate_metrics(
+    prediction, ground_truth, noise,
+    filter, data_type, data_name,
+    СScaler, fs, pim_sft, pim_bw, stat
+):
+    if not "NMSE" in stat:
+        stat["NMSE"] = dict()
+
+    if not "Reduction_level" in stat:
+        stat["Reduction_level"] = dict()
+
+    n_channels = prediction.shape[1]
+
+    pred = СScaler.rescale(prediction, key="Y")
+    gt = СScaler.rescale(ground_truth, key="Y")
+
+    for c in range(n_channels):
+        stat["NMSE"][f"CH_{c}"] = NMSE(prediction, ground_truth)
+        stat["Reduction_level"][f"CH_{c}"] = reduction_level(
+            pred[:, c],
+            gt[:, c],
+            data_type,
+            fs,
+            pim_sft,
+            pim_bw,
+            filter,
+            data_name,
+            noise = noise
+        )
+    return stat

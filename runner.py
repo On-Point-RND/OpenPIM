@@ -278,6 +278,7 @@ class Runner:
             save_results=self.args.save_results,
             val_ratio=self.args.val_ratio,
             test_ratio=self.args.test_ratio,
+            seed = self.args.seed,
         )
 
     def prepare_dataloaders(self, data):

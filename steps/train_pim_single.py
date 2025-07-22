@@ -60,7 +60,7 @@ def main(exp: Runner):
         train_loader=train_loader,
         val_loader=val_loader,
         test_loader=test_loader,
-        noise={"Train": noise["Train"], "Val": noise["Val"], "Test": noise["Test"]},
+        noise={"train": noise["train"], "val": noise["val"], "test": noise["test"]},
         filter=filter,
         CScaler=CScaler,
         spec_dictionary=specs,
