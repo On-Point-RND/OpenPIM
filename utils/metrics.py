@@ -275,8 +275,8 @@ def plot_total_perf(powers, max_red_level, mean_red_level, path_save):
     power_df.plot.bar(color = ('red', 'blue', 'black'))
     plt.title(
         f'PIM: '
-        f'ORIG: {round(np.mean(power_df["RXA"]) - 1, 2)}, '
-        f'RES: {round(np.mean(power_df["ERR"]) - 1, 2)}; '
+        f'ORIG: {round(calculate_mean_red(power_df["RXA"]) - 1, 2)}, '
+        f'RES: {round(calculate_mean_red(power_df["ERR"]) - 1, 2)}; '
         f'Perf. ABS: {round(max_red_level, 2)}, '
         f'MEAN: {round(mean_red_level, 2)}'
     )
