@@ -181,7 +181,7 @@ def train_model(
             writer.write_log(log_all)
 
             red_levels = log_all["TEST_REDUCTION_LEVEL"]
-            red_level_for_iter = calculate_mean_red(red_levels)
+            red_level_for_iter = calculate_mean_red(list(red_levels.values()))
             mean_red_levels_for_iter.append(
                 [
                     red_level_for_iter,
@@ -212,7 +212,7 @@ def train_model(
             for id in range(compl.shape[1])
         ]
 
-    mean_red_level = calculate_mean_red(red_levels)
+    mean_red_level = calculate_mean_red(list(red_levels.values()))
     max_red_level = max(red_levels.values())
 
     pd.DataFrame(

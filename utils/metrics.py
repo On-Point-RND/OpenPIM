@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
+from typing import Iterable
 import numpy as np
 from scipy.signal import convolve, welch
 
@@ -396,6 +396,7 @@ def reduction_level(
         + 1j * prediction[..., 1].reshape(1, -1)[0]
     )
     if with_noise:
+        assert noise is not None
         noised_signal = (
             noise[..., 0].reshape(1, -1)[0]
             + 1j * noise[..., 1].reshape(1, -1)[0]
@@ -429,9 +430,9 @@ def reduction_level(
     return red_level
 
 
-def calculate_mean_red(red_levels: dict[str, float]) -> float:
+def calculate_mean_red(red_levels: Iterable[float]) -> float:
     power_levels = []
-    for red_level in red_levels.values():
+    for red_level in red_levels:
         power_levels.append(10 ** (red_level / 10))
     return 10 * np.log10(np.mean(power_levels))
 
