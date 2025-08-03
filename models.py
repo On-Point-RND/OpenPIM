@@ -225,6 +225,15 @@ class CoreModel(nn.Module):
                 n_channels=n_channels,
             )
 
+        elif backbone_type == "m_mlp_abs":
+            from backbones.mmlp_abs import McMLPAbs
+
+            self.backbone = McMLPAbs(
+                in_seq_size=self.input_size,
+                out_seq_size=self.out_window,
+                n_channels=n_channels,
+            )
+
         elif backbone_type == "s_mlp":
             from backbones.single_channel_mlp import SingleChannelMLP
 
