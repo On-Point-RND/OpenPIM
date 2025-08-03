@@ -194,7 +194,7 @@ class Runner:
             raise RuntimeError("Please use a valid optimizer.")
 
         # Learning Rate Scheduler
-        if self.args.lr_schedule_type == "rop":
+        if self.args.lr_scheduler_type == "rop":
             lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(
                 optimizer=optimizer,
                 mode="min",
@@ -203,9 +203,10 @@ class Runner:
                 threshold=1e-4,
                 min_lr=self.args.lr_end,
             )
-        elif self.args.lr_schedule_type == "cosine":
+        elif self.args.lr_scheduler_type == "cosine":
+            total_lr_steps = int(self.args.n_iterations / self.args.n_lr_steps)
             # Warmup for first 5% of training
-            warmup_steps = int(0.05 * self.args.n_iterations)
+            warmup_steps = int(0.05 * total_lr_steps)
             warmup_scheduler = LinearLR(
                 optimizer,
                 start_factor=0.1,
@@ -215,7 +216,7 @@ class Runner:
 
             cosine_scheduler = optim.lr_scheduler.CosineAnnealingLR(
                 optimizer,
-                T_max=self.args.n_log_steps,
+                T_max=total_lr_steps - warmup_steps,
                 eta_min=self.args.lr * 1e-3,
                 last_epoch=-1,
             )
@@ -271,10 +272,11 @@ class Runner:
             PIM_SFT=spec_dictionary["PIM_SFT"],
             PIM_BW=spec_dictionary["PIM_BW"],
             n_log_steps=self.args.n_log_steps,
+            n_lr_steps=self.args.n_lr_steps,
             n_iterations=self.args.n_iterations,
             grad_clip_val=self.args.grad_clip_val,
-            lr_schedule=self.args.lr_schedule,
-            lr_schedule_type=self.args.lr_schedule_type,
+            schedule_lr=self.args.schedule_lr,
+            lr_scheduler_type=self.args.lr_scheduler_type,
             save_results=self.args.save_results,
             val_ratio=self.args.val_ratio,
             test_ratio=self.args.test_ratio,

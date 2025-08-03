@@ -9,9 +9,10 @@ class Config:
     dataset_path: str = (
         # "../../../Data/FOR_COOPERATION/"
         # "../../../Data/data_cooperation/artificial_data_cooperation/"
-        # "./data/"
         # "../../../Data/Real_data/16TR/"
         # "../../../Data/data_cooperation/real_data_cooperation/1TR/"
+        # "./data/"
+        # "./data/Real_data/16TR/"
     )
     dataset_name: str = (
         # "data_A"
@@ -28,14 +29,13 @@ class Config:
 
     log_out_dir: str = "./results"
     log_precision: int = 8
-    filter_same: bool = True
     out_filtration: bool = True
     filter_path: str = (
         # "/home/dev/work_main/2025/OpenPIM/data/filter_real.mat"
         # "../../../Data/FOR_COOPERATION/rx_filter.mat"
-        # "./data/rx_filter.mat"
         # "./data/real_data/filter_real.mat"
-        # "../data/filter_real.mat"
+        # "./data/rx_filter.mat"
+        # "./data/filter_real.mat"
     )
 
     # PIM Model Settings
@@ -52,9 +52,8 @@ class Config:
     n_back: int = 68
     n_fwd: int = 10
     out_window: int = 30
-    medium_sim_size: int = 5
-    accelerator: str = "cpu"
-    devices: int = 1
+    accelerator: str = "cuda"
+    devices: int = 0
     re_level: str = "soft"
 
     # General Hyperparameters
@@ -65,9 +64,11 @@ class Config:
     batch_size_eval: int = 2048
     n_iterations: int = 1e3
     n_log_steps: int = 5e2
-    lr_schedule: int = 1
-    # lr_schedule_type options: "cosine", "rop" (reduce on plateau)
-    lr_schedule_type: str = "cosine"
+    # n_lr_steps we can begin experiments from 1e3 if n_iterations is 2e5
+    n_lr_steps: int = 1e3
+    schedule_lr: bool = True
+    # lr_scheduler_type options: "cosine", "rop" (reduce on plateau)
+    lr_scheduler_type: str = "cosine"
     lr: float = 1e-2
     lr_end: float = 1e-6
     decay_factor: float = 0.001

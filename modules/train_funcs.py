@@ -37,10 +37,11 @@ def train_model(
     PIM_SFT: float,
     PIM_BW: float,
     n_log_steps: int,
+    n_lr_steps: int,
     n_iterations: int,
     grad_clip_val: float,
-    lr_schedule: bool,
-    lr_schedule_type: str,
+    schedule_lr: bool,
+    lr_scheduler_type: str,
     save_results: bool = True,
     val_ratio: float = 0.2,
     test_ratio: float = 0.2,
@@ -96,6 +97,13 @@ def train_model(
         optimizer.step()
 
         losses.append(loss.detach().item())
+
+        # Learning rate adjustment
+        if iteration % n_lr_steps == 0 and iteration > 0 and schedule_lr:
+            if lr_scheduler_type == "cosine":
+                lr_scheduler.step()
+            elif lr_scheduler_type == "rop":
+                lr_scheduler.step(logs["train"]["loss"])
 
         log_epoch = 0
         if iteration % n_log_steps == 0 and iteration > 0:
@@ -189,12 +197,7 @@ def train_model(
                 ]
             )
 
-            # Learning rate & model saving
-            if lr_schedule:
-                if lr_schedule_type == "cosine":
-                    lr_scheduler.step()
-                elif lr_schedule_type == "rop":
-                    lr_scheduler.step(logs["train"]["loss"])
+            # Model saving
             if save_results:
                 writer.save_best_model(net, log_epoch, logs["test"], "loss")
 

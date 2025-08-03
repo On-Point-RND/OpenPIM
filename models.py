@@ -5,27 +5,12 @@ from scipy.io import loadmat
 
 
 class EndFilter(nn.Module):
-    def __init__(self, n_channels, out_filtration, filter_path, filter_same):
+    def __init__(self, n_channels, out_filtration, filter_path):
         super(EndFilter, self).__init__()
 
         if out_filtration:
-            if filter_same:
-                filter_coeff = loadmat(filter_path)["flt_coeff"][0]
-                filter_coeff = filter_coeff[::-1].copy()
-            else:
-
-                Fs = 245.76e6  # Sampling frequency
-                freq = [
-                    0,  # Start of passband
-                    35.08e6,  # Start of first stopband (aliased 1950 MHz)
-                    35.08e6,  # End of first stopband start
-                    99.68e6,  # Start of passband
-                    99.68e6,  # End of passband start
-                    Fs / 2,  # Nyquist frequency
-                ]
-                gain = [1, 1, 0, 0, 0, 0]  # 1=pass, 0=stop
-                # Design filter with 255 taps
-                filter_coeff = firwin2(255, freq, gain, fs=Fs)
+            filter_coeff = loadmat(filter_path)["flt_coeff"][0]
+            filter_coeff = filter_coeff[::-1].copy()
 
             wts = torch.from_numpy(filter_coeff).to(torch.complex64)
             wts_expand = wts.unsqueeze(0).unsqueeze(0).expand(n_channels, 1, 255)
@@ -58,21 +43,18 @@ class CoreModel(nn.Module):
         n_channels,
         input_size,
         out_window,
-        medium_sim_size,
         hidden_size,
         num_layers,
         backbone_type,
         batch_size,
         out_filtration,
         filter_path,
-        filter_same,
         aux_loss_present,
     ):
         super(CoreModel, self).__init__()
         self.output_size = 2  # PIM outputs: I & Q
         self.input_size = input_size
         self.out_window = out_window
-        self.medium_sim_size = medium_sim_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.backbone_type = backbone_type
@@ -81,7 +63,7 @@ class CoreModel(nn.Module):
         self.batch_first = True  # Force batch first
         self.bidirectional = False
         self.bias = True
-        self.filter = EndFilter(n_channels, out_filtration, filter_path, filter_same)
+        self.filter = EndFilter(n_channels, out_filtration, filter_path)
         self.out_filtration = out_filtration
         self.aux_loss_present = aux_loss_present
 
