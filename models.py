@@ -113,6 +113,14 @@ class CoreModel(nn.Module):
                 n_channels=n_channels,
             )
 
+        elif backbone_type == "ext_single":
+            from backbones.external_single import ExternalSingle
+            self.backbone = ExternalSingle(
+                in_seq_size=self.input_size,
+                out_seq_size=self.out_window,
+                n_channels=n_channels,
+            )
+
         elif backbone_type == "cond_leak_linear":
             from backbones.linear_cond_leak import LinearCondLeak
 
