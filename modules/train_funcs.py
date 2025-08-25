@@ -103,7 +103,7 @@ def train_model(
             if lr_scheduler_type == "cosine":
                 lr_scheduler.step()
             elif lr_scheduler_type == "rop":
-                lr_scheduler.step(logs["train"]["loss"])
+                lr_scheduler.step(np.mean(losses))
 
         log_epoch = 0
         if iteration % n_log_steps == 0 and iteration > 0:
