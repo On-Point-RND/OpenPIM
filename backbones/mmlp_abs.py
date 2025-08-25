@@ -8,20 +8,51 @@ from backbones.common_modules import (
 )
 
 
-class SingleLayerPerceptron(nn.Module):
-    def __init__(self, n_channels, nonlinearity, is_first=True, is_last=True):
+class EnrichedPerceptron(nn.Module):
+    def __init__(self, n_channels, nonlinearity):
         super().__init__()
         self.n_channels = n_channels
-        self.is_last = is_last
-        self.is_first = is_first
+        self.linear = nn.Linear(3 * n_channels, 2 * n_channels, bias=True)
+        self._initialize_as_identity()
 
+        self.nlin = {
+            "relu": nn.ReLU(),
+            "tanh": nn.Tanh(),
+            "elu": nn.ELU(),
+            "silu": nn.SiLU(),
+            "gelu": nn.GELU(),
+            "none": nn.Identity(),
+        }[nonlinearity]
+
+    def _initialize_as_identity(self):
+        init.eye_(self.linear.weight)
+        # Optional: zero out the bias
+        if self.linear.bias is not None:
+            init.zeros_(self.linear.bias)
+
+    def forward(self, x):
+        batch, time = x.shape[0], x.shape[1]
+        # Extract real and imaginary parts
+        x_real = x[..., 0]  # Shape: (B, T, C)
+        x_imag = x[..., 1]  # Shape: (B, T, C)
+
+        # Calculate modulus square: |x|² = real² + imag²
+        modulus_square = x_real.pow(2) + x_imag.pow(2)  # Shape: (B, T, C)
+
+        # Concatenate: [real, imag, |x|²]
+        x_expanded = torch.cat([x_real, x_imag, modulus_square], dim=-1)  # Shape: (B, T, C*3)
+        x_flat = x_expanded.view(batch * time, -1)  # Shape: (B*T, C*3)
+        transformed = self.linear(x_flat)
+        transformed = transformed.view(batch, time, self.n_channels, 2)
+        return self.nlin(transformed)
+
+
+class SingleLayerPerceptron(nn.Module):
+    def __init__(self, n_channels, nonlinearity):
+        super().__init__()
+        self.n_channels = n_channels
         # Linear layer: input and output are both 2 * n_channels
-        if is_first:
-            self.linear = nn.Linear(3 * n_channels, 2 * n_channels, bias=True)
-        else:
-            self.linear = nn.Linear(2 * n_channels, 2 * n_channels, bias=True)
-
-        # Initialize weights as identity matrix
+        self.linear = nn.Linear(2 * n_channels, 2 * n_channels, bias=True)
         self._initialize_as_identity()
 
         # Set non-linearity
@@ -42,19 +73,7 @@ class SingleLayerPerceptron(nn.Module):
 
     def forward(self, x):
         batch, time = x.shape[0], x.shape[1]
-        if self.is_first:
-            # Extract real and imaginary parts
-            x_real = x[..., 0]  # Shape: (B, T, C)
-            x_imag = x[..., 1]  # Shape: (B, T, C)
-            
-            # Calculate modulus square: |x|² = real² + imag²
-            modulus_square = x_real.pow(2) + x_imag.pow(2)  # Shape: (B, T, C)
-            
-            # Concatenate: [real, imag, |x|²]
-            x_expanded = torch.cat([x_real, x_imag, modulus_square], dim=-1)  # Shape: (B, T, C*3)
-            x_flat = x_expanded.view(batch * time, -1)  # Shape: (B*T, C*3)
-        else:
-            x_flat = x.view(batch * time, -1)
+        x_flat = x.view(batch * time, -1)
         transformed = self.linear(x_flat)
         transformed = transformed.view(batch, time, self.n_channels, 2)
         return self.nlin(transformed)
@@ -67,10 +86,9 @@ class NlinCore(nn.Module):
         nonlinearity = "silu"
         num_layers = 3
         layers = []
-        for i in range(num_layers):
-            is_first = (i == 0)
-            is_last = (i == num_layers - 1)
-            layers.append(SingleLayerPerceptron(n_channels, nonlinearity, is_first, is_last))
+        layers.append(EnrichedPerceptron(n_channels, nonlinearity))
+        for _ in range(num_layers - 1):
+            layers.append(SingleLayerPerceptron(n_channels, nonlinearity))
         self.model = nn.Sequential(*layers)
 
     def forward(self, x):
