@@ -242,6 +242,24 @@ class CoreModel(nn.Module):
                 n_channels=n_channels,
             )
 
+        elif backbone_type == "m_mlp_enriched":
+            from backbones.mmlp_enriched import McMLPEnriched
+
+            self.backbone = McMLPEnriched(
+                in_seq_size=self.input_size,
+                out_seq_size=self.out_window,
+                n_channels=n_channels,
+            )
+
+        elif backbone_type == "m_mlp_preproc":
+            from backbones.mmlp_preproc import McMLPPreproc
+
+            self.backbone = McMLPPreproc(
+                in_seq_size=self.input_size,
+                out_seq_size=self.out_window,
+                n_channels=n_channels,
+            )
+
         elif backbone_type == "s_mlp":
             from backbones.single_channel_mlp import SingleChannelMLP
 
