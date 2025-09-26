@@ -24,7 +24,6 @@ def main(exp: Runner):
         input_size=input_size,
         out_window=exp.args.out_window,
         hidden_size=exp.args.PIM_hidden_size,
-        num_layers=exp.args.PIM_num_layers,
         backbone_type=exp.args.PIM_backbone,
         batch_size=exp.args.batch_size,
         out_filtration=exp.args.out_filtration,

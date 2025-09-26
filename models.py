@@ -5,32 +5,14 @@ from scipy.io import loadmat
 
 
 class EndFilter(nn.Module):
-    def __init__(self, n_channels, out_filtration, filter_path, filter_same):
+    def __init__(self, n_channels, out_filtration, filter_path):
         super(EndFilter, self).__init__()
 
         if out_filtration:
-            if filter_same:
-                filter_coeff = loadmat(filter_path)["flt_coeff"][0]
-                filter_coeff = filter_coeff[::-1].copy()
-            else:
-
-                Fs = 245.76e6  # Sampling frequency
-                freq = [
-                    0,  # Start of passband
-                    35.08e6,  # Start of first stopband (aliased 1950 MHz)
-                    35.08e6,  # End of first stopband start
-                    99.68e6,  # Start of passband
-                    99.68e6,  # End of passband start
-                    Fs / 2,  # Nyquist frequency
-                ]
-                gain = [1, 1, 0, 0, 0, 0]  # 1=pass, 0=stop
-                # Design filter with 255 taps
-                filter_coeff = firwin2(255, freq, gain, fs=Fs)
+            filter_coeff = loadmat(filter_path)["flt_coeff"][0]
+            filter_coeff = filter_coeff[::-1].copy()
 
             wts = torch.from_numpy(filter_coeff).to(torch.complex64)
-
-            # по
-
             wts_expand = wts.unsqueeze(0).unsqueeze(0).expand(n_channels, 1, 255)
             self.end_filter = torch.nn.Conv1d(
                 in_channels=n_channels,
@@ -61,30 +43,27 @@ class CoreModel(nn.Module):
         n_channels,
         input_size,
         out_window,
-        medium_sim_size,
         hidden_size,
-        num_layers,
         backbone_type,
         batch_size,
         out_filtration,
         filter_path,
-        filter_same,
+        aux_loss_present,
     ):
         super(CoreModel, self).__init__()
         self.output_size = 2  # PIM outputs: I & Q
         self.input_size = input_size
         self.out_window = out_window
-        self.medium_sim_size = medium_sim_size
         self.hidden_size = hidden_size
-        self.num_layers = num_layers
         self.backbone_type = backbone_type
         self.batch_size = batch_size
         self.n_channels = n_channels
         self.batch_first = True  # Force batch first
         self.bidirectional = False
         self.bias = True
-        self.filter = EndFilter(n_channels, out_filtration, filter_path, filter_same)
+        self.filter = EndFilter(n_channels, out_filtration, filter_path)
         self.out_filtration = out_filtration
+        self.aux_loss_present = aux_loss_present
 
         if backbone_type == "linear":
             from backbones.linear import Linear
@@ -132,6 +111,14 @@ class CoreModel(nn.Module):
                 n_channels=n_channels,
             )
 
+        elif backbone_type == "ext_single":
+            from backbones.external_single import ExternalSingle
+            self.backbone = ExternalSingle(
+                in_seq_size=self.input_size,
+                out_seq_size=self.out_window,
+                n_channels=n_channels,
+            )
+
         elif backbone_type == "cond_leak_linear":
             from backbones.linear_cond_leak import LinearCondLeak
 
@@ -147,7 +134,7 @@ class CoreModel(nn.Module):
             self.backbone = Simple(
                 hidden_size=self.hidden_size,
                 output_size=self.output_size,
-                num_layers=self.num_layers,
+                num_layers=1,
                 batch_size=self.batch_size,
                 bidirectional=self.bidirectional,
                 batch_first=self.batch_first,
@@ -235,31 +222,59 @@ class CoreModel(nn.Module):
                 n_channels=n_channels,
             )
 
-        elif backbone_type == "learn_nonlin":
-            from backbones.dnn_non_linear import LinearConductive
+        elif backbone_type == "m_mlp":
+            from backbones.multi_channel_mlp import MultiChannelMLP
 
-            self.backbone = LinearConductive(
+            self.backbone = MultiChannelMLP(
                 in_seq_size=self.input_size,
                 out_seq_size=self.out_window,
                 n_channels=n_channels,
             )
 
-        elif backbone_type == "nonlin_indy":
-            from backbones.dnn_non_linear_indy import LinearConductive
+        elif backbone_type == "m_mlp_abs":
+            from backbones.mmlp_abs import McMLPAbs
 
-            self.backbone = LinearConductive(
+            self.backbone = McMLPAbs(
                 in_seq_size=self.input_size,
                 out_seq_size=self.out_window,
                 n_channels=n_channels,
             )
 
-        elif backbone_type == "nonlin_indy_E":
-            from backbones.dnn_non_linear_indy_enhanced import LinearConductive
+        elif backbone_type == "m_mlp_enriched":
+            from backbones.mmlp_enriched import McMLPEnriched
 
-            self.backbone = LinearConductive(
+            self.backbone = McMLPEnriched(
                 in_seq_size=self.input_size,
                 out_seq_size=self.out_window,
                 n_channels=n_channels,
+            )
+
+        elif backbone_type == "m_mlp_preproc":
+            from backbones.mmlp_preproc import McMLPPreproc
+
+            self.backbone = McMLPPreproc(
+                in_seq_size=self.input_size,
+                out_seq_size=self.out_window,
+                n_channels=n_channels,
+            )
+
+        elif backbone_type == "s_mlp":
+            from backbones.single_channel_mlp import SingleChannelMLP
+
+            self.backbone = SingleChannelMLP(
+                in_seq_size=self.input_size,
+                out_seq_size=self.out_window,
+                n_channels=n_channels,
+            )
+
+        elif backbone_type == "mixture_mmlp":
+            from backbones.mixture_mmlp import MixtureMultiMLP
+
+            self.backbone = MixtureMultiMLP(
+                in_seq_size=self.input_size,
+                out_seq_size=self.out_window,
+                n_channels=n_channels,
+                return_aux_loss=self.aux_loss_present,
             )
 
         else:
@@ -280,24 +295,18 @@ class CoreModel(nn.Module):
         batch_size = x.size(0)  # NOTE: dim of x must be (batch, time, feat)/(N, T, F)
 
         if h_0 is None:  # Create initial hidden states if necessary
-            h_0 = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(device)
-
-        # Forward Propagate through the RNN
-        # print('x.shape: ', x.shape)
-        output = self.backbone(x, h_0)
+            h_0 = torch.zeros(1, batch_size, self.hidden_size).to(device)
+        if self.aux_loss_present:
+            output, aux_loss = self.backbone(x, h_0)
+        else:
+            output = self.backbone(x, h_0)
         filtered_output = self.filter(output)
-        return filtered_output
+        if self.aux_loss_present:
+            return filtered_output, aux_loss
+        else:
+            return filtered_output
+
+    def get_aux_loss_state(self):
+        return self.aux_loss_present
 
 
-class CascadedModel(nn.Module):
-    def __init__(self, pim_model):
-        super(CascadedModel, self).__init__()
-        self.pim_model = pim_model
-
-    def freeze_pim_model(self):
-        for param in self.pim_model.parameters():
-            param.requires_grad = False
-
-    def forward(self, x):
-        x = self.pim_model(x)
-        return x

@@ -29,7 +29,7 @@ class Config:
 
     log_out_dir: str = "./results"
     log_precision: int = 8
-    out_filtration: bool = True
+    out_filtration: bool = False
     filter_path: str = (
         # "/home/dev/work_main/2025/OpenPIM/data/filter_real.mat"
         # "../../../Data/FOR_COOPERATION/rx_filter.mat"
@@ -39,9 +39,8 @@ class Config:
     )
 
     # PIM Model Settings
-    PIM_backbone: str = "cond_linear"
+    PIM_backbone: str = "m_mlp"
     PIM_hidden_size: int = 8
-    PIM_num_layers: int = 1
     # PIM Type options: "total", "cond", "leak", "ext"
     PIM_type: str = "total"
     use_aux_loss_if_present: bool = False
@@ -62,13 +61,13 @@ class Config:
     opt_type: str = "adam"
     batch_size: int = 2048
     batch_size_eval: int = 2048
-    n_iterations: int = 1e3
-    n_log_steps: int = 5e2
+    n_iterations: int = 1e4
+    n_log_steps: int = 1e3
     # n_lr_steps we can begin experiments from 1e3 if n_iterations is 2e5
     n_lr_steps: int = 1e3
     schedule_lr: bool = True
-    # lr_scheduler_type options: "cosine", "rop" (reduce on plateau)
-    lr_scheduler_type: str = "cosine"
+    lr_scheduler_type : str = "rop" # (reduce on plateau)
+    #lr_scheduler_type: str = "cosine"
     lr: float = 1e-2
     lr_end: float = 1e-6
     decay_factor: float = 0.001
@@ -80,10 +79,6 @@ class Config:
     save_results: bool = True
     exp_name: str = "test"
 
-    # Parameters for cascaded model
-    ext_PIM_backbone: str = "ext_linear"
-    leak_PIM_backbone: str = "leak_linear"
-    int_PIM_backbone: str = "int_linear"
 
 
 def main(config: Config):

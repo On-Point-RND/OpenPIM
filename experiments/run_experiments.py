@@ -24,7 +24,6 @@ def main(epx: Runner, n_back, n_fwd):
     net = model.CoreModel(
         input_size=input_size,
         hidden_size=epx.PIM_hidden_size,
-        num_layers=epx.PIM_num_layers,
         backbone_type=epx.PIM_backbone,
         batch_size=epx.batch_size,
     )
