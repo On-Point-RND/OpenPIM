@@ -39,7 +39,6 @@ class PhaseAwareNonlin(nn.Module):
 class LearnableNlinCore(nn.Module):
     def __init__(self, n_channels):
         super().__init__()
-        self.n_channels = n_channels
         self.nonlin = PhaseAwareNonlin()
 
     def forward(self, x):

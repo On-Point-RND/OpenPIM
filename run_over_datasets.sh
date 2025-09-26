@@ -22,7 +22,7 @@ run_experiments() {
         local exp_name="cosine_has_filter_2048_5L_rl_0.01_${pim_type}"
 
         python main.py $COMMON_ARGS \
-            --PIM_backbone "cnn_gru" \
+            --PIM_backbone "learn_nonlin" \
             --dataset_path "$path" \
             --dataset_name "$full_dataset_name" \
             --exp_name $exp_name \
@@ -50,7 +50,7 @@ SYNTH2_NAMES=(
 # SYNTH 3 Experiments
 SYNTH3_PATH="/home/dev/public-datasets/e.shvetsov/PIM/synt_01/16TR/"
 SYNTH3_NAMES=(
-    "16TR_C22Nc4CD_CL_E20Ne1CD_20250331_16L"
+    # "16TR_C22Nc4CD_CL_E20Ne1CD_20250331_16L"
     #"16TR_C22Nc4CD_CL_E20Ne1CD_20250331_1L"
     "16TR_C22Nc8CD_CL_E20Ne1CD_20250331_16L"
     #"16TR_C22Nc8CD_CL_E20Ne1CD_20250331_1L"
@@ -58,7 +58,7 @@ SYNTH3_NAMES=(
 
 # REAL 1 Experiments
 REAL1_PATH="/home/dev/public-datasets/e.shvetsov/PIM/data_cooperation_21.04.25/real_data_cooperation/1TR"
-REAL1_NAMES=("data_A" "data_B")
+REAL1_NAMES=("data_A")  #("data_A" "data_B")
 
 # REAL 2 Experiments
 REAL2_PATH="/home/dev/public-datasets/e.shvetsov/PIM/REAL/Real_data/16TR"
@@ -68,9 +68,9 @@ REAL2_NAMES=("data_16TR_0" "data_16TR_1" "data_16TR_2" "data_16TR_3")
 for PIM_TYPE in "${PIM_TYPES[@]}"; do
     echo "Starting experiments for PIM Type: $PIM_TYPE"
 
-    run_experiments "$PIM_TYPE" "$SYNTH1_PATH" "${SYNTH1_NAMES[@]}"
-    run_experiments "$PIM_TYPE" "$SYNTH2_PATH" "${SYNTH2_NAMES[@]}"
-    run_experiments "$PIM_TYPE" "$SYNTH3_PATH" "${SYNTH3_NAMES[@]}"
+   # run_experiments "$PIM_TYPE" "$SYNTH1_PATH" "${SYNTH1_NAMES[@]}"
+    # run_experiments "$PIM_TYPE" "$SYNTH2_PATH" "${SYNTH2_NAMES[@]}"
+   run_experiments "$PIM_TYPE" "$SYNTH3_PATH" "${SYNTH3_NAMES[@]}"
     
     # Uncomment below if you want to enable real data runs
     # run_experiments "$PIM_TYPE" "$REAL1_PATH" "${REAL1_NAMES[@]}"
