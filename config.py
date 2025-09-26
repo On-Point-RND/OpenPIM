@@ -9,24 +9,33 @@ class Config:
     dataset_path: str = (
         # "../../../Data/FOR_COOPERATION/"
         # "../../../Data/data_cooperation/artificial_data_cooperation/"
+        # "../../../Data/Real_data/16TR/"
+        # "../../../Data/data_cooperation/real_data_cooperation/1TR/"
         # "./data/"
-        # "./data/real_data/16TR/"
+        # "./data/Real_data/16TR/"
     )
     dataset_name: str = (
+        # "data_A"
+        # "data_B"
         # "data_16TR_0"
-        # "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"  # "data_16TR_0"  #   #  #
+        # "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"
         # "16TR_C22Nc8CD_OTX_CL_E20Ne1CD_20250421_1L"
     )
 
-    log_out_dir: str = "./results_v2"
+    data_type: str = (
+        # 'real'
+        # 'synth'
+    )
+
+    log_out_dir: str = "./results"
     log_precision: int = 8
-    filter_same: bool = True
     out_filtration: bool = True
     filter_path: str = (
         # "/home/dev/work_main/2025/OpenPIM/data/filter_real.mat"
-        #  "../../../Data/FOR_COOPERATION/rx_filter.mat"
-        # "./data/rx_filter.mat"
+        # "../../../Data/FOR_COOPERATION/rx_filter.mat"
         # "./data/real_data/filter_real.mat"
+        # "./data/rx_filter.mat"
+        # "./data/filter_real.mat"
     )
 
     # PIM Model Settings
@@ -34,7 +43,8 @@ class Config:
     PIM_hidden_size: int = 8
     PIM_num_layers: int = 1
     # PIM Type options: "total", "cond", "leak", "ext"
-    PIM_type: str = "total"  # "cond"
+    PIM_type: str = "total"
+    use_aux_loss_if_present: bool = False
 
     # Training Process
     # step options: "train_pim_single", "train_pim_cascaded"
@@ -42,21 +52,24 @@ class Config:
     n_back: int = 68
     n_fwd: int = 10
     out_window: int = 30
-    medium_sim_size: int = 5
     accelerator: str = "cuda"
-    devices: int = 1
+    devices: int = 0
     re_level: str = "soft"
 
     # General Hyperparameters
     seed: int = 0
     loss_type: str = "l2"
     opt_type: str = "adam"
-    batch_size: int = 64
-    batch_size_eval: int = 64
-    n_iterations: int = 5e4
-    n_log_steps: int = 5e3
-    lr_schedule: int = 1
-    lr: float = 1e-4
+    batch_size: int = 2048
+    batch_size_eval: int = 2048
+    n_iterations: int = 1e3
+    n_log_steps: int = 5e2
+    # n_lr_steps we can begin experiments from 1e3 if n_iterations is 2e5
+    n_lr_steps: int = 1e3
+    schedule_lr: bool = True
+    # lr_scheduler_type options: "cosine", "rop" (reduce on plateau)
+    lr_scheduler_type: str = "cosine"
+    lr: float = 1e-2
     lr_end: float = 1e-6
     decay_factor: float = 0.001
     patience: float = 10.0

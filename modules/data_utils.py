@@ -54,9 +54,9 @@ class ComplexScaler:
         self.scales = self.get_scalers(data, path_dir_save)
 
     def get_scalers(self, data, path_dir_save):
-        x_train = np.stack(data["X"]["Train"], axis=0)
-        y_train = np.stack(data["Y"]["Train"], axis=0)
-        noise = np.stack(data["N"]["Train"], axis=0)
+        x_train = np.stack(data["X"]["train"], axis=0)
+        y_train = np.stack(data["Y"]["train"], axis=0)
+        noise = np.stack(data["N"]["train"], axis=0)
 
         if self.scaler_type == "power":
             scaling_x = self._compute_power_scale(x_train)

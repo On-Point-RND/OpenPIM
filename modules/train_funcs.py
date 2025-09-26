@@ -22,51 +22,46 @@ def train_model(
     train_loader: DataLoader,
     val_loader: DataLoader,
     test_loader: DataLoader,
-    best_model_metric: str,
     noise: Dict[str, Any],
     filter,
     CScaler,
-    n_channel: int,
     device: torch.device,
     path_dir_save: str,
     path_dir_log_hist: str,
     path_dir_log_best: str,
     writer,
+    data_type: str,
+    data_name: str,
     FS: float,
     FC_TX: float,
     PIM_SFT: float,
     PIM_BW: float,
     n_log_steps: int,
+    n_lr_steps: int,
     n_iterations: int,
     grad_clip_val: float,
-    lr_schedule: bool,
+    schedule_lr: bool,
+    lr_scheduler_type: str,
     save_results: bool = True,
     val_ratio: float = 0.2,
     test_ratio: float = 0.2,
+    seed: int = 0,
 ) -> tuple:
     """Standalone training function detached from class"""
 
     step_logger = make_logger()
 
-    paths = (path_dir_save, path_dir_log_hist, path_dir_log_best)
-    path_dir_save = path_dir_save  # + "/CH_" + str(n_channel)
-    path_dir_log_hist = path_dir_log_hist  # + "/CH_" + str(n_channel)
-    path_dir_log_best = path_dir_log_best  # + "/CH_" + str(n_channel)
-
-    [
-        os.makedirs(p, exist_ok=True)
-        for p in [
-            path_dir_save,
-            path_dir_log_hist,
-            path_dir_log_best,
-        ]
-    ]
+    # Create directories if they don't exist
+    os.makedirs(path_dir_save, exist_ok=True)
+    os.makedirs(path_dir_log_hist, exist_ok=True)
+    os.makedirs(path_dir_log_best, exist_ok=True)
 
     start_time = time.time()
     net.train()
     losses = []
 
     red_levels = []
+    mean_red_levels_for_iter = []
 
     phases = {"val": val_ratio, "test": test_ratio}
     loaders = {"val": val_loader, "test": test_loader}
@@ -74,7 +69,6 @@ def train_model(
 
     log_shape = True
     for iteration, (features, targets) in enumerate(train_loader):
-        # if device == "cuda":
         features, targets = features.to(device), targets.to(device)
         if log_shape:
             step_logger.info(
@@ -82,7 +76,11 @@ def train_model(
             )
 
         optimizer.zero_grad()
-        out = net(features)
+        # Check the presence of auxiliary loss
+        if net.get_aux_loss_state():
+            out, aux_loss = net(features)
+        else:
+            out = net(features)
 
         if log_shape:
             log_shape = False
@@ -90,6 +88,8 @@ def train_model(
         conv_targets = net.filter(targets)
 
         loss = criterion(out, conv_targets)
+        if net.get_aux_loss_state():
+            loss += aux_loss
         loss.backward()
 
         if grad_clip_val != 0:
@@ -97,6 +97,13 @@ def train_model(
         optimizer.step()
 
         losses.append(loss.detach().item())
+
+        # Learning rate adjustment
+        if iteration % n_lr_steps == 0 and iteration > 0 and schedule_lr:
+            if lr_scheduler_type == "cosine":
+                lr_scheduler.step()
+            elif lr_scheduler_type == "rop":
+                lr_scheduler.step(np.mean(losses))
 
         log_epoch = 0
         if iteration % n_log_steps == 0 and iteration > 0:
@@ -114,10 +121,12 @@ def train_model(
                     logs[phase_name] = calculate_metrics(
                         pred,
                         gt,
+                        noise[phase_name],
                         filter,
+                        data_type,
+                        data_name,
                         CScaler,
                         FS,
-                        FC_TX,
                         PIM_SFT,
                         PIM_BW,
                         logs[phase_name],
@@ -136,21 +145,33 @@ def train_model(
             if phase_name in ["test", "train"] and test_ratio > 0:
                 pred = CScaler.rescale(pred, key="Y")
                 gt = CScaler.rescale(gt, key="Y")
-
-                for FT in [False, True]:
-                    plot_spectrums(
-                        toComplex(pred),  # .squeeze(-1),
-                        toComplex(gt),  # .squeeze(-1),
-                        FS,
-                        FC_TX,
-                        PIM_SFT,
-                        PIM_BW,
-                        iteration,
-                        logs["test"]["Reduction_level"],
-                        path_dir_save,
-                        cut=FT,
-                        phase_name=phase_name,
-                    )
+                plot_spectrums(
+                    toComplex(pred),
+                    toComplex(gt),
+                    FS,
+                    FC_TX,
+                    PIM_SFT,
+                    PIM_BW,
+                    iteration,
+                    logs["test"]["Reduction_level"],
+                    data_type,
+                    path_dir_save,
+                    cut=False,
+                    phase_name=phase_name,
+                )
+                plot_final_spectrums(
+                    toComplex(pred),  
+                    toComplex(gt), 
+                    toComplex(noise["test"]),
+                    FS,
+                    FC_TX,
+                    PIM_SFT,
+                    PIM_BW,
+                    iteration,
+                    data_type,
+                    path_dir_save,
+                    phase_name=phase_name,
+                )
 
             # Logging
             elapsed_time = (time.time() - start_time) / 60
@@ -168,10 +189,15 @@ def train_model(
             writer.write_log(log_all)
 
             red_levels = log_all["TEST_REDUCTION_LEVEL"]
+            red_level_for_iter = calculate_mean_red(list(red_levels.values()))
+            mean_red_levels_for_iter.append(
+                [
+                    red_level_for_iter,
+                    iteration,
+                ]
+            )
 
-            # Learning rate & model saving
-            if lr_schedule:
-                lr_scheduler.step()
+            # Model saving
             if save_results:
                 writer.save_best_model(net, log_epoch, logs["test"], "loss")
 
@@ -182,18 +208,27 @@ def train_model(
     step_logger.info("Training Completed\n")
 
     powers = dict()
-    for key, value in (("gt", gt), ("err", gt - pred), ("noise", noise["Test"])):
+    for key, value in (("gt", gt), ("err", gt - pred), ("noise", noise["test"])):
         compl = toComplex(value)
         powers[key] = [
-            compute_power(compl[:, id], FS, FC_TX, PIM_SFT, PIM_BW)
+            compute_power(compl[:, id], data_type, FS, PIM_SFT, PIM_BW, data_name)
             for id in range(compl.shape[1])
         ]
 
-    path_dir_save, path_dir_log_hist, path_dir_log_best = paths
-    mean_red_level = np.mean([red_levels[id] for id in red_levels.keys()])
-    max_red_level = np.max([red_levels[id] for id in red_levels.keys()])
+    mean_red_level = calculate_mean_red(list(red_levels.values()))
+    max_red_level = max(red_levels.values())
 
-    plot_total_perf(powers, max_red_level, mean_red_level, path_save=path_dir_save)
+    pd.DataFrame(
+        mean_red_levels_for_iter,
+        columns=["Mean_red_levels", "Iteration"],
+    ).to_csv(path_dir_save + f"/quality_for_iter__seed_{seed}.csv")
+
+    plot_total_perf(
+        powers,
+        max_red_level,
+        mean_red_level,
+        path_dir_save,
+    )
 
     return log_all
 
@@ -214,16 +249,16 @@ def net_eval(
         for features, targets in tqdm(dataloader):
             features = features.to(device)
             targets = targets.to(device)
-            outputs = net(features)
+            if net.get_aux_loss_state():
+                outputs, _ = net(features)
+            else:
+                outputs = net(features)
             # Calculate loss function
             conv_targets = net.filter(targets)
             loss = criterion(outputs, conv_targets)
-            # out_batch_size = outputs.shape[0]
-            # loss = criterion(outputs, targets[:out_batch_size, ...])
 
             # Collect prediction and ground truth for metric calculation
             prediction.append(outputs.cpu())
-            # ground_truth.append(targets[:out_batch_size, ...].cpu())
             ground_truth.append(conv_targets.cpu())
 
             # Collect losses to calculate the average loss per epoch
@@ -237,32 +272,3 @@ def net_eval(
     log["loss"] = avg_loss
     # End of Evaluation Epoch
     return net, prediction, ground_truth
-
-
-def calculate_metrics(
-    prediction, ground_truth, filter, СScaler, FS, FC_TX, PIM_SFT, PIM_BW, stat
-):
-    if not "NMSE" in stat:
-        stat["NMSE"] = dict()
-
-    if not "Reduction_level" in stat:
-        stat["Reduction_level"] = dict()
-
-    n_channels = prediction.shape[1]
-
-    pred = СScaler.rescale(prediction, key="Y")
-    gt = СScaler.rescale(ground_truth, key="Y")
-
-    for c in range(n_channels):
-        stat["NMSE"][f"CH_{c}"] = NMSE(prediction, ground_truth)
-
-        stat["Reduction_level"][f"CH_{c}"] = reduction_level(
-            pred[:, c],
-            gt[:, c],
-            FS=FS,
-            FC_TX=FC_TX,
-            PIM_SFT=PIM_SFT,
-            PIM_BW=PIM_BW,
-            filter=filter,
-        )
-    return stat

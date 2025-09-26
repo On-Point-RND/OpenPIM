@@ -1,7 +1,7 @@
 import os
 import models as model
 from runner import Runner
-from utils.util import count_net_params
+from utils.metrics import count_net_params
 from modules.loggers import make_logger
 from modules.train_funcs import net_eval
 from modules.data_cascaded import extract_predictions
@@ -72,11 +72,9 @@ def main(exp: Runner):
         train_loader=train_loader,
         val_loader=val_loader,
         test_loader=test_loader,
-        best_model_metric="Reduction_level",
         noise={"Train": noise["Train"], "Val": noise["Val"], "Test": noise["Test"]},
         filter=filter,
         CScaler=CScaler,
-        n_channel_id=0,
         spec_dictionary=specs,
         writer=PandasWriter,
     )
@@ -141,11 +139,9 @@ def main(exp: Runner):
         train_loader=train_loader,
         val_loader=val_loader,
         test_loader=test_loader,
-        best_model_metric="Reduction_level",
         noise={"Train": noise["Train"], "Val": noise["Val"], "Test": noise["Test"]},
         filter=filter,
         CScaler=CScaler,
-        n_channel_id=0,
         spec_dictionary=specs,
         writer=PandasWriter,
     )
@@ -210,11 +206,9 @@ def main(exp: Runner):
         train_loader=train_loader,
         val_loader=val_loader,
         test_loader=test_loader,
-        best_model_metric="Reduction_level",
         noise={"Train": noise["Train"], "Val": noise["Val"], "Test": noise["Test"]},
         filter=filter,
         CScaler=CScaler,
-        n_channel_id=0,
         spec_dictionary=specs,
         writer=PandasWriter,
     )

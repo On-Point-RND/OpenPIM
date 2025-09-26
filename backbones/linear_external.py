@@ -1,7 +1,7 @@
 import torch.nn as nn
 
 from backbones.common_modules import (
-    TxaFilterEnsemble, RxaFilterEnsemble
+    TxaFilterEnsembleTorch, RxaFilterEnsembleTorch
 )
 
 
@@ -36,7 +36,7 @@ class LinearExternal(nn.Module):
         self.out_seq_size = out_seq_size
         self.n_channels = n_channels
 
-        self.txa_filter_layers = TxaFilterEnsemble(
+        self.txa_filter_layers = TxaFilterEnsembleTorch(
             n_channels, in_seq_size, out_seq_size
         )
 
@@ -44,7 +44,7 @@ class LinearExternal(nn.Module):
             n_channels
         )
 
-        self.rxa_filter_layers = RxaFilterEnsemble(
+        self.rxa_filter_layers = RxaFilterEnsembleTorch(
             n_channels, out_seq_size
         )
 

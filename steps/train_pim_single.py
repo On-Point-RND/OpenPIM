@@ -1,6 +1,6 @@
 import models as model
 from runner import Runner
-from utils.util import count_net_params
+from utils.metrics import count_net_params
 from modules.loggers import make_logger
 
 
@@ -23,14 +23,13 @@ def main(exp: Runner):
         n_channels=n_channels,
         input_size=input_size,
         out_window=exp.args.out_window,
-        medium_sim_size=exp.args.medium_sim_size,
         hidden_size=exp.args.PIM_hidden_size,
         num_layers=exp.args.PIM_num_layers,
         backbone_type=exp.args.PIM_backbone,
         batch_size=exp.args.batch_size,
         out_filtration=exp.args.out_filtration,
         filter_path=exp.args.filter_path,
-        filter_same=exp.args.filter_same,
+        aux_loss_present=exp.args.use_aux_loss_if_present,
     )
 
     logger = make_logger()
@@ -59,11 +58,10 @@ def main(exp: Runner):
         train_loader=train_loader,
         val_loader=val_loader,
         test_loader=test_loader,
-        best_model_metric="Reduction_level",
-        noise={"Train": noise["Train"], "Val": noise["Val"], "Test": noise["Test"]},
+        noise={"train": noise["train"], "val": noise["val"], "test": noise["test"]},
         filter=filter,
         CScaler=CScaler,
-        n_channel_id=0,
         spec_dictionary=specs,
         writer=PandasWriter,
+        data_type=exp.args.data_type,
     )
