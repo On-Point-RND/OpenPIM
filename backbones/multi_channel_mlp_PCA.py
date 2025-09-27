@@ -1,5 +1,9 @@
 import torch.nn as nn
 import torch.nn.init as init
+import torch
+
+import numpy as np
+from sklearn.decomposition import PCA
 
 from backbones.common_modules import (
     TxaFilterEnsembleTorch,
@@ -71,9 +75,58 @@ class MultiChannelMLP(nn.Module):
 
         self.bn_output = nn.BatchNorm1d(n_channels)
 
+
+        self.n_pca_components = 20
+        self.n_pca_batches = 1
+
+        # PCA-related stat
+        self.pca = None
+        self.collected_batches = []
+        self.batch_count = 0
+        self.pca_fitted = False
+
     def forward(self, x, h_0=None):
         filtered_x = self.txa_filter_layers(x)
-        nonlin_output = self.nlin_layer(filtered_x)
-        filt_rxa = self.rxa_filter_layers(nonlin_output)
+        nonlin_output = self.nlin_layer(filtered_x)  # e.g., shape [B, C, H, W] or [B, T, D]
+
+        if not self.pca_fitted:
+            # Flatten to [B * ..., feature_dim]
+            orig_shape = nonlin_output.shape
+            batch_size = orig_shape[0]
+            # Flatten all but the batch dimension → [B, -1]
+            flat_output = nonlin_output.detach().cpu().numpy().reshape(-1, 32)
+            self.collected_batches.append(flat_output)
+            self.batch_count += 1
+
+            if self.batch_count == self.n_pca_batches:
+                # Concatenate along batch dimension: [N * B, feature_dim]
+                all_data = np.concatenate(self.collected_batches, axis=0)
+                self.pca = PCA(n_components=self.n_pca_components)
+                self.pca.fit(all_data)  # ✅ Now 2D: [n_samples, n_features]
+                self.pca_fitted = True
+                self.collected_batches = None  # free memory
+
+            # Pass through original (or you could use identity)
+            transformed_output = nonlin_output
+
+        else:
+            orig_shape = nonlin_output.shape  # e.g., [B, C, H, W]
+            device = nonlin_output.device
+
+            # Flatten to [B, D]
+            flat = nonlin_output.detach().cpu().numpy().reshape(-1, 32)
+
+            flat_std = flat.std()
+
+            # Reduce and reconstruct
+            reduced = self.pca.transform(flat)                # [B, n_comp]
+            reconstructed_flat = self.pca.inverse_transform(reduced)  # [B, D]
+
+            reconstructed_flat = reconstructed_flat/reconstructed_flat.std()*flat_std
+            # Reshape back to original spatial layout
+            transformed_output = torch.from_numpy(reconstructed_flat).to(device).reshape(orig_shape)
+
+        # Continue with rest of network
+        filt_rxa = self.rxa_filter_layers(transformed_output)
         output = self.bn_output(filt_rxa)
         return output

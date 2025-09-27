@@ -222,7 +222,7 @@ class CoreModel(nn.Module):
             )
 
         elif backbone_type == "m_mlp":
-            from backbones.multi_channel_mlp import MultiChannelMLP
+            from backbones.multi_channel_mlp_PCA import MultiChannelMLP
 
             self.backbone = MultiChannelMLP(
                 in_seq_size=self.input_size,
