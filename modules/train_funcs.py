@@ -12,7 +12,7 @@ from utils.metrics import *
 
 from modules.data_utils import toComplex
 from modules.loggers import make_logger
-
+from modules.data_utils import convert_to_serializable
 
 def train_model(
     net: nn.Module,
@@ -139,7 +139,7 @@ def train_model(
                     f"Mean Reduction_level {phase_name}: {mean_reduction}"
                 )
                 step_logger.success(
-                    f"Reduction_level {phase_name}: {logs[phase_name]['Reduction_level']}"
+                    f"Reduction_level {phase_name}: {convert_to_serializable(logs[phase_name]['Reduction_level'])}"
                 )
 
             if phase_name in ["test", "train"] and test_ratio > 0:

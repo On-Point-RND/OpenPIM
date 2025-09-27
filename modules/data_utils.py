@@ -1,6 +1,7 @@
-import pandas as pd
-import numpy as np
 import os
+import numpy as np
+import pandas as pd
+import torch
 from modules.loggers import make_logger
 
 logger = make_logger()
@@ -36,10 +37,51 @@ def back_fwd_feature_prepare(sequence_x, sequence_t, n_back, n_fwd):
 
 
 # INFO: This is used in modules.data_collector
-import numpy as np
-import pandas as pd
-import os
 
+
+def convert_to_serializable(obj, round_decimals=4):
+    """
+    Recursively convert NumPy/PyTorch types to Python native types,
+    and round all numeric values to `round_decimals` decimal places.
+    """
+    if isinstance(obj, (int, np.integer, torch.Tensor)) and (
+        isinstance(obj, (int, np.integer)) or (isinstance(obj, torch.Tensor) and obj.dtype in [torch.int32, torch.int64, torch.long])
+    ):
+        # Keep integers as integers (no rounding needed)
+        if isinstance(obj, torch.Tensor):
+            return int(obj.item())
+        return int(obj)
+    
+    elif isinstance(obj, (float, np.floating, torch.Tensor)) and (
+        isinstance(obj, (float, np.floating)) or (isinstance(obj, torch.Tensor) and obj.dtype in [torch.float32, torch.float64])
+    ):
+        # Round floats
+        if isinstance(obj, torch.Tensor):
+            value = float(obj.item())
+        else:
+            value = float(obj)
+        return round(value, round_decimals)
+    
+    elif isinstance(obj, np.ndarray):
+        # Convert array to list and recurse
+        return [convert_to_serializable(x, round_decimals) for x in obj.tolist()]
+    
+    elif isinstance(obj, torch.Tensor):
+        # Handle non-scalar tensors
+        if obj.numel() == 1:
+            return convert_to_serializable(obj, round_decimals)
+        else:
+            return [convert_to_serializable(x, round_decimals) for x in obj.tolist()]
+    
+    elif isinstance(obj, dict):
+        return {key: convert_to_serializable(value, round_decimals) for key, value in obj.items()}
+    
+    elif isinstance(obj, (list, tuple)):
+        return [convert_to_serializable(item, round_decimals) for item in obj]
+    
+    else:
+        # Assume it's already serializable (str, bool, None, etc.)
+        return obj
 
 class ComplexScaler:
     def __init__(self, data, path_dir_save, scaler_type="magnitude"):

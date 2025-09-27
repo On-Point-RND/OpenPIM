@@ -10,3 +10,5 @@ filter_path: "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter
   
 accelerator: "cuda"
 data_type : "synth"
+exp_name: "test_log"
+                

@@ -3,7 +3,7 @@ import numpy as np
 from scipy.io import loadmat
 from torch.utils.data import DataLoader
 from modules.datasets import InfiniteIQSegmentDataset, IQSegmentDataset
-from modules.data_utils import ComplexScaler, to2Dreal
+from modules.data_utils import ComplexScaler
 from modules.loggers import make_logger
 
 logger = make_logger()

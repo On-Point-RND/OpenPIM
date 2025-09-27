@@ -3,7 +3,6 @@ import torch.nn as nn
 from scipy.signal import firwin2
 from scipy.io import loadmat
 
-
 class EndFilter(nn.Module):
     def __init__(self, n_channels, out_filtration, filter_path):
         super(EndFilter, self).__init__()
@@ -13,7 +12,7 @@ class EndFilter(nn.Module):
             filter_coeff = filter_coeff[::-1].copy()
 
             wts = torch.from_numpy(filter_coeff).to(torch.complex64)
-            wts_expand = wts.unsqueeze(0).unsqueeze(0).expand(n_channels, 1, 255)
+            wts_expand = wts.unsqueeze(0).unsqueeze(0).expand(n_channels, 1, 255).clone()
             self.end_filter = torch.nn.Conv1d(
                 in_channels=n_channels,
                 out_channels=n_channels,

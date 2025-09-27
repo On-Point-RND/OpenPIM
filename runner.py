@@ -1,46 +1,57 @@
+import json
 import os
 import random as rnd
+from argparse import Namespace
+from pathlib import Path
+
 import numpy as np
+import pyrallis
 import torch
 import torch.nn as nn
 from torch import optim
-from modules.loggers import PandasLogger
+from torch.optim.lr_scheduler import LinearLR, SequentialLR
 
-
-import pyrallis
 from config import Config
-
+from modules.data_cascaded import prepare_dataloaders
 from modules.data_collector import load_resources, load_and_split_data
+from modules.loss import IQComponentWiseLoss, HybridLoss, JointLoss, FFTLoss
+from modules.loggers import PandasLogger, make_logger
 from modules.paths import gen_dir_paths, gen_file_paths
 from modules.train_funcs import train_model
-from modules.loggers import make_logger
-from modules.loss import IQComponentWiseLoss, HybridLoss, JointLoss, FFTLoss
-
-from modules.data_cascaded import prepare_dataloaders
-from torch.optim.lr_scheduler import LinearLR, SequentialLR
 
 
 class Runner:
-    def __init__(self):
+    def __init__(self, load_exp=False):
         ######################################################################
         # Initialization
         ######################################################################
         # Load Hyperparameters
         self.step_logger = make_logger()
         self.args = pyrallis.parse(config_class=Config)
+        if load_exp:
+            self.load_experiment()
+            self.path_dir_save = self.args.path_dir_save
+            self.path_dir_log_hist = self.args.path_dir_log_hist
+            self.path_dir_log_best = self.args.path_dir_log_best
+        
+        else:
+            dir_paths = gen_dir_paths(self.args)
+            (
+                self.path_dir_save,
+                self.path_dir_log_hist,
+                self.path_dir_log_best,
+            ) = dir_paths
+            [os.makedirs(p, exist_ok=True) for p in dir_paths]
+
+
+
+
+
         # Hardware Info
         self.num_cpu_threads = os.cpu_count()
 
         # Configure Reproducibility
         self.reproducible()
-
-        dir_paths = gen_dir_paths(self.args)
-        (
-            self.path_dir_save,
-            self.path_dir_log_hist,
-            self.path_dir_log_best,
-        ) = dir_paths
-        [os.makedirs(p, exist_ok=True) for p in dir_paths]
 
     def gen_model_id(self, n_net_params):
         dict_pa = {
@@ -249,7 +260,7 @@ class Runner:
         data_type,
     ):
 
-        return train_model(
+        log_all = train_model(
             net=net,
             criterion=criterion,
             optimizer=optimizer,
@@ -283,6 +294,10 @@ class Runner:
             seed = self.args.seed,
         )
 
+
+        self.dump_json_config(spec_dictionary)
+        return log_all
+
     def prepare_dataloaders(self, data):
         return prepare_dataloaders(
             data,
@@ -305,3 +320,90 @@ class Runner:
             self.args.filter_path,
             PIM_type=self.args.PIM_type,
         )
+
+
+    def dump_json_config(self, spec_dictionary):
+       
+        def serialize_config(config_dict):
+            """ Recursively convert non-serializable objects to strings. """
+            def _serialize(value):
+                    if isinstance(value, (str, int, float, bool, type(None))):
+                        return value
+                    elif isinstance(value, Path):
+                        return str(value)
+                    elif isinstance(value, (list, tuple)):
+                        return [_serialize(v) for v in value]
+                    elif isinstance(value, dict):
+                        return {k: _serialize(v) for k, v in value.items()}
+                    else:
+                        # Fallback: convert to string (e.g., torch.device, SummaryWriter, etc.)
+                        return str(value)
+
+            return {k: _serialize(v) for k, v in config_dict.items()}
+
+
+    
+
+
+        # At the end of your training loop:
+        config_to_save = {
+            "input_size": 1 + self.args.n_back + self.args.n_fwd,
+            "PIM_hidden_size": self.args.PIM_hidden_size,
+            "out_filtration": self.args.out_filtration,
+            "batch_size": self.args.batch_size,
+            "PIM_backbone": self.args.PIM_backbone,
+            
+            "path_dir_save": self.path_dir_save,
+            "path_dir_log_hist": self.path_dir_log_hist,
+            "path_dir_log_best": self.path_dir_log_best,
+            "path_save_file_best": self.args.path_save_file_best,
+            "filter_path": self.args.filter_path,
+            "dataset_name": self.args.dataset_name,
+            "dataset_path":self.args.dataset_path,
+            "data_type":self.args.data_type,
+            
+            
+            
+            # self.args.train_ratio,
+            # self.args.val_ratio,
+            # self.args.test_ratio,
+            # self.args.n_back,
+            # self.args.n_fwd,
+            # self.args.batch_size,
+            # self.args.batch_size_eval,
+            
+            "FS": spec_dictionary["FS"],
+            "FC_TX": spec_dictionary["FC_TX"],
+            "PIM_SFT": spec_dictionary["PIM_SFT"],
+            "PIM_BW": spec_dictionary["PIM_BW"],
+            "n_log_steps": self.args.n_log_steps,
+            "n_lr_steps": self.args.n_lr_steps,
+            "n_iterations": self.args.n_iterations,
+            "grad_clip_val": self.args.grad_clip_val,
+            "schedule_lr": self.args.schedule_lr,
+            "lr_scheduler_type": self.args.lr_scheduler_type,
+            "save_results": self.args.save_results,
+            "val_ratio": self.args.val_ratio,
+            "test_ratio": self.args.test_ratio,
+            "seed": self.args.seed,
+        }
+
+        # Serialize to JSON-compatible format
+        serializable_config = serialize_config(config_to_save)
+
+        # Save to JSON file
+        save_path = os.path.join(self.path_dir_save, "training_config.json")
+        with open(save_path, "w") as f:
+            json.dump(serializable_config, f, indent=4)
+
+        print(f"Training configuration saved to {save_path}")
+
+
+    def load_experiment(self):
+        with open(self.args.load_experiment, 'r') as f:
+            loaded_config = json.load(f)
+        
+        for k, v in loaded_config.items():
+            setattr(self.args, k, v)
+        print(self.args)
+        return loaded_config

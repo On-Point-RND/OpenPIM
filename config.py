@@ -61,7 +61,7 @@ class Config:
     opt_type: str = "adam"
     batch_size: int = 2048
     batch_size_eval: int = 2048
-    n_iterations: int = 1e4
+    n_iterations: int = 1e3
     n_log_steps: int = 1e3
     # n_lr_steps we can begin experiments from 1e3 if n_iterations is 2e5
     n_lr_steps: int = 1e3
@@ -78,6 +78,7 @@ class Config:
     test_ratio: float = 0.2
     save_results: bool = True
     exp_name: str = "test"
+    load_experiment: str = '/home/dev/work_main/2025/OpenPIM/results/m_mlp/16TR_C22Nc8CD_OTX_CL_E20Ne1CD_20250421_16L/test_log/training_config.json'
 
 
 
