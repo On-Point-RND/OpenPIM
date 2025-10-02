@@ -8,11 +8,11 @@ dataset_name: "16TR_C22Nc4CD_CL_E20Ne1CD_20250331_16L"
 # 16TR_C22Nc8CD_CL_E20Ne1CD_20250331_16L
 # 16TR_C22Nc8CD_CL_E20Ne1CD_20250331_1L
 
-filter_same: True
 out_filtration: True
 filter_path: "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
         # "./data/real_data/filter_real.mat"
   
 accelerator: "cuda"
-exp_name: "has_filter"
+exp_name: "fft_1"
+data_type : "synth"
 

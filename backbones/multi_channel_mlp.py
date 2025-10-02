@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.nn.init as init
 
@@ -5,6 +6,8 @@ from backbones.common_modules import (
     TxaFilterEnsembleTorch,
     RxaFilterEnsembleTorch,
 )
+import numpy as np
+from sklearn.decomposition import PCA
 
 
 class SingleLayerPerceptron(nn.Module):
@@ -42,7 +45,7 @@ class SingleLayerPerceptron(nn.Module):
 
 
 class NlinCore(nn.Module):
-    def __init__(self, n_channels, num_layers=5, nonlinearity="silu"):
+    def __init__(self, n_channels, num_layers=3, nonlinearity="silu"):
         super().__init__()
         self.n_channels = n_channels
         layers = []
@@ -73,6 +76,7 @@ class MultiChannelMLP(nn.Module):
 
     def forward(self, x, h_0=None):
         filtered_x = self.txa_filter_layers(x)
+
         nonlin_output = self.nlin_layer(filtered_x)
         filt_rxa = self.rxa_filter_layers(nonlin_output)
         output = self.bn_output(filt_rxa)

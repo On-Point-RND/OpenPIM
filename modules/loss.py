@@ -61,24 +61,27 @@ class IQComponentWiseLoss(nn.Module):
 
 
 class HybridLoss(nn.Module):
-    def __init__(self, alpha=0.5, fft_weight=0.5):
+    def __init__(self, alpha=0.5, fft_weight=1.0):
         super().__init__()
         self.mse = nn.MSELoss()
-        self.alpha = alpha  # Weight for physics term
-        self.fft_weight = fft_weight  # Weight for spectral loss
+        self.fft_weight = fft_weight  # Weight for spectral loss (0 = time-only, 1 = freq-only)
 
     def forward(self, pred, target):
         # Time-domain MSE
         time_loss = self.mse(pred, target)
 
-        # Frequency-domain MSE (magnitude)
-        pred_fft = torch.abs(torch.fft.rfft(pred))
-        target_fft = torch.abs(torch.fft.rfft(target))
-        freq_loss = self.mse(pred_fft, target_fft)
+        # Frequency-domain MSE using full complex FFT (real + imaginary parts)
+        pred_fft = torch.fft.rfft(pred)
+        target_fft = torch.fft.rfft(target)
+        
+        # Compute MSE on real and imaginary components separately
+        #freq_loss_real = self.mse(pred_fft, target_fft)
+        freq_loss_real = self.mse(torch.real(pred_fft), torch.real(target_fft))
+        freq_loss_imag = self.mse(torch.imag(pred_fft), torch.imag(target_fft))
+        freq_loss = freq_loss_real + freq_loss_imag
 
-        # Physics term (e.g., enforce 3rd-order nonlinearity)
-        # Example: PIM power ∝ input_power^3
-        total_loss = (1 - self.fft_weight) * time_loss + self.fft_weight * freq_loss
+        # Combine losses
+        total_loss =  self.fft_weight * freq_loss
         return total_loss
 
 
@@ -90,8 +93,6 @@ class FFTLoss(nn.Module):
     def forward(self, pred, target):
         fft_pred = torch.fft.rfft(pred)
         fft_true = torch.fft.rfft(target)
-
-        print(fft_pred.shape)
         # Focus on target frequency bin
         loss = torch.mean(
             torch.abs(fft_pred[:, :, self.bin] - fft_true[:, :, self.bin]) ** 2

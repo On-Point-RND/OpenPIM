@@ -2,18 +2,17 @@
 
 dataset_path: /home/dev/public-datasets/e.shvetsov/PIM/REAL/Real_data/16TR
        
-dataset_name: "data_16TR_0"
+dataset_name: data_16TR_2 #"data_16TR_0"
 # data_16TR_1
 # data_16TR_2
 # data_16TR_3
 
 
-filter_same: True
 out_filtration: True
-filter_path: "/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
-        # "./data/real_data/filter_real.mat"
+filter_path: "./data/filter_real.mat" #"/home/dev/public-datasets/e.shvetsov/PIM/FOR_COOPERATION/rx_filter.mat"
+        # 
   
-
+data_type : "real"
 accelerator: "cuda"
 
-exp_name: "has_filter"
+exp_name: "mmlp_real_for_pca_16_2"
