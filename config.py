@@ -7,19 +7,16 @@ class Config:
     """Configuration class for PIM model training"""
 
     dataset_path: str = (
-        # "../../../Data/FOR_COOPERATION/"
-        # "../../../Data/data_cooperation/artificial_data_cooperation/"
-        # "../../../Data/Real_data/16TR/"
-        # "../../../Data/data_cooperation/real_data_cooperation/1TR/"
-        # "./data/"
-        # "./data/Real_data/16TR/"
+        # ./data/
+        # "./data/real_data/16TR/"
+        # "./data/synth_data/"
     )
+
     dataset_name: str = (
         # "data_A"
         # "data_B"
         # "data_16TR_0"
-        # "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_1L"
-        # "16TR_C22Nc8CD_OTX_CL_E20Ne1CD_20250421_1L"
+        # "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_16L"
     )
 
     data_type: str = (
@@ -31,10 +28,7 @@ class Config:
     log_precision: int = 8
     out_filtration: bool = False
     filter_path: str = (
-        # "/home/dev/work_main/2025/OpenPIM/data/filter_real.mat"
-        # "../../../Data/FOR_COOPERATION/rx_filter.mat"
-        # "./data/real_data/filter_real.mat"
-        # "./data/rx_filter.mat"
+        "./data/rx_filter.mat"
         # "./data/filter_real.mat"
     )
 
@@ -46,10 +40,9 @@ class Config:
     use_aux_loss_if_present: bool = False
 
     # Training Process
-    # step options: "train_pim_single", "train_pim_cascaded"
     step: str = "train_pim_single"
-    n_back: int = 68
-    n_fwd: int = 10
+    n_back: int = 33
+    n_fwd: int = 8
     out_window: int = 30
     accelerator: str = "cuda"
     devices: int = 0
@@ -65,9 +58,9 @@ class Config:
     n_log_steps: int = 1e4
     # n_lr_steps we can begin experiments from 1e3 if n_iterations is 2e5
     n_lr_steps: int = 1e3
-    schedule_lr: bool = True
-    lr_scheduler_type : str = "rop" # (reduce on plateau)
-    #lr_scheduler_type: str = "cosine"
+    schedule_lr: bool = False
+    # lr_scheduler_type options: "rop" (reduce on plateau), "cosine"
+    lr_scheduler_type : str = "rop"
     lr: float = 1e-2
     lr_end: float = 1e-6
     decay_factor: float = 0.001
@@ -79,7 +72,6 @@ class Config:
     save_results: bool = True
     exp_name: str = "test"
     load_experiment: str = '/home/dev/work_main/2025/OpenPIM/results/m_mlp/16TR_C22Nc4CD_CL_E20Ne1CD_20250331_16L/for_pca_eval_three_layers/training_config.json'
-
 
 
 def main(config: Config):
