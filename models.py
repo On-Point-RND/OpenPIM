@@ -266,14 +266,13 @@ class CoreModel(nn.Module):
                 n_channels=n_channels,
             )
 
-        elif backbone_type == "mixture_mmlp":
-            from backbones.mixture_mmlp import MixtureMultiMLP
+        elif backbone_type == "moe_enriched":
+            from backbones.moe_enriched import MoeMLPEnriched
 
-            self.backbone = MixtureMultiMLP(
+            self.backbone = MoeMLPEnriched(
                 in_seq_size=self.input_size,
                 out_seq_size=self.out_window,
-                n_channels=n_channels,
-                return_aux_loss=self.aux_loss_present,
+                n_channels=n_channels
             )
 
         else:
