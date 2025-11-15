@@ -223,7 +223,17 @@ class CoreModel(nn.Module):
 
         elif backbone_type == "m_mlp":
             from backbones.multi_channel_mlp import MultiChannelMLP
+           
+            self.backbone = MultiChannelMLP(
+                in_seq_size=self.input_size,
+                out_seq_size=self.out_window,
+                n_channels=n_channels,
+            )
 
+        
+        elif backbone_type == "m_mlp_reduced":
+            from backbones.multi_channel_mlp_reduced import MultiChannelMLP
+           
             self.backbone = MultiChannelMLP(
                 in_seq_size=self.input_size,
                 out_seq_size=self.out_window,

@@ -35,6 +35,7 @@ class SingleLayerPerceptron(nn.Module):
 
     def forward(self, x):
         batch, time = x.shape[0], x.shape[1]
+      #  print(f'time shape {time}')
         x_flat = x.view(batch * time, -1)  # Shape: (B*T, C*2)
         transformed = self.linear(x_flat)
         transformed = transformed.view(batch, time, self.n_channels, 2)
@@ -60,7 +61,7 @@ class MultiChannelMLP(nn.Module):
         self.n_channels = n_channels
 
         self.txa_filter_layers = TxaFilterEnsembleTorch(
-            n_channels, in_seq_size, out_seq_size
+            n_channels, in_seq_size, 1
         )
 
         self.nlin_layer = NlinCore(n_channels)
@@ -73,8 +74,13 @@ class MultiChannelMLP(nn.Module):
 
     def forward(self, x, h_0=None):
         filtered_x = self.txa_filter_layers(x)
-
+      #  print(f'filtered size {filtered_x.shape}')
         nonlin_output = self.nlin_layer(filtered_x)
-        filt_rxa = self.rxa_filter_layers(nonlin_output)
-        output = self.bn_output(filt_rxa)
-        return output
+      #  print(nonlin_output.shape)
+
+        # y = y.transpose(2, 1)
+        # output[:, :, c, :] = y
+       
+        # filt_rxa = self.rxa_filter_layers(nonlin_output)
+        # output = self.bn_output(filt_rxa)
+        return nonlin_output.squeeze(1)

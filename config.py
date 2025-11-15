@@ -48,11 +48,11 @@ class Config:
     # Training Process
     # step options: "train_pim_single", "train_pim_cascaded"
     step: str = "train_pim_single"
-    n_back: int = 68
-    n_fwd: int = 10
+    n_back: int = 33
+    n_fwd: int = 8
     out_window: int = 30
     accelerator: str = "cuda"
-    devices: int = 0
+    devices: int = 2
     re_level: str = "soft"
 
     # General Hyperparameters
@@ -62,13 +62,13 @@ class Config:
     batch_size: int = 2048
     batch_size_eval: int = 2048
     n_iterations: int = 2e5
-    n_log_steps: int = 1e4
+    n_log_steps: int = 5e3
     # n_lr_steps we can begin experiments from 1e3 if n_iterations is 2e5
     n_lr_steps: int = 1e3
     schedule_lr: bool = True
     lr_scheduler_type : str = "rop" # (reduce on plateau)
     #lr_scheduler_type: str = "cosine"
-    lr: float = 1e-2
+    lr: float = 1e-3
     lr_end: float = 1e-6
     decay_factor: float = 0.001
     patience: float = 10.0
@@ -78,7 +78,7 @@ class Config:
     test_ratio: float = 0.2
     save_results: bool = True
     exp_name: str = "test"
-    load_experiment: str = '/home/dev/work_main/2025/OpenPIM/results/m_mlp/16TR_C22Nc4CD_CL_E20Ne1CD_20250331_16L/for_pca_eval_three_layers/training_config.json'
+    load_experiment: str = '/home/dev/work_main/2025/OpenPIM/results/m_mlp/data_16TR_0/mmlp_real_for_pca/training_config.json'
 
 
 

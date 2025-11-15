@@ -84,8 +84,8 @@ class SingleLayerPerceptronPCA(nn.Module):
             reconstructed_flat = self.pca.inverse_transform(reduced)  # [N, D]
 
             # Rescale to match original std (optional but recommended)
-            if reconstructed_flat.std() > 1e-8:
-                reconstructed_flat = reconstructed_flat / reconstructed_flat.std() * flat_std
+            # if reconstructed_flat.std() > 1e-8:
+            #     reconstructed_flat = reconstructed_flat / reconstructed_flat.std() * flat_std
 
             # Back to tensor and original shape
             transformed_output = torch.from_numpy(reconstructed_flat).to(device).reshape(orig_shape)
@@ -104,7 +104,7 @@ class NlinCore(nn.Module):
             if i  <= 1:
                 c =32
             else:
-                c = 9
+                c = 7
             layers.append(SingleLayerPerceptronPCA(n_channels, nonlinearity, n_pca_components=c))
         self.model = nn.Sequential(*layers)
 
