@@ -9,13 +9,13 @@ from backbones.common_modules import (
 
 
 class PhaseAwareNonlin(nn.Module):
-    def __init__(self, hidden_size=16, num_layers=2):
+    def __init__(self, hidden_size=16, preproc_dim=3, num_layers=2):
         super().__init__()
         layers = []
         # Input: [I, Q, |x|] (3 features)
         for i in range(num_layers):
             in_dim = 3 if i == 0 else hidden_size
-            out_dim = 1 if i == num_layers - 1 else hidden_size
+            out_dim = preproc_dim if i == num_layers - 1 else hidden_size
             layers.append(nn.Linear(in_dim, out_dim))
             if i < num_layers - 1:
                 layers.append(nn.SiLU())
@@ -33,47 +33,11 @@ class PhaseAwareNonlin(nn.Module):
         return self.net(features)
 
 
-class EnrichedPerceptron(nn.Module):
-    def __init__(self, n_channels, nonlinearity):
-        super().__init__()
-        self.n_channels = n_channels
-        self.linear = nn.Linear(3 * n_channels, 2 * n_channels, bias=True)
-        self._initialize_as_identity()
-        self.enrich_layer = PhaseAwareNonlin()
-        self.nlin = {
-            "relu": nn.ReLU(),
-            "tanh": nn.Tanh(),
-            "elu": nn.ELU(),
-            "silu": nn.SiLU(),
-            "gelu": nn.GELU(),
-            "none": nn.Identity(),
-        }[nonlinearity]
-
-    def _initialize_as_identity(self):
-        init.eye_(self.linear.weight)
-        # Optional: zero out the bias
-        if self.linear.bias is not None:
-            init.zeros_(self.linear.bias)
-
-    def forward(self, x):
-        batch, time, n_ch, _ = x.shape
-        x_flat = x.view(batch * time * n_ch, -1)
-        enrichment = self.enrich_layer(x_flat)
-        enrichment = enrichment.view(batch * time, n_ch, 1)
-        x_flat = x_flat.view(batch * time, n_ch, 2)
-        enriched_input = torch.cat([x_flat, enrichment], dim=-1)
-        enriched_input = enriched_input.view(batch * time, -1)
-        transformed = self.linear(enriched_input)
-        transformed = transformed.view(batch, time, n_ch, 2)
-        return self.nlin(transformed)
-
-
 class SingleLayerPerceptron(nn.Module):
-    def __init__(self, n_channels, nonlinearity):
+    def __init__(self, n_channels, nonlinearity, input_size=32):
         super().__init__()
         self.n_channels = n_channels
-        # Linear layer: input and output are both 2 * n_channels
-        self.linear = nn.Linear(2 * n_channels, 2 * n_channels, bias=True)
+        self.linear = nn.Linear(input_size, 2 * n_channels, bias=True)
         self._initialize_as_identity()
 
         # Set non-linearity
@@ -104,19 +68,31 @@ class NlinCore(nn.Module):
     def __init__(self, n_channels):
         super().__init__()
         self.n_channels = n_channels
+        preproc_dim = 3
+        preproc_layers = 2
         nonlinearity = "silu"
         num_layers = 3
         layers = []
-        layers.append(EnrichedPerceptron(n_channels, nonlinearity))
-        for _ in range(num_layers - 1):
-            layers.append(SingleLayerPerceptron(n_channels, nonlinearity))
+        self.preproc_layer = PhaseAwareNonlin(
+            preproc_dim=preproc_dim,
+            num_layers=preproc_layers
+        )
+        for i in range(num_layers):
+            layers.append(
+                SingleLayerPerceptron(
+                    n_channels,
+                    nonlinearity,
+                    input_size=preproc_dim*n_channels if i == 0 else 32
+                )
+            )
         self.model = nn.Sequential(*layers)
 
     def forward(self, x):
-        return self.model(x)
+        preproc_x = self.preproc_layer(x)
+        return self.model(preproc_x)
 
 
-class McMLPEnriched(nn.Module):
+class McpPreproc(nn.Module):
     def __init__(self, in_seq_size, out_seq_size, n_channels):
         super().__init__()
         self.n_channels = n_channels

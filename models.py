@@ -127,21 +127,6 @@ class CoreModel(nn.Module):
                 n_channels=n_channels,
             )
 
-        elif backbone_type == "simple_dimple":
-            from backbones.simple_dimple import Simple
-
-            self.backbone = Simple(
-                hidden_size=self.hidden_size,
-                output_size=self.output_size,
-                num_layers=1,
-                batch_size=self.batch_size,
-                bidirectional=self.bidirectional,
-                batch_first=self.batch_first,
-                bias=self.bias,
-                input_len=input_size,
-                n_channels=n_channels,
-            )
-
         elif backbone_type == "linpoly":
             from backbones.lin_poly import LinPoly
 
@@ -241,45 +226,45 @@ class CoreModel(nn.Module):
             )
 
         elif backbone_type == "m_mlp_abs":
-            from backbones.mmlp_abs import McMLPAbs
+            from backbones.mcp_abs import McpAbs
 
-            self.backbone = McMLPAbs(
+            self.backbone = McpAbs(
                 in_seq_size=self.input_size,
                 out_seq_size=self.out_window,
                 n_channels=n_channels,
             )
 
         elif backbone_type == "m_mlp_enriched":
-            from backbones.mmlp_enriched import McMLPEnriched
+            from backbones.mcp_enriched import McpEnriched
 
-            self.backbone = McMLPEnriched(
+            self.backbone = McpEnriched(
                 in_seq_size=self.input_size,
                 out_seq_size=self.out_window,
                 n_channels=n_channels,
             )
 
         elif backbone_type == "m_mlp_preproc":
-            from backbones.mmlp_preproc import McMLPPreproc
+            from backbones.mcp_preproc import McpPreproc
 
-            self.backbone = McMLPPreproc(
+            self.backbone = McpPreproc(
                 in_seq_size=self.input_size,
                 out_seq_size=self.out_window,
                 n_channels=n_channels,
             )
 
         elif backbone_type == "s_mlp":
-            from backbones.single_channel_mlp import SingleChannelMLP
+            from backbones.scp import SingleChannelPerceptron
 
-            self.backbone = SingleChannelMLP(
+            self.backbone = SingleChannelPerceptron(
                 in_seq_size=self.input_size,
                 out_seq_size=self.out_window,
                 n_channels=n_channels,
             )
 
         elif backbone_type == "moe_enriched":
-            from backbones.moe_enriched import MoeMLPEnriched
+            from backbones.moe_enriched import MoeEnriched
 
-            self.backbone = MoeMLPEnriched(
+            self.backbone = MoeEnriched(
                 in_seq_size=self.input_size,
                 out_seq_size=self.out_window,
                 n_channels=n_channels

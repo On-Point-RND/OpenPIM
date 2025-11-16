@@ -41,7 +41,7 @@ class NlinCore(nn.Module):
         return self.nonlin(x)
 
 
-class SingleChannelMLP(nn.Module):
+class SingleChannelPerceptron(nn.Module):
     def __init__(self, in_seq_size, out_seq_size, n_channels):
         super().__init__()
         self.n_channels = n_channels
