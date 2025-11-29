@@ -26,9 +26,9 @@ class Config:
 
     log_out_dir: str = "./results"
     log_precision: int = 8
-    out_filtration: bool = False
+    out_filtration: bool = True
     filter_path: str = (
-        "./data/rx_filter.mat"
+        # "./data/rx_filter.mat"
         # "./data/filter_real.mat"
     )
 
@@ -41,11 +41,11 @@ class Config:
 
     # Training Process
     step: str = "train_pim_single"
-    n_back: int = 33
-    n_fwd: int = 8
+    n_back: int = 68
+    n_fwd: int = 10
     out_window: int = 30
     accelerator: str = "cuda"
-    devices: int = 2
+    devices: int = 0
     re_level: str = "soft"
 
     # General Hyperparameters
@@ -55,12 +55,12 @@ class Config:
     batch_size: int = 2048
     batch_size_eval: int = 2048
     n_iterations: int = 2e5
-    n_log_steps: int = 5e3
+    n_log_steps: int = 2e4
     # n_lr_steps we can begin experiments from 1e3 if n_iterations is 2e5
-    n_lr_steps: int = 1e3
-    schedule_lr: bool = False
+    n_lr_steps: int = 2e4
+    schedule_lr: bool = True
     # lr_scheduler_type options: "rop" (reduce on plateau), "cosine"
-    lr_scheduler_type : str = "rop"
+    lr_scheduler_type : str = "cosine"
     lr: float = 1e-2
     lr_end: float = 1e-6
     decay_factor: float = 0.001
