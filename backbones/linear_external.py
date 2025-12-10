@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-from backbones.common_modules import (
+from backbones.filter_modules import (
     TxaFilterEnsembleTorch, RxaFilterEnsembleTorch
 )
 

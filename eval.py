@@ -108,7 +108,11 @@ def run_evaluation(net,
     for key, value in (("gt", gt), ("err", gt - pred), ("noise", noise)):
         compl = toComplex(value)
         powers[key] = [
-            compute_power(compl[:, id], data_type, FS, PIM_SFT, PIM_BW, data_name)
+            compute_power(
+                compl[:, id],
+                FS, PIM_SFT, PIM_BW,
+                data_type, data_name
+            )
             for id in range(compl.shape[1])
         ]
 

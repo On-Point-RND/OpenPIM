@@ -7,14 +7,12 @@ class Config:
     """Configuration class for PIM model training"""
 
     dataset_path: str = (
-        # ./data/
         # "./data/real_data/16TR/"
         # "./data/synth_data/"
     )
 
     dataset_name: str = (
         # "data_A"
-        # "data_B"
         # "data_16TR_0"
         # "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_16L"
     )
@@ -33,7 +31,7 @@ class Config:
     )
 
     # PIM Model Settings
-    PIM_backbone: str = "m_mlp"
+    PIM_backbone: str = "mcp"
     PIM_hidden_size: int = 8
     # PIM Type options: "total", "cond", "leak", "ext"
     PIM_type: str = "total"
