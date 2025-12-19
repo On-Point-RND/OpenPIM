@@ -1,11 +1,11 @@
 import torch.nn as nn
 
-from backbones.filter_modules import (
+from backbones.modules_filter import (
     TxaFilterEnsembleTorch,
     RxaFilterEnsembleTorch,
 )
 
-from backbones.mlp_modules import SingleLayerPerceptron
+from backbones.modules_mlp import SingleLayerPerceptron
 
 
 class NlinCore(nn.Module):

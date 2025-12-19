@@ -2,12 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.init as init
 
-from backbones.filter_modules import (
+from backbones.modules_filter import (
     TxaFilterEnsembleTorch,
     RxaFilterEnsembleTorch,
 )
 
-from backbones.mlp_modules import (
+from backbones.modules_mlp import (
     SingleLayerPerceptron,
 )
 
@@ -47,7 +47,6 @@ class EnrichedPerceptron(nn.Module):
         x_expanded = torch.cat([x_real, x_imag, modulus_square], dim=-1)
         # Model acts on shapes: (B*T, C*3) -> (B*T, C*2)
         transformed = self.linear(x_expanded)
-        transformed = transformed.view(batch_time, n_ch, 2)
         return self.nlin(transformed)
 
 

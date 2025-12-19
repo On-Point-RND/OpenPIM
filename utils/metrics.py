@@ -273,16 +273,16 @@ def plot_total_perf(powers, path_save):
     perf_list = []
     for i in range(n_channels):
         perf_list.append(calc_perf(gt_norm[i], err_norm[i]))
-    mean_perf = round(calculate_mean_red(perf_list), 2)
-    max_perf = round(max(perf_list), 2)
+    mean_perf = calculate_mean_red(perf_list)
+    max_perf = max(perf_list)
 
     power_df.plot.bar(color = ('red', 'blue', 'black'))
     plt.title(
         f'PIM: '
-        f'ORIG: {round(calculate_mean_red(power_df["RXA"]), 2)}, '
-        f'RES: {round(calculate_mean_red(power_df["ERR"]), 2)}; '
-        f'Perf. ABS: {max_perf}, '
-        f'MEAN: {mean_perf}'
+        f'ORIG: {calculate_mean_red(power_df["RXA"]):.2f}, '
+        f'RES: {calculate_mean_red(power_df["ERR"]):.2f}; '
+        f'Perf. ABS: {max_perf:.2f}, '
+        f'MEAN: {mean_perf:.2f}'
     )
     plt.xlabel('Channel number', fontsize = 16)
     plt.ylabel('Signal level [dB]', fontsize = 16)

@@ -2,12 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.init as init
 
-from backbones.filter_modules import (
+from backbones.modules_filter import (
     TxaFilterEnsembleTorch,
     RxaFilterEnsembleTorch,
 )
 
-from backbones.mlp_modules import (
+from backbones.modules_mlp import (
     SingleLayerPerceptron,
     SingleChannelPerceptron,
 )
