@@ -8,7 +8,7 @@ from typing import Dict, Any, Callable
 from modules.paths import gen_log_stat
 
 from tqdm import tqdm
-from utils.metrics import *
+from modules.metrics import *
 
 from modules.data_utils import toComplex
 from modules.loggers import make_logger
