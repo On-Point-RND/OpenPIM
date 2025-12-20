@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.init as init
 
-from backbones.common_modules import (
+from backbones.modules_filter import (
     TxaFilterEnsembleTorch, RxaFilterEnsembleTorch
 )
 

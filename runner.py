@@ -12,7 +12,6 @@ from torch import optim
 from torch.optim.lr_scheduler import LinearLR, SequentialLR
 
 from config import Config
-from modules.data_cascaded import prepare_dataloaders
 from modules.data_collector import load_resources, load_and_split_data
 from modules.loss import IQComponentWiseLoss, HybridLoss, JointLoss, FFTLoss
 from modules.loggers import PandasLogger, make_logger
@@ -42,10 +41,6 @@ class Runner:
                 self.path_dir_log_best,
             ) = dir_paths
             [os.makedirs(p, exist_ok=True) for p in dir_paths]
-
-
-
-
 
         # Hardware Info
         self.num_cpu_threads = os.cpu_count()
@@ -101,7 +96,6 @@ class Runner:
             path_log_file_hist=self.args.path_log_file_hist,
             precision=self.args.log_precision,
         )
-
         return PandasWriter
 
     def reproducible(self):
@@ -294,22 +288,10 @@ class Runner:
             seed = self.args.seed,
         )
 
-
         self.dump_json_config(spec_dictionary)
         return log_all
 
-    def prepare_dataloaders(self, data):
-        return prepare_dataloaders(
-            data,
-            self.args.n_back,
-            self.args.n_fwd,
-            self.args.batch_size,
-            self.args.batch_size_eval,
-            path_dir_save=self.path_dir_log_best,
-        )
-
     def load_and_split_data(self):
-
         path = os.path.join(
             self.args.dataset_path,
             self.args.dataset_name,
@@ -321,9 +303,7 @@ class Runner:
             PIM_type=self.args.PIM_type,
         )
 
-
     def dump_json_config(self, spec_dictionary):
-       
         def serialize_config(config_dict):
             """ Recursively convert non-serializable objects to strings. """
             def _serialize(value):
@@ -341,10 +321,6 @@ class Runner:
 
             return {k: _serialize(v) for k, v in config_dict.items()}
 
-
-    
-
-
         # At the end of your training loop:
         config_to_save = {
             "input_size": 1 + self.args.n_back + self.args.n_fwd,
@@ -361,17 +337,6 @@ class Runner:
             "dataset_name": self.args.dataset_name,
             "dataset_path":self.args.dataset_path,
             "data_type":self.args.data_type,
-            
-            
-            
-            # self.args.train_ratio,
-            # self.args.val_ratio,
-            # self.args.test_ratio,
-            # self.args.n_back,
-            # self.args.n_fwd,
-            # self.args.batch_size,
-            # self.args.batch_size_eval,
-            
             "FS": spec_dictionary["FS"],
             "FC_TX": spec_dictionary["FC_TX"],
             "PIM_SFT": spec_dictionary["PIM_SFT"],
@@ -398,11 +363,9 @@ class Runner:
 
         print(f"Training configuration saved to {save_path}")
 
-
     def load_experiment(self):
         with open(self.args.load_experiment, 'r') as f:
             loaded_config = json.load(f)
-        
         for k, v in loaded_config.items():
             setattr(self.args, k, v)
         print(self.args)

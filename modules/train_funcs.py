@@ -8,7 +8,7 @@ from typing import Dict, Any, Callable
 from modules.paths import gen_log_stat
 
 from tqdm import tqdm
-from utils.metrics import *
+from modules.metrics import *
 
 from modules.data_utils import toComplex
 from modules.loggers import make_logger
@@ -131,9 +131,9 @@ def train_model(
                         PIM_BW,
                         logs[phase_name],
                     )
-                mean_reduction = sum(
-                    logs[phase_name]["Reduction_level"].values()
-                ) / len(logs[phase_name]["Reduction_level"])
+                mean_reduction = calculate_mean_red(
+                    list(logs[phase_name]["Reduction_level"].values())
+                )
 
                 step_logger.success(
                     f"Mean Reduction_level {phase_name}: {mean_reduction}"
@@ -211,12 +211,13 @@ def train_model(
     for key, value in (("gt", gt), ("err", gt - pred), ("noise", noise["test"])):
         compl = toComplex(value)
         powers[key] = [
-            compute_power(compl[:, id], data_type, FS, PIM_SFT, PIM_BW, data_name)
+            compute_power(
+                compl[:, id],
+                FS, PIM_SFT, PIM_BW,
+                data_type, data_name
+            )
             for id in range(compl.shape[1])
         ]
-
-    mean_red_level = calculate_mean_red(list(red_levels.values()))
-    max_red_level = max(red_levels.values())
 
     pd.DataFrame(
         mean_red_levels_for_iter,
@@ -225,8 +226,6 @@ def train_model(
 
     plot_total_perf(
         powers,
-        max_red_level,
-        mean_red_level,
         path_dir_save,
     )
 

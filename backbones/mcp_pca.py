@@ -5,7 +5,7 @@ import torch
 import numpy as np
 from sklearn.decomposition import PCA
 
-from backbones.common_modules import (
+from backbones.modules_filter import (
     TxaFilterEnsembleTorch,
     RxaFilterEnsembleTorch,
 )

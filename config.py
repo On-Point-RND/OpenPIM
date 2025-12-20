@@ -7,14 +7,12 @@ class Config:
     """Configuration class for PIM model training"""
 
     dataset_path: str = (
-        # ./data/
         # "./data/real_data/16TR/"
         # "./data/synth_data/"
     )
 
     dataset_name: str = (
         # "data_A"
-        # "data_B"
         # "data_16TR_0"
         # "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_16L"
     )
@@ -26,14 +24,14 @@ class Config:
 
     log_out_dir: str = "./results"
     log_precision: int = 8
-    out_filtration: bool = False
+    out_filtration: bool = True
     filter_path: str = (
-        "./data/rx_filter.mat"
+        # "./data/rx_filter.mat"
         # "./data/filter_real.mat"
     )
 
     # PIM Model Settings
-    PIM_backbone: str = "m_mlp"
+    PIM_backbone: str = "mcp"
     PIM_hidden_size: int = 8
     # PIM Type options: "total", "cond", "leak", "ext"
     PIM_type: str = "total"
@@ -41,11 +39,11 @@ class Config:
 
     # Training Process
     step: str = "train_pim_single"
-    n_back: int = 33
-    n_fwd: int = 8
+    n_back: int = 68
+    n_fwd: int = 10
     out_window: int = 30
     accelerator: str = "cuda"
-    devices: int = 2
+    devices: int = 0
     re_level: str = "soft"
 
     # General Hyperparameters
@@ -55,12 +53,12 @@ class Config:
     batch_size: int = 2048
     batch_size_eval: int = 2048
     n_iterations: int = 2e5
-    n_log_steps: int = 5e3
+    n_log_steps: int = 2e4
     # n_lr_steps we can begin experiments from 1e3 if n_iterations is 2e5
-    n_lr_steps: int = 1e3
-    schedule_lr: bool = False
+    n_lr_steps: int = 2e4
+    schedule_lr: bool = True
     # lr_scheduler_type options: "rop" (reduce on plateau), "cosine"
-    lr_scheduler_type : str = "rop"
+    lr_scheduler_type : str = "cosine"
     lr: float = 1e-2
     lr_end: float = 1e-6
     decay_factor: float = 0.001

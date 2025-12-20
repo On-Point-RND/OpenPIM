@@ -1,6 +1,6 @@
 import models as model
 from runner import Runner
-from utils.metrics import count_net_params
+from modules.metrics import count_net_params
 import pandas as pd
 import os
 

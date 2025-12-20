@@ -206,26 +206,16 @@ class CoreModel(nn.Module):
                 n_channels=n_channels,
             )
 
-        elif backbone_type == "m_mlp":
-            from backbones.multi_channel_mlp import MultiChannelMLP
-           
+        elif backbone_type == "mcp":
+            from backbones.mcp import MultiChannelMLP
+
             self.backbone = MultiChannelMLP(
                 in_seq_size=self.input_size,
                 out_seq_size=self.out_window,
-                n_channels=n_channels,
+                n_channels=self.n_channels,
             )
-
         
-        elif backbone_type == "m_mlp_reduced":
-            from backbones.multi_channel_mlp_reduced import MultiChannelMLP
-           
-            self.backbone = MultiChannelMLP(
-                in_seq_size=self.input_size,
-                out_seq_size=self.out_window,
-                n_channels=n_channels,
-            )
-
-        elif backbone_type == "m_mlp_abs":
+        elif backbone_type == "mcp_abs":
             from backbones.mcp_abs import McpAbs
 
             self.backbone = McpAbs(
@@ -234,7 +224,7 @@ class CoreModel(nn.Module):
                 n_channels=n_channels,
             )
 
-        elif backbone_type == "m_mlp_enriched":
+        elif backbone_type == "mcp_enriched":
             from backbones.mcp_enriched import McpEnriched
 
             self.backbone = McpEnriched(
@@ -243,19 +233,10 @@ class CoreModel(nn.Module):
                 n_channels=n_channels,
             )
 
-        elif backbone_type == "m_mlp_preproc":
+        elif backbone_type == "mcp_preproc":
             from backbones.mcp_preproc import McpPreproc
 
             self.backbone = McpPreproc(
-                in_seq_size=self.input_size,
-                out_seq_size=self.out_window,
-                n_channels=n_channels,
-            )
-
-        elif backbone_type == "s_mlp":
-            from backbones.scp import SingleChannelPerceptron
-
-            self.backbone = SingleChannelPerceptron(
                 in_seq_size=self.input_size,
                 out_seq_size=self.out_window,
                 n_channels=n_channels,

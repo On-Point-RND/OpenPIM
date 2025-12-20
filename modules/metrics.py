@@ -259,56 +259,30 @@ def plot_final_spectrums(
     plt.close()
 
 
-def plot_total_perf(powers, max_red_level, mean_red_level, path_save):
+def plot_total_perf(powers, path_save):
     fig = plt.figure(figsize = (10, 7))
     n_channels = len(powers['gt'])
-    nfas = [1] * n_channels
-    gt_norm = [powers['gt'][idx] - powers['noise'][idx] + 1 for idx in range(n_channels)]
-    err_norm = [powers['err'][idx] - powers['noise'][idx] + 1 for idx in range(n_channels)]
+    gt_norm = [powers['gt'][idx] - powers['noise'][idx] for idx in range(n_channels)]
+    err_norm = [powers['err'][idx] - powers['noise'][idx] for idx in range(n_channels)]
 
     power_df = pd.DataFrame({
     'RXA':gt_norm,
-    'ERR':err_norm,
-    'NFA':nfas
+    'ERR':err_norm
     })
+
+    perf_list = []
+    for i in range(n_channels):
+        perf_list.append(calc_perf(gt_norm[i], err_norm[i]))
+    mean_perf = calculate_mean_red(perf_list)
+    max_perf = max(perf_list)
 
     power_df.plot.bar(color = ('red', 'blue', 'black'))
     plt.title(
         f'PIM: '
-        f'ORIG: {round(calculate_mean_red(power_df["RXA"]) - 1, 2)}, '
-        f'RES: {round(calculate_mean_red(power_df["ERR"]) - 1, 2)}; '
-        f'Perf. ABS: {round(max_red_level, 2)}, '
-        f'MEAN: {round(mean_red_level, 2)}'
-    )
-    plt.xlabel('Channel number', fontsize = 16)
-    plt.ylabel('Signal level [dB]', fontsize = 16)
-    plt.legend(loc="upper left")
-    plt.savefig(
-        f'{path_save}/' 'barplot_performance.png', bbox_inches='tight'
-    )
-    plt.close()
-
-
-# TODO: WORK IN PROGRESS
-def plot_total_perf_new(powers, max_red_level, mean_red_level, path_save):
-    fig = plt.figure(figsize = (10, 7))
-    n_channels = len(powers['gt'])
-    gt_norm = [powers['gt'][idx] for idx in range(n_channels)]
-    err_norm = [powers['err'][idx] for idx in range(n_channels)]
-    noise_norm = [powers['noise'][idx] for idx in range(n_channels)]
-    power_df = pd.DataFrame({
-    'RXA':gt_norm,
-    'ERR':err_norm,
-    'NFA':noise_norm
-    })
-
-    power_df.plot.bar(color = ('blue', 'red', 'black'))
-    plt.title(
-        f'PIM: '
-        f'ORIG: {round(calculate_mean_red(power_df["RXA"]), 2)}, '
-        f'RES: {round(calculate_mean_red(power_df["ERR"]), 2)}; '
-        f'Perf. ABS: {round(max_red_level, 2)}, '
-        f'MEAN: {round(mean_red_level, 2)} '
+        f'ORIG: {calculate_mean_red(power_df["RXA"]):.2f}, '
+        f'RES: {calculate_mean_red(power_df["ERR"]):.2f}; '
+        f'Perf. ABS: {max_perf:.2f}, '
+        f'MEAN: {mean_perf:.2f}'
     )
     plt.xlabel('Channel number', fontsize = 16)
     plt.ylabel('Signal level [dB]', fontsize = 16)
@@ -320,9 +294,13 @@ def plot_total_perf_new(powers, max_red_level, mean_red_level, path_save):
 
 
 def compute_power(
-        x, data_type,
-        fs, pim_sft, pim_bw,
-        real_data_name = '', return_db=True
+        x,
+        fs,
+        pim_sft,
+        pim_bw,
+        data_type,
+        real_data_name = '',
+        return_db=True
     ):
     """
     Power calculation using Welch's method without matplotlib
@@ -367,13 +345,15 @@ def calculate_res(
         fs, pim_sft, pim_bw, real_data_name
     ):
     orig_power = compute_power(
-        orig_signal, data_type,
+        orig_signal,
         fs, pim_sft, pim_bw,
+        data_type,
         real_data_name
     )
     residual_power = compute_power(
-        residual_signal, data_type,
+        residual_signal,
         fs, pim_sft, pim_bw,
+        data_type,
         real_data_name
     )
     metrics = calc_perf(orig_power, residual_power)
@@ -408,19 +388,22 @@ def reduction_level(
     residual = convolved_pred_signal - convolved_orig_signal
 
     orig_power = compute_power(
-        convolved_orig_signal, data_type,
+        convolved_orig_signal,
         fs, pim_sft, pim_bw,
+        data_type,
         real_data_name
     )
     residual_power = compute_power(
-        residual, data_type,
+        residual,
         fs, pim_sft, pim_bw,
+        data_type,
         real_data_name
     )
     if with_noise:
         noise_power = compute_power(
-        convolved_noise, data_type,
+        convolved_noise,
         fs, pim_sft, pim_bw,
+        data_type,
         real_data_name
     )
         orig_power = orig_power - noise_power
