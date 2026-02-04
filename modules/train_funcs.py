@@ -69,6 +69,7 @@ def train_model(
 
     log_shape = True
     for iteration, (features, targets) in enumerate(train_loader):
+        targets = targets[0] # remove batch dimension
         features, targets = features.to(device), targets.to(device)
         if log_shape:
             step_logger.info(
@@ -99,7 +100,7 @@ def train_model(
         losses.append(loss.detach().item())
 
         # Learning rate adjustment
-        if iteration % n_lr_steps == 0 and iteration > 0 and schedule_lr:
+        if iteration % n_lr_steps == 0 and schedule_lr:
             if lr_scheduler_type == "cosine":
                 lr_scheduler.step()
             elif lr_scheduler_type == "rop":
@@ -246,6 +247,7 @@ def net_eval(
         ground_truth = []
         # Batch Iteration
         for features, targets in tqdm(dataloader):
+            targets = targets[0] # remove batch dimension
             features = features.to(device)
             targets = targets.to(device)
             if net.get_aux_loss_state():

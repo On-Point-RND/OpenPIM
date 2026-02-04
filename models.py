@@ -40,8 +40,9 @@ class CoreModel(nn.Module):
     def __init__(
         self,
         n_channels,
-        input_size,
-        out_window,
+        seq_len,
+        tx_window,
+        rx_window,
         hidden_size,
         backbone_type,
         batch_size,
@@ -51,8 +52,9 @@ class CoreModel(nn.Module):
     ):
         super(CoreModel, self).__init__()
         self.output_size = 2  # PIM outputs: I & Q
-        self.input_size = input_size
-        self.out_window = out_window
+        self.seq_len = seq_len
+        self.tx_window = tx_window
+        self.rx_window = rx_window
         self.hidden_size = hidden_size
         self.backbone_type = backbone_type
         self.batch_size = batch_size
@@ -64,191 +66,40 @@ class CoreModel(nn.Module):
         self.out_filtration = out_filtration
         self.aux_loss_present = aux_loss_present
 
-        if backbone_type == "linear":
-            from backbones.linear import Linear
-
-            self.backbone = Linear(
-                input_size=self.input_size,
-                output_size=self.output_size,
-                batch_size=self.batch_size,
-                n_channels=n_channels,
-            )
-
-        elif backbone_type == "cond_linear":
-            from backbones.linear_conductive import LinearConductive
-
-            self.backbone = LinearConductive(
-                in_seq_size=self.input_size,
-                out_seq_size=self.out_window,
-                n_channels=n_channels,
-            )
-
-        elif backbone_type == "cond_linear_cx":
-            from backbones.linear_conductive_cx import LinearConductive
-
-            self.backbone = LinearConductive(
-                in_seq_size=self.input_size,
-                out_seq_size=self.out_window,
-                n_channels=n_channels,
-            )
-
-        elif backbone_type == "leak_linear":
-            from backbones.linear_leakage import LinearLeakage
-
-            self.backbone = LinearLeakage(
-                in_seq_size=self.input_size,
-                out_seq_size=self.out_window,
-                n_channels=n_channels,
-            )
-
-        elif backbone_type == "ext_linear":
-            from backbones.linear_external import LinearExternal
-
-            self.backbone = LinearExternal(
-                in_seq_size=self.input_size,
-                out_seq_size=self.out_window,
-                n_channels=n_channels,
-            )
-
-        elif backbone_type == "ext_single":
-            from backbones.external_single import ExternalSingle
-            self.backbone = ExternalSingle(
-                in_seq_size=self.input_size,
-                out_seq_size=self.out_window,
-                n_channels=n_channels,
-            )
-
-        elif backbone_type == "cond_leak_linear":
-            from backbones.linear_cond_leak import LinearCondLeak
-
-            self.backbone = LinearCondLeak(
-                in_seq_size=self.input_size,
-                out_seq_size=self.out_window,
-                n_channels=n_channels,
-            )
-
-        elif backbone_type == "linpoly":
-            from backbones.lin_poly import LinPoly
-
-            self.backbone = LinPoly(
-                input_size=self.input_size,
-                output_size=self.output_size,
-                n_channels=n_channels,
-                batch_size=self.batch_size,
-            )
-
-        elif backbone_type == "ext_linpoly":
-            from backbones.lin_poly_external import LinPolyExternal
-
-            self.backbone = LinPolyExternal(
-                input_size=self.input_size,
-                output_size=self.output_size,
-                n_channels=n_channels,
-                batch_size=self.batch_size,
-                out_window=self.out_window,
-            )
-
-        elif backbone_type == "leak_linpoly":
-            from backbones.lin_poly_leakage import LinPolyLeakage
-
-            self.backbone = LinPolyLeakage(
-                input_size=self.input_size,
-                output_size=self.output_size,
-                n_channels=n_channels,
-                batch_size=self.batch_size,
-                out_window=self.out_window,
-            )
-
-        elif backbone_type == "int_linpoly":
-            from backbones.lin_poly_internal import LinPolyInternal
-
-            self.backbone = LinPolyInternal(
-                input_size=self.input_size,
-                output_size=self.output_size,
-                n_channels=n_channels,
-                batch_size=self.batch_size,
-                out_window=self.out_window,
-            )
-
-        elif backbone_type == "convx":
-            from backbones.conv import ConvModel
-
-            self.backbone = ConvModel(
-                input_size=self.input_size,
-                output_size=self.output_size,
-                batch_size=self.batch_size,
-                n_channels=n_channels,
-            )
-
-        elif backbone_type == "cnn_gru":
-            from backbones.cnn_gru import CNN_GRU
-
-            self.backbone = CNN_GRU(
-                hidden_size=self.hidden_size,
-                output_size=self.output_size,
-                batch_size=self.batch_size,
-                batch_first=self.batch_first,
-                bias=self.bias,
-                input_size=self.input_size,
-                n_channels=n_channels,
-            )
-
-        elif backbone_type == "cnn_only":
-            from backbones.cnn_gru import CNN_ONLY
-
-            self.backbone = CNN_ONLY(
-                hidden_size=self.hidden_size,
-                output_size=self.output_size,
-                batch_size=self.batch_size,
-                batch_first=self.batch_first,
-                bias=self.bias,
-                input_size=self.input_size,
-                n_channels=n_channels,
-            )
-
-        elif backbone_type == "mcp":
+        if backbone_type == "mcp":
             from backbones.mcp import MultiChannelMLP
-
             self.backbone = MultiChannelMLP(
-                in_seq_size=self.input_size,
-                out_seq_size=self.out_window,
+                seq_len=self.seq_len,
+                tx_filt_size=self.tx_window,
+                rx_filt_size=self.rx_window,
                 n_channels=self.n_channels,
             )
-        
+
+        elif backbone_type == "mcp_config":
+            from backbones.mcp_configurable import MCPConfig
+            self.backbone = MCPConfig(
+                seq_len=self.seq_len,
+                tx_filt_size=self.tx_window,
+                rx_filt_size=self.rx_window,
+                n_channels=self.n_channels,
+            )
+
         elif backbone_type == "mcp_abs":
             from backbones.mcp_abs import McpAbs
-
             self.backbone = McpAbs(
-                in_seq_size=self.input_size,
-                out_seq_size=self.out_window,
-                n_channels=n_channels,
+                seq_len=self.seq_len,
+                tx_filt_size=self.tx_window,
+                rx_filt_size=self.rx_window,
+                n_channels=self.n_channels,
             )
 
         elif backbone_type == "mcp_enriched":
             from backbones.mcp_enriched import McpEnriched
-
             self.backbone = McpEnriched(
-                in_seq_size=self.input_size,
-                out_seq_size=self.out_window,
-                n_channels=n_channels,
-            )
-
-        elif backbone_type == "mcp_preproc":
-            from backbones.mcp_preproc import McpPreproc
-
-            self.backbone = McpPreproc(
-                in_seq_size=self.input_size,
-                out_seq_size=self.out_window,
-                n_channels=n_channels,
-            )
-
-        elif backbone_type == "moe_enriched":
-            from backbones.moe_enriched import MoeEnriched
-
-            self.backbone = MoeEnriched(
-                in_seq_size=self.input_size,
-                out_seq_size=self.out_window,
-                n_channels=n_channels
+                seq_len=self.seq_len,
+                tx_filt_size=self.tx_window,
+                rx_filt_size=self.rx_window,
+                n_channels=self.n_channels,
             )
 
         else:

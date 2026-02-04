@@ -3,28 +3,27 @@ import torch.nn as nn
 
 
 class TxaFilterEnsembleTorch(nn.Module):
-    def __init__(self, n_channels, in_seq_size, out_seq_size):
+    def __init__(self, n_channels, tx_filt_size, seq_len):
         super().__init__()
         self.n_channels = n_channels
-        self.out_seq_size = out_seq_size
-        self.conv_size = in_seq_size - out_seq_size + 1
+        self.tx_filt_size = tx_filt_size
+        self.seq_len = seq_len
         self.txa_filter_layers = nn.ModuleList()
         for _ in range(n_channels):
             layer = nn.Conv1d(
                 in_channels=2,
                 out_channels=2,
-                kernel_size=self.conv_size,
-                padding="valid",
+                kernel_size=self.tx_filt_size,
+                padding="same",
                 groups=1,
                 bias=False,
             )
             self.txa_filter_layers.append(layer)
 
     def forward(self, x):
-        n_batch, n_seq, *_ = x.shape
-        out_seq_len = n_seq - self.conv_size + 1
+        n_batch, *_ = x.shape
         output = torch.empty(
-            (n_batch, out_seq_len, self.n_channels, 2), device=x.device
+            (n_batch, self.seq_len, self.n_channels, 2), device=x.device
         )
         for c, conv_layer in enumerate(self.txa_filter_layers):
             channel_data = x[:, :, c, :]
@@ -36,27 +35,27 @@ class TxaFilterEnsembleTorch(nn.Module):
 
 
 class RxaFilterEnsembleTorch(nn.Module):
-    def __init__(self, n_channels, seq_size):
+    def __init__(self, n_channels, rx_filt_size, seq_len):
         super().__init__()
         self.n_channels = n_channels
-        self.conv_size = seq_size
+        self.rx_filt_size = rx_filt_size
+        self.seq_len = seq_len
         self.rxa_filter_layers = nn.ModuleList()
         for _ in range(n_channels):
             layer = nn.Conv1d(
                 in_channels=2,
                 out_channels=2,
-                kernel_size=seq_size,
-                padding="valid",
+                kernel_size=self.rx_filt_size,
+                padding="same",
                 groups=1,
                 bias=False,
             )
             self.rxa_filter_layers.append(layer)
 
     def forward(self, x):
-        n_batch, n_seq, *_ = x.shape
-        out_seq_len = n_seq - self.conv_size + 1
+        n_batch, *_ = x.shape
         output = torch.empty(
-            (n_batch, out_seq_len, self.n_channels, 2), device=x.device
+            (n_batch, self.seq_len, self.n_channels, 2), device=x.device
         )
         for c, conv_layer in enumerate(self.rxa_filter_layers):
             channel_data = x[:, :, c, :]
@@ -64,7 +63,7 @@ class RxaFilterEnsembleTorch(nn.Module):
             y = conv_layer(channel_data)
             y = y.transpose(2, 1)
             output[:, :, c, :] = y
-        return output[:, 0, :, :]
+        return output[0]
 
 
 ### COMPLEX

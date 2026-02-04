@@ -50,8 +50,8 @@ class Runner:
 
     def gen_model_id(self, n_net_params):
         dict_pa = {
-            "B": f"{self.args.n_back}",
-            "F": f"{self.args.n_fwd}",
+            "T": f"{self.args.tx_window}",
+            "R": f"{self.args.rx_window}",
             "S": f"{self.args.seed}",
             "M": self.args.PIM_backbone.upper(),
             "H": f"{self.args.PIM_hidden_size:d}",
@@ -155,10 +155,9 @@ class Runner:
             self.args.train_ratio,
             self.args.val_ratio,
             self.args.test_ratio,
-            self.args.n_back,
-            self.args.n_fwd,
             self.args.batch_size,
             self.args.batch_size_eval,
+            self.args.seq_len,
             path_dir_save=self.path_dir_log_best,
         )
 
@@ -209,9 +208,9 @@ class Runner:
                 min_lr=self.args.lr_end,
             )
         elif self.args.lr_scheduler_type == "cosine":
-            total_lr_steps = int(self.args.n_iterations / self.args.n_lr_steps)
+            n_lr_changes = int(self.args.n_iterations / self.args.n_lr_steps)
             # Warmup for first 5% of training
-            warmup_steps = int(0.05 * total_lr_steps)
+            warmup_steps = int(0.05 * n_lr_changes)
             warmup_scheduler = LinearLR(
                 optimizer,
                 start_factor=0.1,
@@ -221,8 +220,8 @@ class Runner:
 
             cosine_scheduler = optim.lr_scheduler.CosineAnnealingLR(
                 optimizer,
-                T_max=total_lr_steps - warmup_steps,
-                eta_min=self.args.lr * 1e-3,
+                T_max=n_lr_changes - warmup_steps,
+                eta_min=self.args.lr * 1e-2,
                 last_epoch=-1,
             )
 
@@ -231,6 +230,33 @@ class Runner:
                 schedulers=[warmup_scheduler, cosine_scheduler],
                 milestones=[warmup_steps],
             )
+
+        elif self.args.lr_scheduler_type == "cosine_restart":
+            n_lr_changes = int(self.args.n_iterations / self.args.n_lr_steps)
+            T_0 = int(0.1 * n_lr_changes)
+            T_mult = 2  # progression multiplier
+
+            warmup_steps = int(0.1 * T_0)
+            warmup_scheduler = LinearLR(
+                optimizer,
+                start_factor=0.1,
+                end_factor=1.0,
+                total_iters=warmup_steps,
+            )
+
+            cosine_restart_scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(
+                optimizer,
+                T_0=T_0 - warmup_steps,
+                T_mult=T_mult,
+                eta_min=self.args.lr * 1e-2,
+            )
+
+            lr_scheduler = SequentialLR(
+                optimizer,
+                schedulers=[warmup_scheduler, cosine_restart_scheduler],
+                milestones=[warmup_steps],
+            )
+
         else:
             raise ValueError(
                 f"Please use a valid learning rate scheduler."
@@ -323,7 +349,9 @@ class Runner:
 
         # At the end of your training loop:
         config_to_save = {
-            "input_size": 1 + self.args.n_back + self.args.n_fwd,
+            "seq_len": self.args.seq_len,
+            "tx_window": self.args.tx_window,
+            "rx_window": self.args.rx_window,
             "PIM_hidden_size": self.args.PIM_hidden_size,
             "out_filtration": self.args.out_filtration,
             "batch_size": self.args.batch_size,

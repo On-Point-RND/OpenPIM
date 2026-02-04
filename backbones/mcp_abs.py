@@ -34,8 +34,6 @@ class EnrichedPerceptron(nn.Module):
             init.zeros_(self.linear.bias)
 
     def forward(self, x):
-        # x is expected to be (batch * time, n_ch, 2)
-        batch_time, n_ch, _ = x.shape
         # Extract real and imaginary parts
         x_real = x[..., 0]  # Shape: (B*T, C)
         x_imag = x[..., 1]  # Shape: (B*T, C)
@@ -79,12 +77,12 @@ class NlinCore(nn.Module):
 
 
 class McpAbs(nn.Module):
-    def __init__(self, in_seq_size, out_seq_size, n_channels):
+    def __init__(self, seq_len, tx_filt_size, rx_filt_size, n_channels):
         super().__init__()
         self.n_channels = n_channels
 
         self.txa_filter_layers = TxaFilterEnsembleTorch(
-            n_channels, in_seq_size, out_seq_size
+            n_channels, tx_filt_size, seq_len
         )
 
         self.nlin_layer = NlinCore(
@@ -92,7 +90,7 @@ class McpAbs(nn.Module):
         )
 
         self.rxa_filter_layers = RxaFilterEnsembleTorch(
-            n_channels, out_seq_size
+            n_channels, rx_filt_size, seq_len
         )
 
     def forward(self, x, h_0=None):
