@@ -53,7 +53,7 @@ class Config:
     batch_size: int = 2048
     batch_size_eval: int = 2048
     n_iterations: int = 2e5
-    n_log_steps: int = 2e4
+    n_log_steps: int = 2e3
     # n_lr_steps we can begin experiments from 1e3 if n_iterations is 2e5
     n_lr_steps: int = 2e4
     schedule_lr: bool = True

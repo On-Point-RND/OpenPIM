@@ -15,4 +15,4 @@ filter_path: "./data/filter_real.mat" #"/home/dev/public-datasets/e.shvetsov/PIM
 data_type : "real"
 accelerator: "cuda"
 
-exp_name: "mmlp_real_for_pca_16_2"
+exp_name: "mcp_real"
