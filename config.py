@@ -39,9 +39,9 @@ class Config:
 
     # Training Process
     step: str = "train_pim_single"
-    n_back: int = 68
-    n_fwd: int = 10
-    out_window: int = 30
+    seq_len: int = 2048
+    tx_window: int = 48
+    rx_window: int = 30
     accelerator: str = "cuda"
     devices: int = 0
     re_level: str = "soft"
@@ -50,12 +50,12 @@ class Config:
     seed: int = 0
     loss_type: str = "l2"
     opt_type: str = "adam"
-    batch_size: int = 2048
-    batch_size_eval: int = 2048
+    batch_size: int = 1
+    batch_size_eval: int = 1
     n_iterations: int = 2e5
     n_log_steps: int = 2e3
     # n_lr_steps we can begin experiments from 1e3 if n_iterations is 2e5
-    n_lr_steps: int = 2e4
+    n_lr_steps: int = 1e2
     schedule_lr: bool = True
     # lr_scheduler_type options: "rop" (reduce on plateau), "cosine"
     lr_scheduler_type : str = "cosine"
@@ -68,6 +68,7 @@ class Config:
     val_ratio: float = 0.2
     test_ratio: float = 0.2
     save_results: bool = True
+    # exp_name: str = "tx48_rx30_lr-8e-3_3e5"
     exp_name: str = "test"
     load_experiment: str = '/home/dev/work_main/2025/OpenPIM/results/m_mlp/data_16TR_0/mmlp_real_for_pca/training_config.json'
 

@@ -2,14 +2,18 @@ import os
 import numpy as np
 from scipy.io import loadmat
 from torch.utils.data import DataLoader
-from modules.datasets import InfiniteIQSegmentDataset, IQSegmentDataset
+from modules.datasets import (
+    InfiniteSequentialDataset,
+    SequentialDataset,
+)
 from modules.data_utils import ComplexScaler, to2Dreal
 from modules.loggers import make_logger
 
 logger = make_logger()
 
 
-# INFO: This is the main script to load resources used in RUNNER, it runs at the begginign of training once
+# INFO: This is the main script to load resources used in RUNNER,
+# it runs at the begginign of training once
 def load_resources(
     dataset_path: str,
     dataset_name: str,
@@ -19,10 +23,9 @@ def load_resources(
     train_ratio: float,
     val_ratio: float,
     test_ratio: float,
-    n_back: int,
-    n_fwd: int,
     batch_size: int,
     batch_size_eval: int,
+    seq_len: int,
     path_dir_save: str,
 ):
     # Load dataset
@@ -32,9 +35,7 @@ def load_resources(
         train_ratio, val_ratio, test_ratio,
         PIM_type, data_type
     )
-    input_size = 1 + n_back + n_fwd
     n_channels = data["X"]["train"].shape[1]
-
     # Calculate normalization parameters
     СScaler = ComplexScaler(data, path_dir_save)
     
@@ -42,29 +43,27 @@ def load_resources(
     for data_part in ["train", "val", "test"]:
         data["X"][data_part] = СScaler.normalize(data["X"][data_part], key="X")
         data["Y"][data_part] = СScaler.normalize(data["Y"][data_part], key="Y")
-        data["N"][data_part] = data["N"][data_part][n_back:-n_fwd, :]
     
-    train_set = InfiniteIQSegmentDataset(
+    train_set = InfiniteSequentialDataset(
         data["X"]["train"],
         data["Y"]["train"],
-        n_back=n_back,
-        n_fwd=n_fwd,
+        seq_len,
     )
     train_loader = DataLoader(
         train_set, batch_size=batch_size, shuffle=False
     )
 
     # Validation set/loader
-    val_set = IQSegmentDataset(
-        data["X"]["val"], data["Y"]["val"], n_back=n_back, n_fwd=n_fwd
+    val_set = SequentialDataset(
+        data["X"]["val"], data["Y"]["val"], seq_len,
     )
     val_loader = DataLoader(
         val_set, batch_size=batch_size_eval, shuffle=False
     )
 
     # Test set/loader
-    test_set = IQSegmentDataset(
-        data["X"]["test"], data["Y"]["test"], n_back=n_back, n_fwd=n_fwd
+    test_set = SequentialDataset(
+        data["X"]["test"], data["Y"]["test"], seq_len,
     )
     test_loader = DataLoader(
         test_set, batch_size=batch_size_eval, shuffle=False
@@ -73,7 +72,6 @@ def load_resources(
     logger.success(f"Dataloaders were created")
     return (
         (train_loader, val_loader, test_loader),
-        input_size,
         n_channels,
         data["N"],
         data["filter"],

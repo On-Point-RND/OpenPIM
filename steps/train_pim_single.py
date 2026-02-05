@@ -11,7 +11,6 @@ def main(exp: Runner):
     # Build Dataloaders
     (
         (train_loader, val_loader, test_loader),
-        input_size,
         n_channels,
         noise,
         filter,
@@ -21,8 +20,9 @@ def main(exp: Runner):
 
     net = model.CoreModel(
         n_channels=n_channels,
-        input_size=input_size,
-        out_window=exp.args.out_window,
+        seq_len=exp.args.seq_len,
+        tx_window=exp.args.tx_window,
+        rx_window=exp.args.rx_window,
         hidden_size=exp.args.PIM_hidden_size,
         backbone_type=exp.args.PIM_backbone,
         batch_size=exp.args.batch_size,

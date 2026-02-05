@@ -22,23 +22,7 @@ def toComplex(x):
     return x[..., 0] + 1j * x[..., 1]
 
 
-# INFO: This is used in modules.datasets
-def back_fwd_feature_prepare(sequence_x, sequence_t, n_back, n_fwd):
-    win_len = n_back + n_fwd + 1
-    num_samples = sequence_x.shape[0] - win_len + 1
-    segments_x = np.zeros((num_samples, win_len, sequence_x.shape[1], 2), dtype=float)
-    segments_y = np.zeros((num_samples, sequence_t.shape[1], 2), dtype=float)
-
-    for step in range(num_samples):
-        segments_x[step, :] = sequence_x[step : win_len + step, :]
-        segments_y[step, :] = sequence_t[win_len + step - n_fwd - 1, :]
-
-    return segments_x, segments_y
-
-
 # INFO: This is used in modules.data_collector
-
-
 def convert_to_serializable(obj, round_decimals=4):
     """
     Recursively convert NumPy/PyTorch types to Python native types,

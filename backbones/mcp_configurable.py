@@ -12,18 +12,31 @@ class NlinCore(nn.Module):
     def __init__(self, n_channels, nonlinearity="silu"):
         super().__init__()
         self.n_channels = n_channels
+        mcp_dim = 2 * n_channels
         layers = []
         layers.append(
             SingleLayerPerceptron(
-                n_channels, 32, 32)
+                n_channels,
+                input_size = mcp_dim, 
+                output_size= mcp_dim)
         )
         layers.append(
             SingleLayerPerceptron(
-                n_channels, 32, 32)
+                n_channels,
+                input_size = mcp_dim, 
+                output_size= mcp_dim)
         )
         layers.append(
             SingleLayerPerceptron(
-                n_channels, 32, 32)
+                n_channels,
+                input_size = mcp_dim, 
+                output_size= 80)
+        )
+        layers.append(
+            SingleLayerPerceptron(
+                n_channels,
+                input_size = 80, 
+                output_size= mcp_dim)
         )
         self.model = nn.Sequential(*layers)
 
@@ -36,18 +49,18 @@ class NlinCore(nn.Module):
 
 
 class MCPConfig(nn.Module):
-    def __init__(self, in_seq_size, out_seq_size, n_channels):
+    def __init__(self, seq_len, tx_filt_size, rx_filt_size, n_channels):
         super().__init__()
         self.n_channels = n_channels
 
         self.txa_filter_layers = TxaFilterEnsembleTorch(
-            n_channels, in_seq_size, out_seq_size
+            n_channels, tx_filt_size, seq_len
         )
 
         self.nlin_layer = NlinCore(n_channels)
 
         self.rxa_filter_layers = RxaFilterEnsembleTorch(
-            n_channels, out_seq_size
+            n_channels, rx_filt_size, seq_len
         )
 
     def forward(self, x, h_0=None):

@@ -42,8 +42,12 @@ class EnrichedPerceptron(nn.Module):
         enrichment = self.enrich_layer(x_flat)
         enrichment = enrichment.view(batch_time, n_ch, 1)
 
-        # Concatenate [I, Q, enrichment]: (batch * time, n_ch, 3)
-        enriched_input = torch.cat([x, enrichment], dim=-1)
+        enriched_input = torch.empty(
+            batch_time, n_ch, 3,
+            dtype=x.dtype, device=x.device
+        )
+        enriched_input[:, :, :2] = x
+        enriched_input[:, :, 2:] = enrichment
 
         # Flatten for linear layer: (batch * time, n_ch * 3)
         enriched_input_flat = enriched_input.view(batch_time, -1)
@@ -80,12 +84,12 @@ class NlinCore(nn.Module):
 
 
 class McpEnriched(nn.Module):
-    def __init__(self, in_seq_size, out_seq_size, n_channels):
+    def __init__(self, seq_len, tx_filt_size, rx_filt_size, n_channels):
         super().__init__()
         self.n_channels = n_channels
 
         self.txa_filter_layers = TxaFilterEnsembleTorch(
-            n_channels, in_seq_size, out_seq_size
+            n_channels, tx_filt_size, seq_len
         )
 
         self.nlin_layer = NlinCore(
@@ -93,7 +97,7 @@ class McpEnriched(nn.Module):
         )
 
         self.rxa_filter_layers = RxaFilterEnsembleTorch(
-            n_channels, out_seq_size
+            n_channels, rx_filt_size, seq_len
         )
 
     def forward(self, x, h_0=None):
