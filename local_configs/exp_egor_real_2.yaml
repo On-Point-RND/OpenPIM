@@ -15,4 +15,4 @@ filter_path: "./data/filter_real.mat" #"/home/dev/public-datasets/e.shvetsov/PIM
 data_type : "real"
 accelerator: "cuda"
 
-exp_name: "mcp_real"
+exp_name: "mcp_real_flat_adaptive"

@@ -88,7 +88,7 @@ def train_model(
             step_logger.info(f"out shape: {out.shape} target shape: {targets.shape}")
         conv_targets = net.filter(targets)
 
-        loss = criterion(out, conv_targets)
+        loss = criterion(out, conv_targets, model=net, iteration = iteration)
         if net.get_aux_loss_state():
             loss += aux_loss
         loss.backward()
@@ -256,7 +256,7 @@ def net_eval(
                 outputs = net(features)
             # Calculate loss function
             conv_targets = net.filter(targets)
-            loss = criterion(outputs, conv_targets)
+            loss = criterion(outputs, conv_targets,  model=net, iteration=0)
 
             # Collect prediction and ground truth for metric calculation
             prediction.append(outputs.cpu())

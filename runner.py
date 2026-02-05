@@ -13,7 +13,7 @@ from torch.optim.lr_scheduler import LinearLR, SequentialLR
 
 from config import Config
 from modules.data_collector import load_resources, load_and_split_data
-from modules.loss import IQComponentWiseLoss, HybridLoss, JointLoss, FFTLoss
+from modules.loss import IQComponentWiseLoss, HybridLoss, JointLoss, FFTLoss, AdaptiveLoss
 from modules.loggers import PandasLogger, make_logger
 from modules.paths import gen_dir_paths, gen_file_paths
 from modules.train_funcs import train_model
@@ -169,15 +169,19 @@ class Runner:
             "l2": nn.MSELoss(reduction="mean"),
             "l1": nn.L1Loss(),
             "fft": FFTLoss(),
+            "Adaptive": AdaptiveLoss(beta = self.args.beta, gamma = self.args.gamma, init_iteration = self.args.init_iteration),
         }
         loss_func_name = self.args.loss_type
-        try:
-            criterion = dict_loss[loss_func_name]
-            self.criterion = criterion
-            return criterion
-        except AttributeError:
-            raise AttributeError("Please use a valid loss function.")
-
+        
+        self.criterion = dict_loss[loss_func_name]
+       
+        return self.criterion
+    
+        
+        
+    
+        
+    
     def build_optimizer(self, net: nn.Module):
         # Optimizer
         if self.args.opt_type == "adam":

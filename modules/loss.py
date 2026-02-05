@@ -20,7 +20,7 @@ class IQComponentWiseLoss(nn.Module):
         self.gamma = gamma
         self.reduction = reduction
 
-    def forward(self, pred, target):
+    def forward(self, pred, target, model=None, iteration=0):
         """
         pred: Tensor of shape (B, N, 2), where B is batch size, N is sequence length,
               and the last dimension represents [I, Q].
@@ -66,7 +66,7 @@ class HybridLoss(nn.Module):
         self.mse = nn.MSELoss()
         self.fft_weight = fft_weight  # Weight for spectral loss (0 = time-only, 1 = freq-only)
 
-    def forward(self, pred, target):
+    def forward(self, pred, target, model=None, iteration=0):
         # Time-domain MSE
         time_loss = self.mse(pred, target)
 
@@ -90,7 +90,7 @@ class FFTLoss(nn.Module):
         super().__init__()
         self.bin = bin
 
-    def forward(self, pred, target):
+    def forward(self, pred, target, model=None, iteration=0):
         fft_pred = torch.fft.rfft(pred)
         fft_true = torch.fft.rfft(target)
         # Focus on target frequency bin
@@ -111,7 +111,7 @@ class JointLoss(nn.Module):
         self.odd_order_weight = odd_order_weight  # Odd-order penalty strength
         self.compress_weight = compress_weight  # Dynamic range compression weight
 
-    def forward(self, pred, target):
+    def forward(self, pred, target, model=None):
         # --- Time-domain MSE ---
         time_loss = self.mse(pred, target)
 
@@ -152,4 +152,53 @@ class JointLoss(nn.Module):
                 + self.compress_weight * (compressed_time_loss + compressed_freq_loss)
             )
         )
+        return total_loss
+
+
+class AdaptiveLoss(nn.Module):
+    def __init__(self, beta=0.0001, gamma=0.0001, init_iteration=1e3):
+        super().__init__()
+        self.mse = nn.MSELoss()
+        self.beta = beta
+        self.gamma = gamma
+        self.init_iteration = init_iteration
+        self._was_training = True # Track state changes
+
+    def forward(self, pred, target, model, iteration):
+        # 1. Access lambdas
+        param = model.backbone.nlin_layer.lambdas.squeeze()
+        all_comprs = model.backbone.nlin_layer.all_comprs
+        
+        # 2. Compute Softmax (alphas)
+        soft = F.softmax(param, dim=0) 
+        
+        # 3. Handle Print on Eval Switch
+        if not model.training:
+            if self._was_training: # Only print once per switch to eval
+                print(f"\n[Eval Mode] Alphas (Softmaxed Lambdas): {soft.detach().cpu().numpy()}")
+                self._was_training = False
+        else:
+            self._was_training = True
+
+        # 4. Standard MSE
+        time_loss = self.mse(pred, target)
+        
+        # 5. Stabilized Entropy Loss (added eps to prevent log(0) -> NaN)
+        eps = 1e-10
+        entropy_loss = torch.dot(-torch.log(soft + eps), soft)
+        
+        # 6. Lambda/Compression Loss
+        lambdas_loss = torch.dot(all_comprs.float(), soft)
+        
+        # 7. Adaptive Logic
+        if iteration == 0:
+            total_loss = time_loss 
+        if iteration > 2 * self.init_iteration:
+            total_loss = time_loss + self.beta * lambdas_loss + self.gamma * entropy_loss
+        elif iteration > self.init_iteration:
+            total_loss = time_loss + self.beta * lambdas_loss 
+        else:
+            total_loss = time_loss 
+
+
         return total_loss

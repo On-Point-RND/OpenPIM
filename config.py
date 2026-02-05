@@ -31,7 +31,7 @@ class Config:
     )
 
     # PIM Model Settings
-    PIM_backbone: str = "mcp"
+    PIM_backbone: str = "mcp_adaptive"
     PIM_hidden_size: int = 8
     # PIM Type options: "total", "cond", "leak", "ext"
     PIM_type: str = "total"
@@ -46,9 +46,14 @@ class Config:
     devices: int = 0
     re_level: str = "soft"
 
+    # Adaptive Loss Components
+    beta: float = 0.005
+    gamma: float = 0.05
+    init_iteration: int = 5e4
+
     # General Hyperparameters
     seed: int = 0
-    loss_type: str = "l2"
+    loss_type: str = "Adaptive"
     opt_type: str = "adam"
     batch_size: int = 1
     batch_size_eval: int = 1

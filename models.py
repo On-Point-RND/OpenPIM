@@ -102,6 +102,16 @@ class CoreModel(nn.Module):
                 n_channels=self.n_channels,
             )
 
+        elif backbone_type == "mcp_adaptive":
+            from backbones.mcp_adaptive import McpAdaptive
+            self.backbone = McpAdaptive(
+                seq_len=self.seq_len,
+                tx_filt_size=self.tx_window,
+                rx_filt_size=self.rx_window,
+                n_channels=self.n_channels,
+            )
+
+
         else:
             raise ValueError(
                 f"The backbone type '{self.backbone_type}' is not supported. Please add your own "
