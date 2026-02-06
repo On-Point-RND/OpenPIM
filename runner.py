@@ -169,7 +169,10 @@ class Runner:
             "l2": nn.MSELoss(reduction="mean"),
             "l1": nn.L1Loss(),
             "fft": FFTLoss(),
-            "Adaptive": AdaptiveLoss(beta = self.args.beta, gamma = self.args.gamma, init_iteration = self.args.init_iteration),
+            "Adaptive": AdaptiveLoss(beta = self.args.beta, 
+                                     gamma = self.args.gamma, 
+                                     init_iteration = self.args.init_iteration, 
+                                     log_dir=self.path_dir_log_best),
         }
         loss_func_name = self.args.loss_type
         

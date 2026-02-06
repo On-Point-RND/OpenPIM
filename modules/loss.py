@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+import os
+import csv
 
 class IQComponentWiseLoss(nn.Module):
     def __init__(self, alpha=1.0, beta=1.0, gamma=1.0, reduction="mean"):
@@ -156,49 +157,96 @@ class JointLoss(nn.Module):
 
 
 class AdaptiveLoss(nn.Module):
-    def __init__(self, beta=0.0001, gamma=0.0001, init_iteration=1e3):
+    def __init__(self, beta=0.0001, gamma=0.0001, init_iteration=1e3, log_dir='.'):
         super().__init__()
         self.mse = nn.MSELoss()
         self.beta = beta
         self.gamma = gamma
         self.init_iteration = init_iteration
-        self._was_training = True # Track state changes
+        self._was_training = True  # Track state changes
+        self.log_dir = log_dir
+        self.csv_logged = False  # Ensure we log only once on eval switch
+
+        # Prepare CSV file path
+        self.csv_path = os.path.join(self.log_dir, 'adaptive_loss_log.csv')
+        # Write header if file doesn't exist
+        if not os.path.exists(self.csv_path):
+            with open(self.csv_path, 'w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow([
+                    'iteration', 'time_loss', 'lambdas_loss', 'entropy_loss', 'total_loss',
+                    'alphas'
+                ])
 
     def forward(self, pred, target, model, iteration):
         # 1. Access lambdas
         param = model.backbone.nlin_layer.lambdas.squeeze()
         all_comprs = model.backbone.nlin_layer.all_comprs
-        
+
         # 2. Compute Softmax (alphas)
-        soft = F.softmax(param, dim=0) 
-        
-        # 3. Handle Print on Eval Switch
+        soft = F.softmax(param, dim=0)
+
+        # 3. Handle Print and Logging on Eval Switch
         if not model.training:
-            if self._was_training: # Only print once per switch to eval
+            if self._was_training:  # Only act once per switch to eval
                 print(f"\n[Eval Mode] Alphas (Softmaxed Lambdas): {soft.detach().cpu().numpy()}")
+
+                # --- LOG TO CSV ONCE ---
+                if not self.csv_logged:
+                    # Recompute losses for logging (same logic as below)
+                    time_loss = self.mse(pred, target).item()
+
+                    eps = 1e-10
+                    entropy_loss = torch.dot(-torch.log(soft + eps), soft).item()
+                    lambdas_loss = torch.dot(all_comprs.float(), soft).item()
+
+                    if iteration == 0:
+                        total_loss = time_loss
+                    elif iteration > 2 * self.init_iteration:
+                        total_loss = time_loss + self.beta * lambdas_loss + self.gamma * entropy_loss
+                    elif iteration > self.init_iteration:
+                        total_loss = time_loss + self.beta * lambdas_loss
+                    else:
+                        total_loss = time_loss
+
+                    alphas_str = ','.join([f"{a:.6f}" for a in soft.detach().cpu().numpy()])
+
+                    with open(self.csv_path, 'a', newline='') as f:
+                        writer = csv.writer(f)
+                        writer.writerow([
+                            int(iteration),
+                            time_loss,
+                            lambdas_loss,
+                            entropy_loss,
+                            total_loss,
+                            alphas_str
+                        ])
+
+                    self.csv_logged = True  # Prevent future logging until next train→eval switch
+
                 self._was_training = False
         else:
             self._was_training = True
+            self.csv_logged = False  # Reset flag when back to training
 
         # 4. Standard MSE
         time_loss = self.mse(pred, target)
-        
-        # 5. Stabilized Entropy Loss (added eps to prevent log(0) -> NaN)
+
+        # 5. Stabilized Entropy Loss
         eps = 1e-10
         entropy_loss = torch.dot(-torch.log(soft + eps), soft)
-        
+
         # 6. Lambda/Compression Loss
         lambdas_loss = torch.dot(all_comprs.float(), soft)
-        
+
         # 7. Adaptive Logic
         if iteration == 0:
-            total_loss = time_loss 
-        if iteration > 2 * self.init_iteration:
+            total_loss = time_loss
+        elif iteration > 2 * self.init_iteration:
             total_loss = time_loss + self.beta * lambdas_loss + self.gamma * entropy_loss
         elif iteration > self.init_iteration:
-            total_loss = time_loss + self.beta * lambdas_loss 
+            total_loss = time_loss + self.beta * lambdas_loss
         else:
-            total_loss = time_loss 
-
+            total_loss = time_loss
 
         return total_loss

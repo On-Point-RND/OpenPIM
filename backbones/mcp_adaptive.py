@@ -82,18 +82,18 @@ class NlinCore(nn.Module):
         # Variable tails: layers 2-3 with compression-specific sizes
         for i, compr in enumerate(all_comprs):
             tail_layers = []
-            # if i == 0:
-            #     tail_layers.append(nn.Identity())
-            # else:
-            for layer_idx in range(2, 4):
-                tail_layers.append(
-                    SingleLayerPerceptron(
-                        n_channels,
-                        nonlinearity,
-                        input_size=compr if layer_idx == 3 else 32,
-                        output_size=compr if layer_idx == 2 else 32
+            if i == 0:
+                tail_layers.append(nn.Identity())
+            else:
+                for layer_idx in range(2, 4):
+                    tail_layers.append(
+                        SingleLayerPerceptron(
+                            n_channels,
+                            nonlinearity,
+                            input_size=compr if layer_idx == 3 else 32,
+                            output_size=compr if layer_idx == 2 else 32
+                        )
                     )
-                )
             self.tails.append(nn.Sequential(*tail_layers))
 
     def forward(self, x):

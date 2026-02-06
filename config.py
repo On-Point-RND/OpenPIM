@@ -47,7 +47,7 @@ class Config:
     re_level: str = "soft"
 
     # Adaptive Loss Components
-    beta: float = 0.005
+    beta: float = 0.0005
     gamma: float = 0.05
     init_iteration: int = 5e4
 
