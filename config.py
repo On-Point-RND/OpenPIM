@@ -56,9 +56,8 @@ class Config:
     n_log_steps: int = 2e4
     # n_lr_steps we can begin experiments from 1e3 if n_iterations is 2e5
     n_lr_steps: int = 2e4
-    schedule_lr: bool = True
-    # lr_scheduler_type options: "rop" (reduce on plateau), "cosine"
-    lr_scheduler_type : str = "cosine"
+    # lr_scheduler_type options: "none", "rop" (reduce on plateau), "cosine"
+    lr_scheduler_type : str = "none"
     lr: float = 1e-2
     lr_end: float = 1e-6
     decay_factor: float = 0.001

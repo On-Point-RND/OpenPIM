@@ -199,7 +199,13 @@ class Runner:
             raise RuntimeError("Please use a valid optimizer.")
 
         # Learning Rate Scheduler
-        if self.args.lr_scheduler_type == "rop":
+        if self.args.lr_scheduler_type == "none":
+            lr_scheduler = optim.lr_scheduler.StepLR(
+                optimizer=optimizer,
+                step_size=1,
+                gamma=1.0,
+            )
+        elif self.args.lr_scheduler_type == "rop":
             lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(
                 optimizer=optimizer,
                 mode="min",
@@ -280,7 +286,6 @@ class Runner:
             n_lr_steps=self.args.n_lr_steps,
             n_iterations=self.args.n_iterations,
             grad_clip_val=self.args.grad_clip_val,
-            schedule_lr=self.args.schedule_lr,
             lr_scheduler_type=self.args.lr_scheduler_type,
             save_results=self.args.save_results,
             val_ratio=self.args.val_ratio,
@@ -345,7 +350,6 @@ class Runner:
             "n_lr_steps": self.args.n_lr_steps,
             "n_iterations": self.args.n_iterations,
             "grad_clip_val": self.args.grad_clip_val,
-            "schedule_lr": self.args.schedule_lr,
             "lr_scheduler_type": self.args.lr_scheduler_type,
             "save_results": self.args.save_results,
             "val_ratio": self.args.val_ratio,
