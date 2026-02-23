@@ -40,7 +40,6 @@ def train_model(
     n_lr_steps: int,
     n_iterations: int,
     grad_clip_val: float,
-    schedule_lr: bool,
     lr_scheduler_type: str,
     save_results: bool = True,
     val_ratio: float = 0.2,
@@ -100,11 +99,11 @@ def train_model(
         losses.append(loss.detach().item())
 
         # Learning rate adjustment
-        if iteration % n_lr_steps == 0 and schedule_lr:
-            if lr_scheduler_type == "cosine":
-                lr_scheduler.step()
-            elif lr_scheduler_type == "rop":
+        if iteration % n_lr_steps == 0:
+            if lr_scheduler_type == "rop":
                 lr_scheduler.step(np.mean(losses))
+            else:
+                lr_scheduler.step()
 
         log_epoch = 0
         if iteration % n_log_steps == 0 and iteration > 0:

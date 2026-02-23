@@ -128,7 +128,7 @@ def load_and_split_data(
         FC_RX = 0
         FS = 245.76
         PIM_SFT = 15
-        PIM_BW = 30
+        PIM_BW = 5
         PIM_total_BW = 30
 
     spec_dictionary = {

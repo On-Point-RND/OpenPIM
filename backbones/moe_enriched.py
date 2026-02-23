@@ -107,25 +107,22 @@ class EnrichedPerceptron(nn.Module):
             init.zeros_(self.linear.bias)
 
     def forward(self, x):
-        # Input: (batch * time_seq_len, n_ch, 2)
+        # x is expected to be (batch * time, n_ch, 2)
         batch_time, n_ch, _ = x.shape
-        # x_flat: (batch_time * n_ch, 2)
         x_flat = x.view(batch_time * n_ch, 2)
-        # enrichment: (batch_time * n_ch, 1)
         enrichment = self.enrich_layer(x_flat)
-        # enrichment: (batch_time, n_ch, 1)
         enrichment = enrichment.view(batch_time, n_ch, 1)
 
-        # Concatenate [I, Q, enrichment]:
-        # (batch * time_seq_len, n_ch, 3)
-        enriched_input = torch.cat([x, enrichment], dim=-1)
+        enriched_input = torch.empty(
+            batch_time, n_ch, 3,
+            dtype=x.dtype, device=x.device
+        )
+        enriched_input[:, :, :2] = x
+        enriched_input[:, :, 2:] = enrichment
 
-        # Flatten for linear layer:
-        # (batch * time_seq_len, n_ch * 3)
+        # Flatten for linear layer: (batch * time, n_ch * 3)
         enriched_input_flat = enriched_input.view(batch_time, -1)
-        # transformed: (batch_time, 2 * n_ch)
         transformed = self.linear(enriched_input_flat)
-        # return: (batch_time, 2 * n_ch)
         return self.nlin(transformed)
 
 
@@ -147,30 +144,29 @@ class NlinCore(nn.Module):
         self.model = nn.Sequential(*layers)
 
     def forward(self, x):
-        # Input: (batch, time_seq_len, n_ch, 2)
         batch, time_seq_len = x.shape[0], x.shape[1]
         n_ch = self.n_channels
-        # Flatten for processing:
-        # (batch * time_seq_len, n_ch, 2)
+        # Flatten for processing: (batch * time_seq_len, n_ch, 2)
         x_flat = x.view(batch * time_seq_len, n_ch, 2)
         transformed = self.model(x_flat)
+        # Reshape back: (batch, time_seq_len, n_channels, 2)
         transformed = transformed.view(batch, time_seq_len, n_ch, 2)
         return transformed
 
 
 class MoeEnriched(nn.Module):
-    def __init__(self, in_seq_size, out_seq_size, n_channels):
+    def __init__(self, seq_len, tx_filt_size, rx_filt_size, n_channels):
         super().__init__()
         self.n_channels = n_channels
 
         self.txa_filter_layers = TxaFilterEnsembleTorch(
-            n_channels, in_seq_size, out_seq_size
+            n_channels, tx_filt_size, seq_len
         )
 
         self.nlin_layer = NlinCore(n_channels)
 
         self.rxa_filter_layers = RxaFilterEnsembleTorch(
-            n_channels, out_seq_size
+            n_channels, rx_filt_size, seq_len
         )
 
     def forward(self, x, h_0=None):
