@@ -102,6 +102,34 @@ class CoreModel(nn.Module):
                 n_channels=self.n_channels,
             )
 
+        elif backbone_type == "moe_enriched":
+            from backbones.moe_enriched import MoeEnriched
+            self.backbone = MoeEnriched(
+                seq_len=self.seq_len,
+                tx_filt_size=self.tx_window,
+                rx_filt_size=self.rx_window,
+                n_channels=self.n_channels,
+                expert_mode="both",
+            )
+        elif backbone_type == "moe_enriched_simple":
+            from backbones.moe_enriched import MoeEnriched
+            self.backbone = MoeEnriched(
+                seq_len=self.seq_len,
+                tx_filt_size=self.tx_window,
+                rx_filt_size=self.rx_window,
+                n_channels=self.n_channels,
+                expert_mode="simple_only",
+            )
+        elif backbone_type == "moe_enriched_trainable":
+            from backbones.moe_enriched import MoeEnriched
+            self.backbone = MoeEnriched(
+                seq_len=self.seq_len,
+                tx_filt_size=self.tx_window,
+                rx_filt_size=self.rx_window,
+                n_channels=self.n_channels,
+                expert_mode="trainable_only",
+            )
+
         else:
             raise ValueError(
                 f"The backbone type '{self.backbone_type}' is not supported. Please add your own "
@@ -114,6 +142,16 @@ class CoreModel(nn.Module):
             print("Backbone Initialized...")
         except AttributeError:
             pass
+
+    def get_expert_weights(self):
+        if hasattr(self.backbone, "get_expert_weights"):
+            return self.backbone.get_expert_weights()
+        return None
+
+    def get_expert_names(self):
+        if hasattr(self.backbone, "get_expert_names"):
+            return self.backbone.get_expert_names()
+        return None
 
     def forward(self, x, h_0=None):
         device = x.device

@@ -37,7 +37,7 @@ class NlinCore(nn.Module):
 class MultiChannelMLP(nn.Module):
     def __init__(self, seq_len, tx_filt_size, rx_filt_size, n_channels):
         super().__init__()
-        num_mlp_layers = 4
+        num_mlp_layers = 3
 
         self.txa_filter_layers = TxaFilterEnsembleTorch(
             n_channels, tx_filt_size, seq_len

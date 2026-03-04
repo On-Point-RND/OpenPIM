@@ -39,9 +39,12 @@ def train_model(
     n_log_steps: int,
     n_lr_steps: int,
     n_iterations: int,
+    n_log_steps_dense: int,
+    dense_phase_end_iter: int,
     grad_clip_val: float,
     lr_scheduler_type: str,
     save_results: bool = True,
+    plot_per_step_spectrums: bool = True,
     val_ratio: float = 0.2,
     test_ratio: float = 0.2,
     seed: int = 0,
@@ -58,13 +61,15 @@ def train_model(
     start_time = time.time()
     net.train()
     losses = []
+    expert_weights_history = []
+    expert_names = None
 
-    red_levels = []
     mean_red_levels_for_iter = []
 
     phases = {"val": val_ratio, "test": test_ratio}
     loaders = {"val": val_loader, "test": test_loader}
     logs = {"val": dict(), "test": dict(), "train": dict()}
+    signal_specs = (FS, PIM_SFT, PIM_BW, data_type, data_name)
 
     log_shape = True
     for iteration, (features, targets) in enumerate(train_loader):
@@ -106,7 +111,17 @@ def train_model(
                 lr_scheduler.step()
 
         log_epoch = 0
-        if iteration % n_log_steps == 0 and iteration > 0:
+        log_step = (
+            n_log_steps_dense
+            if dense_phase_end_iter > 0 and iteration <= dense_phase_end_iter
+            else n_log_steps
+        )
+        if iteration % log_step == 0 and iteration > 0:
+            if hasattr(net, "get_expert_weights") and net.get_expert_weights() is not None:
+                w = net.get_expert_weights()
+                expert_weights_history.append((iteration, w.numpy().copy()))
+                if expert_names is None and hasattr(net, "get_expert_names"):
+                    expert_names = net.get_expert_names()
             step_logger.info(f"{iteration} iteration out of {n_iterations} is complete")
             logs["train"]["loss"] = np.mean(losses)
 
@@ -142,12 +157,12 @@ def train_model(
                     f"Reduction_level {phase_name}: {convert_to_serializable(logs[phase_name]['Reduction_level'])}"
                 )
 
-            if phase_name in ["test", "train"] and test_ratio > 0:
-                pred = CScaler.rescale(pred, key="Y")
-                gt = CScaler.rescale(gt, key="Y")
+            if phase_name in ["test", "train"] and test_ratio > 0 and plot_per_step_spectrums:
+                pred_rescaled = CScaler.rescale(pred, key="Y")
+                gt_rescaled = CScaler.rescale(gt, key="Y")
                 plot_spectrums(
-                    toComplex(pred),
-                    toComplex(gt),
+                    toComplex(pred_rescaled),
+                    toComplex(gt_rescaled),
                     FS,
                     FC_TX,
                     PIM_SFT,
@@ -160,8 +175,8 @@ def train_model(
                     phase_name=phase_name,
                 )
                 plot_final_spectrums(
-                    toComplex(pred),  
-                    toComplex(gt), 
+                    toComplex(pred_rescaled),
+                    toComplex(gt_rescaled),
                     toComplex(noise["test"]),
                     FS,
                     FC_TX,
@@ -188,11 +203,16 @@ def train_model(
 
             writer.write_log(log_all)
 
-            red_levels = log_all["TEST_REDUCTION_LEVEL"]
-            red_level_for_iter = calculate_mean_red(list(red_levels.values()))
+            pred_rescaled = CScaler.rescale(pred, key="Y")
+            gt_rescaled = CScaler.rescale(gt, key="Y")
+            powers = compute_powers_dict(
+                gt_rescaled, pred_rescaled, noise["test"], signal_specs
+            )
+            perf_list = perf_from_powers(powers)
+            mean_perf_for_iter = calculate_mean_red(perf_list)
             mean_red_levels_for_iter.append(
                 [
-                    red_level_for_iter,
+                    mean_perf_for_iter,
                     iteration,
                 ]
             )
@@ -207,17 +227,23 @@ def train_model(
 
     step_logger.info("Training Completed\n")
 
-    powers = dict()
-    for key, value in (("gt", gt), ("err", gt - pred), ("noise", noise["test"])):
-        compl = toComplex(value)
-        powers[key] = [
-            compute_power(
-                compl[:, id],
-                FS, PIM_SFT, PIM_BW,
-                data_type, data_name
-            )
-            for id in range(compl.shape[1])
-        ]
+    if expert_weights_history and expert_names is not None:
+        iterations_arr = np.array([t[0] for t in expert_weights_history])
+        weights_arr = np.array([t[1] for t in expert_weights_history])
+        out_path = os.path.join(path_dir_log_hist, "expert_weights_history.npz")
+        np.savez(
+            out_path,
+            iterations=iterations_arr,
+            weights=weights_arr,
+            expert_names=np.array(expert_names, dtype=object),
+        )
+        step_logger.info(f"Expert weights history saved to {out_path}")
+
+    pred_rescaled = CScaler.rescale(pred, key="Y")
+    gt_rescaled = CScaler.rescale(gt, key="Y")
+    powers = compute_powers_dict(
+        gt_rescaled, pred_rescaled, noise["test"], signal_specs
+    )
 
     pd.DataFrame(
         mean_red_levels_for_iter,

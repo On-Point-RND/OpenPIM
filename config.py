@@ -34,7 +34,8 @@ class Config:
     # PIM Model Settings
     PIM_backbone: str = "mcp"
     PIM_hidden_size: int = 8
-    # PIM Type options: "total", "cond", "leak", "ext"
+    # PIM type options: "total", "cond", "leak", "ext"
+    # For synthetic datasets with separation available
     PIM_type: str = "total"
     use_aux_loss_if_present: bool = False
 
@@ -53,12 +54,15 @@ class Config:
     opt_type: str = "adam"
     batch_size: int = 1
     batch_size_eval: int = 1
-    n_iterations: int = 1e5
+    n_iterations: int = 6e4
     n_log_steps: int = 5e3
+    # Dense-then-sparse logging: first phase logs every n_log_steps_dense
+    n_log_steps_dense: int = 200
+    dense_phase_end_iter: int = 0  # 0 = no dense phase, use n_log_steps all the way
 
     # lr_scheduler_type options: "none", "rop" (reduce on plateau), "cosine"
     lr_scheduler_type : str = "none"
-    n_lr_steps: int = 5e2
+    n_lr_steps: int = 100
 
     lr: float = 1e-3
     lr_end: float = 1e-6
@@ -69,6 +73,8 @@ class Config:
     val_ratio: float = 0.2
     test_ratio: float = 0.2
     save_results: bool = True
+    # to plot spectrum plots each logging step
+    plot_per_step_spectrums: bool = False
     exp_name: str = "test"
     load_experiment: str = '/home/dev/work_main/2025/OpenPIM/results/m_mlp/data_16TR_0/mmlp_real_for_pca/training_config.json'
 

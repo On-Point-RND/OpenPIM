@@ -1,9 +1,11 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from typing import Iterable
+from typing import Iterable, Tuple
 import numpy as np
 from scipy.signal import convolve, welch
+
+from modules.data_utils import toComplex
 
 
 def count_net_params(net):
@@ -257,6 +259,43 @@ def plot_final_spectrums(
         # bbox_inches="tight",
     )
     plt.close()
+
+
+def compute_powers_dict(
+    gt_rescaled,
+    pred_rescaled,
+    noise_test,
+    signal_specs: Tuple[float, float, float, str, str],
+) -> dict:
+    """Build dict of per-channel powers for gt, err, noise.
+    signal_specs: (FS, PIM_SFT, PIM_BW, data_type, data_name).
+    """
+    FS, PIM_SFT, PIM_BW, data_type, data_name = signal_specs
+    powers = {}
+    for key, value in (
+        ("gt", gt_rescaled),
+        ("err", gt_rescaled - pred_rescaled),
+        ("noise", noise_test),
+    ):
+        compl = toComplex(value)
+        powers[key] = [
+            compute_power(
+                compl[:, ch_id],
+                FS, PIM_SFT, PIM_BW,
+                data_type, data_name,
+            )
+            for ch_id in range(compl.shape[1])
+        ]
+    return powers
+
+
+def perf_from_powers(powers: dict) -> float:
+    """Mean performance (reduction level) from powers dict with keys gt, err, noise."""
+    n_channels = len(powers["gt"])
+    gt_norm = [powers["gt"][i] - powers["noise"][i] for i in range(n_channels)]
+    err_norm = [powers["err"][i] - powers["noise"][i] for i in range(n_channels)]
+    perf_list = [calc_perf(gt_norm[i], err_norm[i]) for i in range(n_channels)]
+    return perf_list
 
 
 def plot_total_perf(powers, path_save):

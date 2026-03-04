@@ -13,23 +13,24 @@ from backbones.modules_mlp import (
 )
 
 
+_SIMPLE_FUNCTION_TYPES = [
+    "abs", "modulus", "sin", "cos",
+    "phase", "power", "log1p", "tanhz",
+]
+
+EXPERT_MODES = ("simple_only", "trainable_only", "both")
+
+
 class SimpleFunction(nn.Module):
     def __init__(self, function_type="abs"):
         super().__init__()
         self.function_type = function_type
-        
-        if function_type not in ["abs", "modulus", "sin", "cos"]:
-            raise ValueError(f"function_type must be one of: 'abs', 'modulus', 'sin', 'cos', got '{function_type}'")
+        if function_type not in _SIMPLE_FUNCTION_TYPES:
+            raise ValueError(
+                f"function_type must be one of {_SIMPLE_FUNCTION_TYPES}, got '{function_type}'"
+            )
 
     def forward(self, x):
-        """
-        Apply simple function to input tensor of shape 
-        (batch, seq_len, n_channels, 2)
-        Args:
-            x: Input tensor of shape (batch, seq_len, n_channels, 2)
-        Returns:
-            Tensor of shape (batch, seq_len, n_channels, 1)
-        """
         re, im = x[..., 0], x[..., 1]
         if self.function_type == "abs":
             result = torch.abs(re) + torch.abs(im)
@@ -41,35 +42,52 @@ class SimpleFunction(nn.Module):
         elif self.function_type == "cos":
             modulus = torch.sqrt(re ** 2 + im ** 2)
             result = torch.cos(modulus)
+        elif self.function_type == "phase":
+            result = torch.atan2(im, re)
+        elif self.function_type == "power":
+            result = re ** 2 + im ** 2
+        elif self.function_type == "log1p":
+            modulus = torch.sqrt(re ** 2 + im ** 2)
+            result = torch.log1p(modulus)
+        elif self.function_type == f"tanhz":
+            modulus = torch.sqrt(re ** 2 + im ** 2)
+            result = torch.tanh(modulus)
         else:
             raise ValueError(f"Unknown function_type: {self.function_type}")
-
         return result.unsqueeze(-1)
 
 
 class FeatureGeneratorMoe(nn.Module):
-    def __init__(self, hidden_size=16, num_layers=2):
+    def __init__(self, hidden_size=16, num_layers=2, expert_mode="both"):
         super().__init__()
+        if expert_mode not in EXPERT_MODES:
+            raise ValueError(f"expert_mode must be one of {EXPERT_MODES}, got '{expert_mode}'")
+        self.expert_mode = expert_mode
 
         self.activations = [
             "relu", "tanh", "elu", "silu",
             "gelu", "none", "selu", "softplus"
         ]
+        self.simple_functions = _SIMPLE_FUNCTION_TYPES.copy()
 
-        self.simple_functions = [
-            "abs", "modulus", "sin", "cos"
-        ]
-
-        self.num_experts = len(self.activations) + len(self.simple_functions)
-
-        self.experts = nn.ModuleList([
-            SingleChannelPerceptron(output_size=1, activation=activation)
-            for activation in self.activations
-        ] + [
-            SimpleFunction(function_type=func)
-            for func in self.simple_functions
-        ])
-        self.expert_weights = nn.Parameter(torch.ones(self.num_experts) / self.num_experts)
+        expert_names = []
+        experts = []
+        if expert_mode in ("trainable_only", "both"):
+            for a in self.activations:
+                experts.append(
+                    SingleChannelPerceptron(output_size=1, activation=a)
+                )
+                expert_names.append(a)
+        if expert_mode in ("simple_only", "both"):
+            for f in self.simple_functions:
+                experts.append(SimpleFunction(function_type=f))
+                expert_names.append(f)
+        self.num_experts = len(experts)
+        self.experts = nn.ModuleList(experts)
+        self.expert_names = expert_names
+        self.expert_weights = nn.Parameter(
+            torch.ones(self.num_experts) / self.num_experts
+        )
 
     def forward(self, x):
         # Input: (batch_time * n_ch, 2)
@@ -81,17 +99,19 @@ class FeatureGeneratorMoe(nn.Module):
         # expert_outputs stacked: (batch_time * n_ch, 1, num_experts)
         expert_outputs = torch.stack(expert_outputs, dim=-1)
         # output: (batch_time * n_ch, 1)
-        output = torch.sum(expert_outputs * self.expert_weights, dim=-1, keepdim=True)
+        output = torch.sum(
+            expert_outputs * self.expert_weights, dim=-1, keepdim=True
+        )
         return output
 
 
 class EnrichedPerceptron(nn.Module):
-    def __init__(self, n_channels, nonlinearity):
+    def __init__(self, n_channels, nonlinearity, expert_mode="both"):
         super().__init__()
         self.n_channels = n_channels
         self.linear = nn.Linear(3 * n_channels, 2 * n_channels, bias=True)
         self._initialize_as_identity()
-        self.enrich_layer = FeatureGeneratorMoe()
+        self.enrich_layer = FeatureGeneratorMoe(expert_mode=expert_mode)
         self.nlin = {
             "relu": nn.ReLU(),
             "tanh": nn.Tanh(),
@@ -127,13 +147,17 @@ class EnrichedPerceptron(nn.Module):
 
 
 class NlinCore(nn.Module):
-    def __init__(self, n_channels):
+    def __init__(self, n_channels, expert_mode="both"):
         super().__init__()
         self.n_channels = n_channels
         nonlinearity = "silu"
         num_layers = 3
         layers = []
-        layers.append(EnrichedPerceptron(n_channels, nonlinearity))
+        layers.append(
+            EnrichedPerceptron(
+                n_channels, nonlinearity, expert_mode=expert_mode
+            )
+        )
         for _ in range(num_layers - 1):
             layers.append(SingleLayerPerceptron(
                 n_channels, 
@@ -155,15 +179,30 @@ class NlinCore(nn.Module):
 
 
 class MoeEnriched(nn.Module):
-    def __init__(self, seq_len, tx_filt_size, rx_filt_size, n_channels):
+    """Experts: trainable (SingleChannelPerceptron) + simple (SimpleFunction).
+    expert_mode: one of 'simple_only', 'trainable_only', 'both'.
+    """
+
+    def __init__(
+        self,
+        seq_len,
+        tx_filt_size, rx_filt_size,
+        n_channels,
+        expert_mode="both"
+    ):
         super().__init__()
+        if expert_mode not in EXPERT_MODES:
+            raise ValueError(f"expert_mode must be one of {EXPERT_MODES}, got '{expert_mode}'")
         self.n_channels = n_channels
+        self.expert_mode = expert_mode
 
         self.txa_filter_layers = TxaFilterEnsembleTorch(
             n_channels, tx_filt_size, seq_len
         )
 
-        self.nlin_layer = NlinCore(n_channels)
+        self.nlin_layer = NlinCore(
+            n_channels, expert_mode=expert_mode
+        )
 
         self.rxa_filter_layers = RxaFilterEnsembleTorch(
             n_channels, rx_filt_size, seq_len
@@ -172,5 +211,11 @@ class MoeEnriched(nn.Module):
     def forward(self, x, h_0=None):
         filtered_x = self.txa_filter_layers(x)
         nonlin_output = self.nlin_layer(filtered_x)
-        filt_rxa = self.rxa_filter_layers(nonlin_output)
-        return filt_rxa
+        return self.rxa_filter_layers(nonlin_output)
+
+    def get_expert_weights(self):
+        weights = self.nlin_layer.model[0].enrich_layer.expert_weights
+        return weights.detach().cpu()
+
+    def get_expert_names(self):
+        return self.nlin_layer.model[0].enrich_layer.expert_names

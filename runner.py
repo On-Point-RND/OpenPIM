@@ -1,7 +1,6 @@
 import json
 import os
 import random as rnd
-from argparse import Namespace
 from pathlib import Path
 
 import numpy as np
@@ -320,12 +319,15 @@ class Runner:
             n_log_steps=self.args.n_log_steps,
             n_lr_steps=self.args.n_lr_steps,
             n_iterations=self.args.n_iterations,
+            n_log_steps_dense=self.args.n_log_steps_dense,
+            dense_phase_end_iter=self.args.dense_phase_end_iter,
             grad_clip_val=self.args.grad_clip_val,
             lr_scheduler_type=self.args.lr_scheduler_type,
             save_results=self.args.save_results,
+            plot_per_step_spectrums=self.args.plot_per_step_spectrums,
             val_ratio=self.args.val_ratio,
             test_ratio=self.args.test_ratio,
-            seed = self.args.seed,
+            seed=self.args.seed,
         )
 
         self.dump_json_config(spec_dictionary)
