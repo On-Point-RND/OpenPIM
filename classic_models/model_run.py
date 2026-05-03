@@ -25,8 +25,6 @@ class SignalConfig:
 
 def model(rxa, txa, nfa, bf_len: int,
           config: Config):
-    model_func = globals()[config.model]
-    poly_func = globals()[config.poly]
     n_back = config.n_back
     n_fwd = config.n_fwd
     n_cut_train = int(rxa.shape[0] * config.train_ratio)
@@ -45,14 +43,20 @@ def model(rxa, txa, nfa, bf_len: int,
     pred_test = np.empty(
         (n_test,n_trans), dtype=np.complex128, order='F'
     )
-    mtn_train = create_model_tensor(
-        model_func, poly_func,
-        txa_train_mem, bf_len, n_back, n_fwd
-    )
-    mtn_test = create_model_tensor(
-        model_func, poly_func,
-        txa_test_mem,bf_len, n_back, n_fwd
-    )
+    if config.model == "volterra_second_order_full":
+        mtn_train = create_volterra2_tensor(txa_train_mem, n_back, n_fwd)
+        mtn_test = create_volterra2_tensor(txa_test_mem, n_back, n_fwd)
+    else:
+        model_func = globals()[config.model]
+        poly_func = globals()[config.poly]
+        mtn_train = create_model_tensor(
+            model_func, poly_func,
+            txa_train_mem, bf_len, n_back, n_fwd
+        )
+        mtn_test = create_model_tensor(
+            model_func, poly_func,
+            txa_test_mem,bf_len, n_back, n_fwd
+        )
     model_wts = ls_solve(mtn_train, rxa_train)
     contract(mtn_test, model_wts, pred_test)
     return rxa_test, pred_test, nfa_test
@@ -118,7 +122,14 @@ def train_poly_model(config: Config):
         "poly_series": [3]
     }
 
-    bf_dim = bf_lengths[config.model][0]
+    if config.model == "volterra_second_order":
+        bf_dim = volterra2_feature_count(txa.shape[1])
+    elif config.model == "volterra_second_order_full":
+        bf_dim = volterra2_tensor_feature_count(
+            txa.shape[1], config.n_back + config.n_fwd + 1
+        )
+    else:
+        bf_dim = bf_lengths[config.model][0]
     rxa_test, pred_test, nfa_test = model(rxa, txa, nfa, bf_dim, config)
     logs = calculate_metrics(
         pred_test, rxa_test, filter, fs,

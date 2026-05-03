@@ -97,7 +97,18 @@ def experiment(experiment_name, output_dir = './results/'):
             )
         train_gl, test_gl, params_gl = [], [], []
         wts_dict = dict()
-        for bf_len in model_config.bf_lengths[model_name]:
+        if model_name == "volterra_second_order":
+            bf_lengths = [volterra2_feature_count(txa.shape[1])]
+        elif model_name == "volterra_second_order_full":
+            bf_lengths = [
+                volterra2_tensor_feature_count(
+                    txa.shape[1],
+                    max(model_config.back_list) + max(model_config.fwd_list) + 1,
+                )
+            ]
+        else:
+            bf_lengths = model_config.bf_lengths[model_name]
+        for bf_len in bf_lengths:
             window_config = WindowExpConfig(
                 model_config.back_list, model_config.fwd_list,
                 bf_len, model_name, poly_name
@@ -123,6 +134,9 @@ def experiment(experiment_name, output_dir = './results/'):
 def window_experiment(
         rxa: np.ndarray, txa: np.ndarray, conv4metrics: np.ndarray,
         config: WindowExpConfig, sig_config: SignalConfig, wts_dict: dict):
+    if config.model == "volterra_second_order_full":
+        return full_window_experiment(rxa, txa, conv4metrics, config, sig_config, wts_dict)
+
     back_list, fwd_list, bf_len = config.n_back, config.n_fwd, config.bf_len
     fs, pim_sft, pim_bw = sig_config.fs, sig_config.pim_sft, sig_config.pim_bw
     model_func = globals()[config.model]
@@ -201,6 +215,67 @@ def window_experiment(
             train_metrics.append(train_metric_value)
             test_metrics.append(test_metric_value)
             params.append([i_back, i_fwd, bf_len])
+    return train_metrics, test_metrics, params
+
+
+def full_window_experiment(
+        rxa: np.ndarray, txa: np.ndarray, conv4metrics: np.ndarray,
+        config: WindowExpConfig, sig_config: SignalConfig, wts_dict: dict):
+    back_list, fwd_list = config.n_back, config.n_fwd
+    fs, pim_sft, pim_bw = sig_config.fs, sig_config.pim_sft, sig_config.pim_bw
+    n_cut = int(rxa.shape[0] * 0.8)
+    n_trans = rxa.shape[1]
+    rxa_train_mem = rxa[:n_cut]
+    txa_train_mem = txa[:n_cut]
+    rxa_test_mem = rxa[n_cut:]
+    txa_test_mem = txa[n_cut:]
+
+    train_metrics = []
+    test_metrics = []
+    params = []
+
+    for i_back in back_list:
+        for i_fwd in fwd_list:
+            test_end_idx = -i_fwd if i_fwd > 0 else None
+            rxa_train = rxa_train_mem[i_back:test_end_idx]
+            rxa_test = rxa_test_mem[i_back:test_end_idx]
+            n_train = rxa_train.shape[0]
+            n_test = rxa_test.shape[0]
+
+            res_train = np.empty((n_train, n_trans), dtype=np.complex128, order='F')
+            res_test = np.empty((n_test, n_trans), dtype=np.complex128, order='F')
+            conv_rxa_train = np.empty((n_train + 254, n_trans), dtype=np.complex128, order='F')
+            conv_rxa_test = np.empty((n_test + 254, n_trans), dtype=np.complex128, order='F')
+            conv_res_train = np.empty((n_train + 254, n_trans), dtype=np.complex128, order='F')
+            conv_res_test = np.empty((n_test + 254, n_trans), dtype=np.complex128, order='F')
+
+            convolve_tensor(rxa_train, conv4metrics, conv_rxa_train)
+            convolve_tensor(rxa_test, conv4metrics, conv_rxa_test)
+
+            mtn_train = create_volterra2_tensor(txa_train_mem, i_back, i_fwd)
+            mtn_test = create_volterra2_tensor(txa_test_mem, i_back, i_fwd)
+            model_wts = ls_solve(mtn_train, rxa_train)
+
+            contract(mtn_train, model_wts, res_train)
+            contract(mtn_test, model_wts, res_test)
+            res_train[...] -= rxa_train
+            res_test[...] -= rxa_test
+
+            convolve_tensor(res_train, conv4metrics, conv_res_train)
+            convolve_tensor(res_test, conv4metrics, conv_res_test)
+            train_metric_value = calculate_avg_metrics(
+                conv_rxa_train, conv_res_train, fs, pim_sft, pim_bw
+            )
+            test_metric_value = calculate_avg_metrics(
+                conv_rxa_test, conv_res_test, fs, pim_sft, pim_bw
+            )
+            feature_count = volterra2_tensor_feature_count(
+                n_trans, i_back + i_fwd + 1
+            )
+            wts_dict[(i_back, i_fwd, feature_count)] = [model_wts]
+            train_metrics.append(train_metric_value)
+            test_metrics.append(test_metric_value)
+            params.append([i_back, i_fwd, feature_count])
     return train_metrics, test_metrics, params
 
 if __name__ == '__main__':

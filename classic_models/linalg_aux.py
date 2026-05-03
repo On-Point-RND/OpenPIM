@@ -38,6 +38,50 @@ def create_model_tensor(model_func: Callable[..., bool],
     return tens
 
 
+def volterra2_tensor_feature_count(n_trans: int, win_len: int):
+    n_linear = n_trans * win_len
+    n_channel_pairs = n_trans * (n_trans + 1) // 2
+    n_lag_pairs = win_len * (win_len + 1) // 2
+    return n_linear + n_channel_pairs * n_lag_pairs
+
+
+def create_volterra2_tensor(x: np.ndarray, n_back: int, n_fwd: int):
+    assert len(x.shape) > 1
+    n_trans = x.shape[1]
+    win_len = n_back + n_fwd + 1
+    n_pts = len(x) - win_len + 1
+    end_idx = -n_fwd if n_fwd > 0 else None
+    x_work_range = x[n_back:end_idx]
+    assert x_work_range.shape[0] == n_pts
+
+    n_features = volterra2_tensor_feature_count(n_trans, win_len)
+    feature_mat = np.empty((n_pts, n_features), dtype=np.complex128, order='F')
+
+    idx = 0
+    for lag in range(win_len):
+        x_lag = x[lag:n_pts + lag]
+        for i_tr in range(n_trans):
+            feature_mat[:, idx] = x_lag[:, i_tr]
+            idx += 1
+
+    for lag_a in range(win_len):
+        x_lag_a = x[lag_a:n_pts + lag_a]
+        for lag_b in range(lag_a, win_len):
+            x_lag_b = x[lag_b:n_pts + lag_b]
+            for i_tr in range(n_trans):
+                for j_tr in range(i_tr, n_trans):
+                    # Quadratic Volterra: x_c1[t-m1] * x_c2[t-m2], m1 <= m2, c1 <= c2
+                    feature_mat[:, idx] = (
+                        x_lag_a[:, i_tr] * x_lag_b[:, j_tr]
+                    )
+                    idx += 1
+
+    tens = np.empty((n_pts, n_features, n_trans), dtype=np.complex128, order='F')
+    for i_ts in range(n_trans):
+        tens[:, :, i_ts] = feature_mat
+    return tens
+
+
 def ls_solve(model_tens: np.ndarray, rhs: np.ndarray):
     assert model_tens.shape[0] == rhs.shape[0]
     assert model_tens.shape[2] == rhs.shape[1]

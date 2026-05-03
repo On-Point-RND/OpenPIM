@@ -183,3 +183,31 @@ def combi_nlin_mult_infl_fix_pwr(
         mem_segment[:, i] = x[:, i] * poly_func(np.abs(total_x), 2)
         mem_segment[:, n_ts+i] = x[:, i] * poly_func(np.abs(x[:, i]), 2)
     return True
+
+
+def volterra2_feature_count(n_trans: int):
+    if n_trans < 1:
+        raise ValueError("Volterra model expects at least one transmitter.")
+    return n_trans + n_trans * (n_trans + 1) // 2
+
+
+def volterra_second_order(poly_func: Callable[..., np.ndarray],
+                          x: np.ndarray, mem_segment: np.ndarray, ts: int):
+    assert x.shape[0] == mem_segment.shape[0]
+    n_ts = x.shape[1]
+    expected_width = volterra2_feature_count(n_ts)
+    if mem_segment.shape[1] != expected_width:
+        raise ValueError(
+            f"Invalid Volterra basis width: expected {expected_width}, got {mem_segment.shape[1]}"
+        )
+
+    mem_segment[:, :n_ts] = x
+
+    target_signal = x[:, ts]
+    idx = n_ts
+    for i_tr in range(n_ts):
+        for j_tr in range(i_tr, n_ts):
+            interaction = np.abs(x[:, i_tr] * x[:, j_tr])
+            mem_segment[:, idx] = target_signal * poly_func(interaction, 1)
+            idx += 1
+    return True
