@@ -1,3 +1,5 @@
+from typing import Callable
+
 import numpy as np
 from scipy.signal import convolve
 from basis_func import *
@@ -23,7 +25,9 @@ def create_model_tensor(model_func: Callable[..., bool],
     n_trans = x.shape[1]
     win_len = n_back + n_fwd + 1
     n_pts = len(x) - win_len + 1
-    x_work_range = x[n_back : -n_fwd]
+    # n_fwd==0: x[n_back:-0] is x[n_back:0] (empty); use None to mean "to end"
+    end_idx = -n_fwd if n_fwd > 0 else None
+    x_work_range = x[n_back:end_idx]
     assert x_work_range.shape[0] == n_pts
     tens = np.empty(
         (n_pts, n_bf*win_len, n_trans), dtype=np.complex128, order='F'

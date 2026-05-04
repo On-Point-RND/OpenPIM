@@ -149,8 +149,9 @@ def window_experiment(
     txa_train_mem = txa[:n_cut]
     rxa_test_mem = rxa[n_cut:]
     txa_test_mem = txa[n_cut:]
-    rxa_train = rxa_train_mem[n_back:-n_fwd]
-    rxa_test = rxa_test_mem[n_back:-n_fwd]
+    end_idx = -n_fwd if n_fwd > 0 else None
+    rxa_train = rxa_train_mem[n_back:end_idx]
+    rxa_test = rxa_test_mem[n_back:end_idx]
     n_train = rxa_train.shape[0]
     n_test = rxa_test.shape[0]
 

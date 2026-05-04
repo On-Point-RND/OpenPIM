@@ -35,9 +35,10 @@ def model(rxa, txa, nfa, bf_len: int,
     rxa_test_mem = rxa[n_cut_test:]
     txa_test_mem = txa[n_cut_test:]
     nfa_test_mem = nfa[n_cut_test:]
-    rxa_train = rxa_train_mem[n_back:-n_fwd]
-    rxa_test = rxa_test_mem[n_back:-n_fwd]
-    nfa_test = nfa_test_mem[n_back:-n_fwd]
+    end_idx = -n_fwd if n_fwd > 0 else None
+    rxa_train = rxa_train_mem[n_back:end_idx]
+    rxa_test = rxa_test_mem[n_back:end_idx]
+    nfa_test = nfa_test_mem[n_back:end_idx]
     n_test = rxa_test.shape[0]
 
     pred_test = np.empty(
