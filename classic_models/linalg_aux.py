@@ -44,9 +44,9 @@ def create_model_tensor(model_func: Callable[..., bool],
 
 def volterra2_tensor_feature_count(n_trans: int, win_len: int):
     n_linear = n_trans * win_len
-    n_channel_pairs = n_trans * (n_trans + 1) // 2
+    n_q_channels = n_trans * n_trans
     n_lag_pairs = win_len * (win_len + 1) // 2
-    return n_linear + n_channel_pairs * n_lag_pairs
+    return n_linear + n_q_channels * n_lag_pairs
 
 
 def create_volterra2_tensor(x: np.ndarray, n_back: int, n_fwd: int):
@@ -73,13 +73,13 @@ def create_volterra2_tensor(x: np.ndarray, n_back: int, n_fwd: int):
         for lag_b in range(lag_a, win_len):
             x_lag_b = x[lag_b:n_pts + lag_b]
             for i_tr in range(n_trans):
-                for j_tr in range(i_tr, n_trans):
-                    # Quadratic Volterra: x_c1[t-m1] * x_c2[t-m2], m1 <= m2, c1 <= c2
+                for j_tr in range(n_trans):
                     feature_mat[:, idx] = (
                         x_lag_a[:, i_tr] * x_lag_b[:, j_tr]
                     )
                     idx += 1
 
+    assert idx == n_features
     tens = np.empty((n_pts, n_features, n_trans), dtype=np.complex128, order='F')
     for i_ts in range(n_trans):
         tens[:, :, i_ts] = feature_mat
