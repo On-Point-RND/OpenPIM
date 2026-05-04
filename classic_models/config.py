@@ -7,19 +7,19 @@ class Config:
     """Configuration class for classic PIM models"""
 
     # Dataset Settings
-    dataset_path: str = "/home/sandbox/datasets/syth_01_shared_data/1TR/"
-    dataset_name: str = "1TR_C20Nc1CD_E20Ne1CD_20250331_0.5m"
-    log_out_dir: str = "/home/sandbox/project_dir/results/classic_models"
-    filter_path: str = "/home/sandbox/project_dir/data/rx_filter.mat"
+    dataset_path: str = "../data/"
+    dataset_name: str = "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_16L"
+    log_out_dir: str = "../results/classic_models_long/"
+    filter_path: str = "../data/rx_filter.mat"
 
     # Model Settings
-    model: str = "volterra_second_order_full"
+    model: str = "utd_nlin_mult_infl_fix_pwr"
     poly: str = "cheb"
     PIM_type: str = "total"  # Options: "total", "cond", "leak", "ext"
 
     # Training Process
-    n_back: int = 8
-    n_fwd: int = 2
+    n_back: int = 68
+    n_fwd: int = 10
     accelerator: str = "cpu"
     devices: int = 0
 

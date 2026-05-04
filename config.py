@@ -7,11 +7,13 @@ class Config:
     """Configuration class for PIM model training"""
 
     dataset_path: str = (
+        "/home/sandbox/datasets/syth_01_shared_data/1TR/"
         # "./data/real_data/16TR/"
         # "./data/synth_data/"
     )
 
     dataset_name: str = (
+        "1TR_C20Nc1CD_E20Ne1CD_20250331_0.5m"
         # "data_A"
         # "data_16TR_0"
         # "data_32TR_A0"
@@ -20,14 +22,14 @@ class Config:
 
     data_type: str = (
         # 'real'
-        # 'synth'
+        'synth'
     )
 
-    log_out_dir: str = "./results"
+    log_out_dir: str = "/home/sandbox/project_dir/results"
     log_precision: int = 8
     out_filtration: bool = True
     filter_path: str = (
-        # "./data/rx_filter.mat"
+        "/home/sandbox/project_dir/data/rx_filter.mat"
         # "./data/filter_real.mat"
     )
 
