@@ -42,14 +42,30 @@ def create_model_tensor(model_func: Callable[..., bool],
     return tens
 
 
-def volterra2_tensor_feature_count(n_trans: int, win_len: int):
+def volterra2_tensor_feature_count(
+    n_trans: int,
+    win_len: int,
+    volterra_include_quadratic: bool = True,
+    volterra_include_conjugate: bool = False,
+    volterra_include_abs: bool = False,
+):
     n_linear = n_trans * win_len
-    n_q_channels = n_trans * n_trans
-    n_lag_pairs = win_len * (win_len + 1) // 2
-    return n_linear + n_q_channels * n_lag_pairs
+    n_quadratic = (
+        n_linear * (n_linear + 1) // 2 if volterra_include_quadratic else 0
+    )
+    n_conj_quadratic = n_linear * n_linear if volterra_include_conjugate else 0
+    n_abs_quadratic = n_linear * n_linear if volterra_include_abs else 0
+    return 1 + n_linear + n_quadratic + n_conj_quadratic + n_abs_quadratic
 
 
-def create_volterra2_tensor(x: np.ndarray, n_back: int, n_fwd: int):
+def create_volterra2_tensor(
+    x: np.ndarray,
+    n_back: int,
+    n_fwd: int,
+    volterra_include_quadratic: bool = True,
+    volterra_include_conjugate: bool = False,
+    volterra_include_abs: bool = False,
+):
     assert len(x.shape) > 1
     n_trans = x.shape[1]
     win_len = n_back + n_fwd + 1
@@ -58,26 +74,51 @@ def create_volterra2_tensor(x: np.ndarray, n_back: int, n_fwd: int):
     x_work_range = x[n_back:end_idx]
     assert x_work_range.shape[0] == n_pts
 
-    n_features = volterra2_tensor_feature_count(n_trans, win_len)
+    n_linear = n_trans * win_len
+    n_features = volterra2_tensor_feature_count(
+        n_trans,
+        win_len,
+        volterra_include_quadratic=volterra_include_quadratic,
+        volterra_include_conjugate=volterra_include_conjugate,
+        volterra_include_abs=volterra_include_abs,
+    )
+    linear_mat = np.empty((n_pts, n_linear), dtype=np.complex128, order='F')
     feature_mat = np.empty((n_pts, n_features), dtype=np.complex128, order='F')
+    feature_mat[:, 0] = 1.0
 
     idx = 0
     for lag in range(win_len):
         x_lag = x[lag:n_pts + lag]
         for i_tr in range(n_trans):
-            feature_mat[:, idx] = x_lag[:, i_tr]
+            linear_mat[:, idx] = x_lag[:, i_tr]
             idx += 1
+    assert idx == n_linear
+    feature_mat[:, 1:1 + n_linear] = linear_mat
 
-    for lag_a in range(win_len):
-        x_lag_a = x[lag_a:n_pts + lag_a]
-        for lag_b in range(lag_a, win_len):
-            x_lag_b = x[lag_b:n_pts + lag_b]
-            for i_tr in range(n_trans):
-                for j_tr in range(n_trans):
-                    feature_mat[:, idx] = (
-                        x_lag_a[:, i_tr] * x_lag_b[:, j_tr]
-                    )
-                    idx += 1
+    idx = 1 + n_linear
+    if volterra_include_quadratic:
+        for i_feature in range(n_linear):
+            for j_feature in range(i_feature, n_linear):
+                feature_mat[:, idx] = (
+                    linear_mat[:, i_feature] * linear_mat[:, j_feature]
+                )
+                idx += 1
+
+    if volterra_include_conjugate:
+        for i_feature in range(n_linear):
+            for j_feature in range(n_linear):
+                feature_mat[:, idx] = (
+                    linear_mat[:, i_feature] * np.conj(linear_mat[:, j_feature])
+                )
+                idx += 1
+
+    if volterra_include_abs:
+        for i_feature in range(n_linear):
+            for j_feature in range(n_linear):
+                feature_mat[:, idx] = (
+                    linear_mat[:, i_feature] * np.abs(linear_mat[:, j_feature])
+                )
+                idx += 1
 
     assert idx == n_features
     tens = np.empty((n_pts, n_features, n_trans), dtype=np.complex128, order='F')
@@ -86,7 +127,11 @@ def create_volterra2_tensor(x: np.ndarray, n_back: int, n_fwd: int):
     return tens
 
 
-def ls_solve(model_tens: np.ndarray, rhs: np.ndarray):
+def ls_solve(
+    model_tens: np.ndarray,
+    rhs: np.ndarray,
+    verbose_basis_fit: bool = False,
+):
     assert model_tens.shape[0] == rhs.shape[0]
     assert model_tens.shape[2] == rhs.shape[1]
     n_trans = rhs.shape[1]
@@ -102,6 +147,26 @@ def ls_solve(model_tens: np.ndarray, rhs: np.ndarray):
             wts_tens[:, i_tr] = np.linalg.inv(inverted + I*psi) @ tmp_prod
         else:
             wts_tens[:, i_tr] = np.linalg.inv(inverted) @ tmp_prod
+        if verbose_basis_fit:
+            pred_i = model_mat @ wts_tens[:, i_tr]
+            p_rx = float(np.mean(np.abs(rhs_i) ** 2))
+            nmse = float(np.mean(np.abs(rhs_i - pred_i) ** 2)) / max(p_rx, 1e-30)
+            rho = np.abs(np.vdot(rhs_i, pred_i)) / (
+                np.linalg.norm(rhs_i) * np.linalg.norm(pred_i) + 1e-30
+            )
+            nmse_db = 10 * np.log10(nmse) if nmse > 0 else -np.inf
+            if nmse_db > -0.5 and rho < 0.1:
+                hint = (
+                    "Weak fit: NMSE≈0 dB and |corr|≈0; "
+                    "RX is almost outside the linear span of X columns."
+                )
+            else:
+                hint = "The feature-basis fit looks meaningful."
+            print(
+                "[ls_solve] RX approximation in feature basis (train): "
+                f"channel {i_tr}: NMSE_lin={nmse_db:.2f} dB; "
+                f"|corr|(RX, Xw)={rho:.4f}. {hint}"
+            )
     return wts_tens
 
 

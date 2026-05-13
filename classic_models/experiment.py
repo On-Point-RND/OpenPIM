@@ -32,6 +32,9 @@ class WindowExpConfig:
     bf_len: int
     model: str
     poly: str
+    volterra_include_quadratic: bool = True
+    volterra_include_conjugate: bool = False
+    volterra_include_abs: bool = False
 
 
 class ModelExpConfig:
@@ -44,6 +47,18 @@ class ModelExpConfig:
             self.back_list = config['back_list']
             self.fwd_list = config['fwd_list']
             self.data_ptr = config['data_prefix']
+            self.volterra_include_quadratic = config.get(
+                'volterra_include_quadratic',
+                True,
+            )
+            self.volterra_include_conjugate = config.get(
+                'volterra_include_conjugate',
+                False,
+            )
+            self.volterra_include_abs = config.get(
+                'volterra_include_abs',
+                False,
+            )
 
 
 def experiment(experiment_name, output_dir = './results/'):
@@ -104,6 +119,13 @@ def experiment(experiment_name, output_dir = './results/'):
                 volterra2_tensor_feature_count(
                     txa.shape[1],
                     max(model_config.back_list) + max(model_config.fwd_list) + 1,
+                    volterra_include_quadratic=(
+                        model_config.volterra_include_quadratic
+                    ),
+                    volterra_include_conjugate=(
+                        model_config.volterra_include_conjugate
+                    ),
+                    volterra_include_abs=model_config.volterra_include_abs,
                 )
             ]
         else:
@@ -111,7 +133,10 @@ def experiment(experiment_name, output_dir = './results/'):
         for bf_len in bf_lengths:
             window_config = WindowExpConfig(
                 model_config.back_list, model_config.fwd_list,
-                bf_len, model_name, poly_name
+                bf_len, model_name, poly_name,
+                model_config.volterra_include_quadratic,
+                model_config.volterra_include_conjugate,
+                model_config.volterra_include_abs,
             )
             return_data = window_experiment(
                 rxa, txa, conv_data,
@@ -253,8 +278,22 @@ def full_window_experiment(
             convolve_tensor(rxa_train, conv4metrics, conv_rxa_train)
             convolve_tensor(rxa_test, conv4metrics, conv_rxa_test)
 
-            mtn_train = create_volterra2_tensor(txa_train_mem, i_back, i_fwd)
-            mtn_test = create_volterra2_tensor(txa_test_mem, i_back, i_fwd)
+            mtn_train = create_volterra2_tensor(
+                txa_train_mem,
+                i_back,
+                i_fwd,
+                volterra_include_quadratic=config.volterra_include_quadratic,
+                volterra_include_conjugate=config.volterra_include_conjugate,
+                volterra_include_abs=config.volterra_include_abs,
+            )
+            mtn_test = create_volterra2_tensor(
+                txa_test_mem,
+                i_back,
+                i_fwd,
+                volterra_include_quadratic=config.volterra_include_quadratic,
+                volterra_include_conjugate=config.volterra_include_conjugate,
+                volterra_include_abs=config.volterra_include_abs,
+            )
             model_wts = ls_solve(mtn_train, rxa_train)
 
             contract(mtn_train, model_wts, res_train)
@@ -271,7 +310,11 @@ def full_window_experiment(
                 conv_rxa_test, conv_res_test, fs, pim_sft, pim_bw
             )
             feature_count = volterra2_tensor_feature_count(
-                n_trans, i_back + i_fwd + 1
+                n_trans,
+                i_back + i_fwd + 1,
+                volterra_include_quadratic=config.volterra_include_quadratic,
+                volterra_include_conjugate=config.volterra_include_conjugate,
+                volterra_include_abs=config.volterra_include_abs,
             )
             wts_dict[(i_back, i_fwd, feature_count)] = [model_wts]
             train_metrics.append(train_metric_value)

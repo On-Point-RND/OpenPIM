@@ -45,8 +45,22 @@ def model(rxa, txa, nfa, bf_len: int,
         (n_test,n_trans), dtype=np.complex128, order='F'
     )
     if config.model == "volterra_second_order_full":
-        mtn_train = create_volterra2_tensor(txa_train_mem, n_back, n_fwd)
-        mtn_test = create_volterra2_tensor(txa_test_mem, n_back, n_fwd)
+        mtn_train = create_volterra2_tensor(
+            txa_train_mem,
+            n_back,
+            n_fwd,
+            volterra_include_quadratic=config.volterra_include_quadratic,
+            volterra_include_conjugate=config.volterra_include_conjugate,
+            volterra_include_abs=config.volterra_include_abs,
+        )
+        mtn_test = create_volterra2_tensor(
+            txa_test_mem,
+            n_back,
+            n_fwd,
+            volterra_include_quadratic=config.volterra_include_quadratic,
+            volterra_include_conjugate=config.volterra_include_conjugate,
+            volterra_include_abs=config.volterra_include_abs,
+        )
     else:
         model_func = globals()[config.model]
         poly_func = globals()[config.poly]
@@ -58,7 +72,11 @@ def model(rxa, txa, nfa, bf_len: int,
             model_func, poly_func,
             txa_test_mem,bf_len, n_back, n_fwd
         )
-    model_wts = ls_solve(mtn_train, rxa_train)
+    model_wts = ls_solve(
+        mtn_train,
+        rxa_train,
+        verbose_basis_fit=(config.model == "volterra_second_order_full"),
+    )
     contract(mtn_test, model_wts, pred_test)
     return rxa_test, pred_test, nfa_test
 
@@ -127,7 +145,11 @@ def train_poly_model(config: Config):
         bf_dim = volterra2_feature_count(txa.shape[1])
     elif config.model == "volterra_second_order_full":
         bf_dim = volterra2_tensor_feature_count(
-            txa.shape[1], config.n_back + config.n_fwd + 1
+            txa.shape[1],
+            config.n_back + config.n_fwd + 1,
+            volterra_include_quadratic=config.volterra_include_quadratic,
+            volterra_include_conjugate=config.volterra_include_conjugate,
+            volterra_include_abs=config.volterra_include_abs,
         )
     else:
         bf_dim = bf_lengths[config.model][0]
