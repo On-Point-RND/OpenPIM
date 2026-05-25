@@ -32,9 +32,13 @@ class WindowExpConfig:
     bf_len: int
     model: str
     poly: str
+    volterra_order: int = 2
     volterra_include_quadratic: bool = True
     volterra_include_conjugate: bool = False
     volterra_include_abs: bool = False
+    volterra_include_cubic: bool = False
+    volterra_include_cubic_conj: bool = True
+    volterra_include_cubic_abs: bool = False
 
 
 class ModelExpConfig:
@@ -47,6 +51,7 @@ class ModelExpConfig:
             self.back_list = config['back_list']
             self.fwd_list = config['fwd_list']
             self.data_ptr = config['data_prefix']
+            self.volterra_order = config.get('volterra_order', 2)
             self.volterra_include_quadratic = config.get(
                 'volterra_include_quadratic',
                 True,
@@ -57,6 +62,18 @@ class ModelExpConfig:
             )
             self.volterra_include_abs = config.get(
                 'volterra_include_abs',
+                False,
+            )
+            self.volterra_include_cubic = config.get(
+                'volterra_include_cubic',
+                False,
+            )
+            self.volterra_include_cubic_conj = config.get(
+                'volterra_include_cubic_conj',
+                True,
+            )
+            self.volterra_include_cubic_abs = config.get(
+                'volterra_include_cubic_abs',
                 False,
             )
 
@@ -114,11 +131,12 @@ def experiment(experiment_name, output_dir = './results/'):
         wts_dict = dict()
         if model_name == "volterra_second_order":
             bf_lengths = [volterra2_feature_count(txa.shape[1])]
-        elif model_name == "volterra_second_order_full":
+        elif is_volterra_full_model(model_name):
             bf_lengths = [
-                volterra2_tensor_feature_count(
+                volterra_tensor_feature_count(
                     txa.shape[1],
                     max(model_config.back_list) + max(model_config.fwd_list) + 1,
+                    volterra_order=model_config.volterra_order,
                     volterra_include_quadratic=(
                         model_config.volterra_include_quadratic
                     ),
@@ -126,17 +144,31 @@ def experiment(experiment_name, output_dir = './results/'):
                         model_config.volterra_include_conjugate
                     ),
                     volterra_include_abs=model_config.volterra_include_abs,
+                    volterra_include_cubic=model_config.volterra_include_cubic,
+                    volterra_include_cubic_conj=(
+                        model_config.volterra_include_cubic_conj
+                    ),
+                    volterra_include_cubic_abs=(
+                        model_config.volterra_include_cubic_abs
+                    ),
                 )
             ]
         else:
             bf_lengths = model_config.bf_lengths[model_name]
         for bf_len in bf_lengths:
             window_config = WindowExpConfig(
-                model_config.back_list, model_config.fwd_list,
-                bf_len, model_name, poly_name,
+                model_config.back_list,
+                model_config.fwd_list,
+                bf_len,
+                model_name,
+                poly_name,
+                model_config.volterra_order,
                 model_config.volterra_include_quadratic,
                 model_config.volterra_include_conjugate,
                 model_config.volterra_include_abs,
+                model_config.volterra_include_cubic,
+                model_config.volterra_include_cubic_conj,
+                model_config.volterra_include_cubic_abs,
             )
             return_data = window_experiment(
                 rxa, txa, conv_data,
@@ -159,7 +191,7 @@ def experiment(experiment_name, output_dir = './results/'):
 def window_experiment(
         rxa: np.ndarray, txa: np.ndarray, conv4metrics: np.ndarray,
         config: WindowExpConfig, sig_config: SignalConfig, wts_dict: dict):
-    if config.model == "volterra_second_order_full":
+    if is_volterra_full_model(config.model):
         return full_window_experiment(rxa, txa, conv4metrics, config, sig_config, wts_dict)
 
     back_list, fwd_list, bf_len = config.n_back, config.n_fwd, config.bf_len
@@ -278,21 +310,20 @@ def full_window_experiment(
             convolve_tensor(rxa_train, conv4metrics, conv_rxa_train)
             convolve_tensor(rxa_test, conv4metrics, conv_rxa_test)
 
-            mtn_train = create_volterra2_tensor(
-                txa_train_mem,
-                i_back,
-                i_fwd,
+            volterra_kwargs = dict(
+                volterra_order=config.volterra_order,
                 volterra_include_quadratic=config.volterra_include_quadratic,
                 volterra_include_conjugate=config.volterra_include_conjugate,
                 volterra_include_abs=config.volterra_include_abs,
+                volterra_include_cubic=config.volterra_include_cubic,
+                volterra_include_cubic_conj=config.volterra_include_cubic_conj,
+                volterra_include_cubic_abs=config.volterra_include_cubic_abs,
             )
-            mtn_test = create_volterra2_tensor(
-                txa_test_mem,
-                i_back,
-                i_fwd,
-                volterra_include_quadratic=config.volterra_include_quadratic,
-                volterra_include_conjugate=config.volterra_include_conjugate,
-                volterra_include_abs=config.volterra_include_abs,
+            mtn_train = create_volterra_tensor(
+                txa_train_mem, i_back, i_fwd, **volterra_kwargs
+            )
+            mtn_test = create_volterra_tensor(
+                txa_test_mem, i_back, i_fwd, **volterra_kwargs
             )
             model_wts = ls_solve(mtn_train, rxa_train)
 
@@ -309,12 +340,16 @@ def full_window_experiment(
             test_metric_value = calculate_avg_metrics(
                 conv_rxa_test, conv_res_test, fs, pim_sft, pim_bw
             )
-            feature_count = volterra2_tensor_feature_count(
+            feature_count = volterra_tensor_feature_count(
                 n_trans,
                 i_back + i_fwd + 1,
+                volterra_order=config.volterra_order,
                 volterra_include_quadratic=config.volterra_include_quadratic,
                 volterra_include_conjugate=config.volterra_include_conjugate,
                 volterra_include_abs=config.volterra_include_abs,
+                volterra_include_cubic=config.volterra_include_cubic,
+                volterra_include_cubic_conj=config.volterra_include_cubic_conj,
+                volterra_include_cubic_abs=config.volterra_include_cubic_abs,
             )
             wts_dict[(i_back, i_fwd, feature_count)] = [model_wts]
             train_metrics.append(train_metric_value)

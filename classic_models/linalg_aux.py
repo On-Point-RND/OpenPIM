@@ -42,29 +42,51 @@ def create_model_tensor(model_func: Callable[..., bool],
     return tens
 
 
-def volterra2_tensor_feature_count(
+VOLTERRA_FULL_MODELS = frozenset({"volterra_full", "volterra_second_order_full"})
+
+
+def _validate_volterra_order(volterra_order: int):
+    if volterra_order not in (2, 3):
+        raise ValueError("volterra_order must be 2 or 3")
+
+
+def is_volterra_full_model(model: str) -> bool:
+    return model in VOLTERRA_FULL_MODELS
+
+
+def volterra_tensor_feature_count(
     n_trans: int,
     win_len: int,
+    volterra_order: int = 2,
     volterra_include_quadratic: bool = True,
     volterra_include_conjugate: bool = False,
     volterra_include_abs: bool = False,
+    volterra_include_cubic: bool = False,
+    volterra_include_cubic_conj: bool = True,
+    volterra_include_cubic_abs: bool = False,
 ):
+    _validate_volterra_order(volterra_order)
     n_linear = n_trans * win_len
-    n_quadratic = (
-        n_linear * (n_linear + 1) // 2 if volterra_include_quadratic else 0
-    )
-    n_conj_quadratic = n_linear * n_linear if volterra_include_conjugate else 0
-    n_abs_quadratic = n_linear * n_linear if volterra_include_abs else 0
-    return 1 + n_linear + n_quadratic + n_conj_quadratic + n_abs_quadratic
+    n_features = 1 + n_linear
+    if volterra_order >= 2:
+        if volterra_include_quadratic:
+            n_features += n_linear * (n_linear + 1) // 2
+        if volterra_include_conjugate:
+            n_features += n_linear * n_linear
+        if volterra_include_abs:
+            n_features += n_linear * n_linear
+    if volterra_order >= 3:
+        if volterra_include_cubic:
+            n_features += n_linear * (n_linear + 1) * (n_linear + 2) // 6
+        if volterra_include_cubic_conj:
+            n_features += n_linear ** 3
+        if volterra_include_cubic_abs:
+            n_features += n_linear ** 3
+    return n_features
 
 
-def create_volterra2_tensor(
-    x: np.ndarray,
-    n_back: int,
-    n_fwd: int,
-    volterra_include_quadratic: bool = True,
-    volterra_include_conjugate: bool = False,
-    volterra_include_abs: bool = False,
+def _build_volterra_linear_mat(
+    x: np.ndarray, n_back: int, n_fwd: int
 ):
     assert len(x.shape) > 1
     n_trans = x.shape[1]
@@ -75,17 +97,7 @@ def create_volterra2_tensor(
     assert x_work_range.shape[0] == n_pts
 
     n_linear = n_trans * win_len
-    n_features = volterra2_tensor_feature_count(
-        n_trans,
-        win_len,
-        volterra_include_quadratic=volterra_include_quadratic,
-        volterra_include_conjugate=volterra_include_conjugate,
-        volterra_include_abs=volterra_include_abs,
-    )
     linear_mat = np.empty((n_pts, n_linear), dtype=np.complex128, order='F')
-    feature_mat = np.empty((n_pts, n_features), dtype=np.complex128, order='F')
-    feature_mat[:, 0] = 1.0
-
     idx = 0
     for lag in range(win_len):
         x_lag = x[lag:n_pts + lag]
@@ -93,9 +105,18 @@ def create_volterra2_tensor(
             linear_mat[:, idx] = x_lag[:, i_tr]
             idx += 1
     assert idx == n_linear
-    feature_mat[:, 1:1 + n_linear] = linear_mat
+    return linear_mat, n_pts, n_linear, n_trans
 
-    idx = 1 + n_linear
+
+def _append_volterra_order2_blocks(
+    feature_mat: np.ndarray,
+    linear_mat: np.ndarray,
+    idx: int,
+    n_linear: int,
+    volterra_include_quadratic: bool,
+    volterra_include_conjugate: bool,
+    volterra_include_abs: bool,
+) -> int:
     if volterra_include_quadratic:
         for i_feature in range(n_linear):
             for j_feature in range(i_feature, n_linear):
@@ -119,12 +140,157 @@ def create_volterra2_tensor(
                     linear_mat[:, i_feature] * np.abs(linear_mat[:, j_feature])
                 )
                 idx += 1
+    return idx
+
+
+def _append_volterra_order3_blocks(
+    feature_mat: np.ndarray,
+    linear_mat: np.ndarray,
+    idx: int,
+    n_linear: int,
+    volterra_include_cubic: bool,
+    volterra_include_cubic_conj: bool,
+    volterra_include_cubic_abs: bool,
+) -> int:
+    if volterra_include_cubic:
+        for i_feature in range(n_linear):
+            for j_feature in range(i_feature, n_linear):
+                for k_feature in range(j_feature, n_linear):
+                    feature_mat[:, idx] = (
+                        linear_mat[:, i_feature]
+                        * linear_mat[:, j_feature]
+                        * linear_mat[:, k_feature]
+                    )
+                    idx += 1
+
+    if volterra_include_cubic_conj:
+        for i_feature in range(n_linear):
+            for j_feature in range(n_linear):
+                for k_feature in range(n_linear):
+                    feature_mat[:, idx] = (
+                        linear_mat[:, i_feature]
+                        * linear_mat[:, j_feature]
+                        * np.conj(linear_mat[:, k_feature])
+                    )
+                    idx += 1
+
+    if volterra_include_cubic_abs:
+        for i_feature in range(n_linear):
+            for j_feature in range(n_linear):
+                for k_feature in range(n_linear):
+                    feature_mat[:, idx] = (
+                        linear_mat[:, i_feature]
+                        * linear_mat[:, j_feature]
+                        * np.abs(linear_mat[:, k_feature])
+                    )
+                    idx += 1
+    return idx
+
+
+def create_volterra_tensor(
+    x: np.ndarray,
+    n_back: int,
+    n_fwd: int,
+    volterra_order: int = 2,
+    volterra_include_quadratic: bool = True,
+    volterra_include_conjugate: bool = False,
+    volterra_include_abs: bool = False,
+    volterra_include_cubic: bool = False,
+    volterra_include_cubic_conj: bool = True,
+    volterra_include_cubic_abs: bool = False,
+):
+    _validate_volterra_order(volterra_order)
+    linear_mat, n_pts, n_linear, n_trans = _build_volterra_linear_mat(
+        x, n_back, n_fwd
+    )
+    n_features = volterra_tensor_feature_count(
+        n_trans,
+        n_back + n_fwd + 1,
+        volterra_order=volterra_order,
+        volterra_include_quadratic=volterra_include_quadratic,
+        volterra_include_conjugate=volterra_include_conjugate,
+        volterra_include_abs=volterra_include_abs,
+        volterra_include_cubic=volterra_include_cubic,
+        volterra_include_cubic_conj=volterra_include_cubic_conj,
+        volterra_include_cubic_abs=volterra_include_cubic_abs,
+    )
+    if n_features > 50_000:
+        print(
+            f"[volterra] warning: feature count {n_features} is large; "
+            "LS solve may be slow or ill-conditioned."
+        )
+
+    feature_mat = np.empty((n_pts, n_features), dtype=np.complex128, order='F')
+    feature_mat[:, 0] = 1.0
+    feature_mat[:, 1:1 + n_linear] = linear_mat
+
+    idx = 1 + n_linear
+    if volterra_order >= 2:
+        idx = _append_volterra_order2_blocks(
+            feature_mat,
+            linear_mat,
+            idx,
+            n_linear,
+            volterra_include_quadratic,
+            volterra_include_conjugate,
+            volterra_include_abs,
+        )
+    if volterra_order >= 3:
+        idx = _append_volterra_order3_blocks(
+            feature_mat,
+            linear_mat,
+            idx,
+            n_linear,
+            volterra_include_cubic,
+            volterra_include_cubic_conj,
+            volterra_include_cubic_abs,
+        )
 
     assert idx == n_features
     tens = np.empty((n_pts, n_features, n_trans), dtype=np.complex128, order='F')
     for i_ts in range(n_trans):
         tens[:, :, i_ts] = feature_mat
     return tens
+
+
+def volterra2_tensor_feature_count(
+    n_trans: int,
+    win_len: int,
+    volterra_include_quadratic: bool = True,
+    volterra_include_conjugate: bool = False,
+    volterra_include_abs: bool = False,
+    **kwargs,
+):
+    return volterra_tensor_feature_count(
+        n_trans,
+        win_len,
+        volterra_order=2,
+        volterra_include_quadratic=volterra_include_quadratic,
+        volterra_include_conjugate=volterra_include_conjugate,
+        volterra_include_abs=volterra_include_abs,
+        **kwargs,
+    )
+
+
+def create_volterra2_tensor(
+    x: np.ndarray,
+    n_back: int,
+    n_fwd: int,
+    volterra_include_quadratic: bool = True,
+    volterra_include_conjugate: bool = False,
+    volterra_include_abs: bool = False,
+    **kwargs,
+):
+    return create_volterra_tensor(
+        x,
+        n_back,
+        n_fwd,
+        volterra_order=2,
+        volterra_include_quadratic=volterra_include_quadratic,
+        volterra_include_conjugate=volterra_include_conjugate,
+        volterra_include_abs=volterra_include_abs,
+        **kwargs,
+    )
 
 
 def ls_solve(

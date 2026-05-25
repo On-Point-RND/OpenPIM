@@ -44,22 +44,21 @@ def model(rxa, txa, nfa, bf_len: int,
     pred_test = np.empty(
         (n_test,n_trans), dtype=np.complex128, order='F'
     )
-    if config.model == "volterra_second_order_full":
-        mtn_train = create_volterra2_tensor(
-            txa_train_mem,
-            n_back,
-            n_fwd,
+    if is_volterra_full_model(config.model):
+        volterra_kwargs = dict(
+            volterra_order=config.volterra_order,
             volterra_include_quadratic=config.volterra_include_quadratic,
             volterra_include_conjugate=config.volterra_include_conjugate,
             volterra_include_abs=config.volterra_include_abs,
+            volterra_include_cubic=config.volterra_include_cubic,
+            volterra_include_cubic_conj=config.volterra_include_cubic_conj,
+            volterra_include_cubic_abs=config.volterra_include_cubic_abs,
         )
-        mtn_test = create_volterra2_tensor(
-            txa_test_mem,
-            n_back,
-            n_fwd,
-            volterra_include_quadratic=config.volterra_include_quadratic,
-            volterra_include_conjugate=config.volterra_include_conjugate,
-            volterra_include_abs=config.volterra_include_abs,
+        mtn_train = create_volterra_tensor(
+            txa_train_mem, n_back, n_fwd, **volterra_kwargs
+        )
+        mtn_test = create_volterra_tensor(
+            txa_test_mem, n_back, n_fwd, **volterra_kwargs
         )
     else:
         model_func = globals()[config.model]
@@ -75,7 +74,7 @@ def model(rxa, txa, nfa, bf_len: int,
     model_wts = ls_solve(
         mtn_train,
         rxa_train,
-        verbose_basis_fit=(config.model == "volterra_second_order_full"),
+        verbose_basis_fit=is_volterra_full_model(config.model),
     )
     contract(mtn_test, model_wts, pred_test)
     return rxa_test, pred_test, nfa_test
@@ -143,13 +142,17 @@ def train_poly_model(config: Config):
 
     if config.model == "volterra_second_order":
         bf_dim = volterra2_feature_count(txa.shape[1])
-    elif config.model == "volterra_second_order_full":
-        bf_dim = volterra2_tensor_feature_count(
+    elif is_volterra_full_model(config.model):
+        bf_dim = volterra_tensor_feature_count(
             txa.shape[1],
             config.n_back + config.n_fwd + 1,
+            volterra_order=config.volterra_order,
             volterra_include_quadratic=config.volterra_include_quadratic,
             volterra_include_conjugate=config.volterra_include_conjugate,
             volterra_include_abs=config.volterra_include_abs,
+            volterra_include_cubic=config.volterra_include_cubic,
+            volterra_include_cubic_conj=config.volterra_include_cubic_conj,
+            volterra_include_cubic_abs=config.volterra_include_cubic_abs,
         )
     else:
         bf_dim = bf_lengths[config.model][0]
