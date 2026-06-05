@@ -8,7 +8,7 @@ class Config:
 
     dataset_path: str = (
         # "./data/real_data/16TR/"
-        # "./data/synth_data/"
+        # "./data/"
     )
 
     dataset_name: str = (
@@ -16,6 +16,9 @@ class Config:
         # "data_16TR_0"
         # "data_32TR_A0"
         # "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_16L"
+        # "16TR_C22Nc8CD_CL_E20Ne1CD_20250331_1L"
+        # "1TR_C20Nc1CD_E20Ne1CD_20250331_0.5m"
+        # "2TR"   # ./data/2TR.pt
     )
 
     data_type: str = (
@@ -25,14 +28,18 @@ class Config:
 
     log_out_dir: str = "./results"
     log_precision: int = 8
-    out_filtration: bool = True
+    out_filtration: bool = False
     filter_path: str = (
+        # "./data/filter_synth.mat"
         # "./data/rx_filter.mat"
         # "./data/filter_real.mat"
     )
 
     # PIM Model Settings
     PIM_backbone: str = "mcp"
+    # Dataset structure:
+    # "sequential" or "sliding"
+    dataset_mode: str = "sequential"
     PIM_hidden_size: int = 8
     # PIM type options: "total", "cond", "leak", "ext"
     # For synthetic datasets with separation available

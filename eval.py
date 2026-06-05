@@ -37,9 +37,12 @@ def run_evaluation(
     logs,
     step_logger,
     path_dir_save,
+    dataset_mode: str = "sequential",
 ):
-    
-    _, pred, gt = net_eval(logs, net, test_loader, criterion, device)
+
+    _, pred, gt = net_eval(
+        logs, net, test_loader, criterion, device, dataset_mode=dataset_mode
+    )
     logs = calculate_metrics(
                 pred,
                 gt,
@@ -188,7 +191,8 @@ if __name__ == "__main__":
             noise=noise['test'],
             logs=logs,
             step_logger=step_logger,
-            path_dir_save =exp.args.path_dir_save
+            path_dir_save=exp.args.path_dir_save,
+            dataset_mode=exp.args.dataset_mode,
         )
 
     results = convert_to_serializable(results)
