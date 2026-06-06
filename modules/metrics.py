@@ -2,10 +2,30 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from typing import Iterable, Tuple
-import numpy as np
 from scipy.signal import convolve, welch
 
 from modules.data_utils import toComplex
+
+
+_PSD_KWARGS = {
+    "NFFT": 2048,
+    "window": np.kaiser(2048, 10),
+    "noverlap": 1,
+    "pad_to": 2048,
+}
+
+
+def _set_pim_xlim(ax, data_type, FC_TX, FS, PIM_SFT, PIM_BW):
+    if data_type == "synth":
+        ax.set_xlim(
+            FC_TX - FS / 10 + PIM_SFT - PIM_BW / 2,
+            FC_TX + FS / 10 + PIM_SFT + PIM_BW / 2,
+        )
+    elif data_type == "real":
+        ax.set_xlim(
+            FC_TX - FS / 10 - 5 / 2 - 8.5,
+            FC_TX + FS / 10 + 5 / 2 + 9.5,
+        )
 
 
 def count_net_params(net):
@@ -16,10 +36,6 @@ def count_net_params(net):
             sizes = sizes * el
         n_param += sizes
     return n_param
-
-
-def abs2(x):
-    return np.array([i**2 for i in x])
 
 
 def NMSE(prediction, ground_truth):
@@ -94,55 +110,26 @@ def plot_spectrum(
     cut=False,
     phase_name="",
 ):
-    # Create new figure with legend
     plt.figure(figsize=(10, 6))
     ax = plt.gca()
 
-    _, _ = ax.psd(
-            prediction,
+    for signal, label in (
+        (prediction, "Predicted Signal"),
+        (ground_truth, "Original Signal"),
+        (ground_truth - prediction, "(Original - Predicted) Signal"),
+    ):
+        ax.psd(
+            signal,
             Fs=FS,
             Fc=FC_TX,
-            NFFT=2048,
-            window=np.kaiser(2048, 10),
-            noverlap=1,
-            pad_to=2048,
-            label="Predicted Signal",
-        )
-    _, _ = ax.psd(
-            ground_truth,
-            Fs=FS,
-            Fc=FC_TX,
-            NFFT=2048,
-            window=np.kaiser(2048, 10),
-            noverlap=1,
-            pad_to=2048,
-            label="Original Signal",
-        )
-    _, _ = ax.psd(
-            ground_truth - prediction,
-            Fs=FS,
-            Fc=FC_TX,
-            NFFT=2048,
-            window=np.kaiser(2048, 10),
-            noverlap=1,
-            pad_to=2048,
-            label="(Original - Predicted) Signal",
+            label=label,
+            **_PSD_KWARGS,
         )
 
-    # Add plot elements
     ax.set_ylabel(r"PSD, $V^2$/Hz [dB]")
     ax.set_xlabel("Frequency, MHz")
     if cut:
-        if data_type == 'synth':
-            ax.set_xlim(
-                FC_TX - FS / 10 + PIM_SFT - PIM_BW / 2,
-                FC_TX + FS / 10 + PIM_SFT + PIM_BW / 2,
-            )
-        elif data_type == 'real':
-            ax.set_xlim( 
-                FC_TX  - FS / 10 - 5 / 2 - 8.5,
-                FC_TX  + FS / 10 + 5 / 2 + 9.5,
-            )
+        _set_pim_xlim(ax, data_type, FC_TX, FS, PIM_SFT, PIM_BW)
 
     ax.set_title(
         f"{phase_name} Power Spectral Density - Iteration: {iteration}, "
@@ -200,56 +187,27 @@ def plot_final_spectrums(
             else: 
                 ax = axes
 
-            _, _ = ax.psd(
-                    ground_truth[:, ch_dim_1*dim_2 + ch_dim_2],
+            ch_idx = ch_dim_1 * dim_2 + ch_dim_2
+            for signal, label, color in (
+                (ground_truth[:, ch_idx], "RX", "blue"),
+                (ground_truth[:, ch_idx] - prediction[:, ch_idx], "ERR", "red"),
+                (noise[:, ch_idx], "NF", "black"),
+            ):
+                ax.psd(
+                    signal,
                     Fs=FS,
                     Fc=FC_TX,
-                    NFFT=2048,
-                    window=np.kaiser(2048, 10),
-                    noverlap=1,
-                    pad_to=2048,
-                    label="RX",
-                    color = 'blue'
-                )
-            _, _ = ax.psd(
-                    ground_truth[:, ch_dim_1*dim_2 + ch_dim_2] - prediction[:, ch_dim_1*4 + ch_dim_2],
-                    Fs=FS,
-                    Fc=FC_TX,
-                    NFFT=2048,
-                    window=np.kaiser(2048, 10),
-                    noverlap=1,
-                    pad_to=2048,
-                    label="ERR",
-                    color = 'red'
-                )
-            _, _ = ax.psd(
-                    noise[:, ch_dim_1*dim_2 + ch_dim_2],
-                    Fs=FS,
-                    Fc=FC_TX,
-                    NFFT=2048,
-                    window=np.kaiser(2048, 10),
-                    noverlap=1,
-                    pad_to=2048,
-                    label="NF",
-                    color = 'black'
+                    label=label,
+                    color=color,
+                    **_PSD_KWARGS,
                 )
 
-            # Add plot elements
-            ax.set_ylabel(r"PSD, $V^2$/Hz [dB]", fontsize = 16)
+            ax.set_ylabel(r"PSD, $V^2$/Hz [dB]", fontsize=16)
             ax.set_xlabel("Frequency, MHz", fontsize = 16)
             ax.set_ylim(0, 48)
-            if data_type == 'synth':    
-                ax.set_xlim(
-                        FC_TX - FS / 10 + PIM_SFT - PIM_BW / 2,
-                        FC_TX + FS / 10 + PIM_SFT + PIM_BW / 2,
-                    )
-            elif data_type == 'real':
-                ax.set_xlim( 
-                    FC_TX  - FS / 10 - 5 / 2 - 8.5,
-                    FC_TX  + FS / 10 + 5 / 2 + 9.5,
-                )
+            _set_pim_xlim(ax, data_type, FC_TX, FS, PIM_SFT, PIM_BW)
             ax.legend(loc="upper left", fontsize = 13)
-            ax.set_title(f'CH_{ch_dim_1*4+ch_dim_2}', fontsize = 18)
+            ax.set_title(f"CH_{ch_idx}", fontsize=18)
             ax.grid(True)
     fig.tight_layout()
     fig.show()
@@ -299,7 +257,7 @@ def perf_from_powers(powers: dict) -> float:
 
 
 def plot_total_perf(powers, path_save):
-    fig = plt.figure(figsize = (10, 7))
+    _ = plt.figure(figsize = (10, 7))
     n_channels = len(powers['gt'])
     gt_norm = [powers['gt'][idx] - powers['noise'][idx] for idx in range(n_channels)]
     err_norm = [powers['err'][idx] - powers['noise'][idx] for idx in range(n_channels)]
@@ -309,9 +267,7 @@ def plot_total_perf(powers, path_save):
     'ERR':err_norm
     })
 
-    perf_list = []
-    for i in range(n_channels):
-        perf_list.append(calc_perf(gt_norm[i], err_norm[i]))
+    perf_list = perf_from_powers(powers)
     mean_perf = calculate_mean_red(perf_list)
     max_perf = max(perf_list)
 
@@ -377,26 +333,6 @@ def calc_perf(orig_pwr, residual_pwr):
         10 ** (residual_pwr / 10) - 1
     )
     return perf
-
-
-def calculate_res(
-        orig_signal, residual_signal, data_type,
-        fs, pim_sft, pim_bw, real_data_name
-    ):
-    orig_power = compute_power(
-        orig_signal,
-        fs, pim_sft, pim_bw,
-        data_type,
-        real_data_name
-    )
-    residual_power = compute_power(
-        residual_signal,
-        fs, pim_sft, pim_bw,
-        data_type,
-        real_data_name
-    )
-    metrics = calc_perf(orig_power, residual_power)
-    return metrics
 
 
 def reduction_level(

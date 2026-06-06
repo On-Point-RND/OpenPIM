@@ -15,7 +15,7 @@ from modules.metrics import (
     plot_spectrums,
     calculate_mean_red,
     calculate_metrics,
-    compute_power,
+    compute_powers_dict,
     plot_total_perf
 )
 
@@ -100,17 +100,8 @@ def run_evaluation(
         phase_name='EVAL',
     )
 
-    powers = dict()
-    for key, value in (("gt", gt), ("err", gt - pred), ("noise", noise)):
-        compl = toComplex(value)
-        powers[key] = [
-            compute_power(
-                compl[:, id],
-                FS, PIM_SFT, PIM_BW,
-                data_type, data_name
-            )
-            for id in range(compl.shape[1])
-        ]
+    signal_specs = (FS, PIM_SFT, PIM_BW, data_type, data_name)
+    powers = compute_powers_dict(gt, pred, noise, signal_specs)
 
     plot_total_perf(
         powers,
