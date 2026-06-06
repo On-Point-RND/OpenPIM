@@ -36,9 +36,11 @@ class WindowExpConfig:
     volterra_include_quadratic: bool = True
     volterra_include_conjugate: bool = False
     volterra_include_abs: bool = False
+    volterra_include_abs_sq: bool = False
     volterra_include_cubic: bool = False
     volterra_include_cubic_conj: bool = True
     volterra_include_cubic_abs: bool = False
+    volterra_include_cubic_abs_sq: bool = False
 
 
 class ModelExpConfig:
@@ -64,6 +66,10 @@ class ModelExpConfig:
                 'volterra_include_abs',
                 False,
             )
+            self.volterra_include_abs_sq = config.get(
+                'volterra_include_abs_sq',
+                False,
+            )
             self.volterra_include_cubic = config.get(
                 'volterra_include_cubic',
                 False,
@@ -74,6 +80,10 @@ class ModelExpConfig:
             )
             self.volterra_include_cubic_abs = config.get(
                 'volterra_include_cubic_abs',
+                False,
+            )
+            self.volterra_include_cubic_abs_sq = config.get(
+                'volterra_include_cubic_abs_sq',
                 False,
             )
 
@@ -142,12 +152,16 @@ def experiment(experiment_name, output_dir = './results/'):
                         model_config.volterra_include_conjugate
                     ),
                     volterra_include_abs=model_config.volterra_include_abs,
+                    volterra_include_abs_sq=model_config.volterra_include_abs_sq,
                     volterra_include_cubic=model_config.volterra_include_cubic,
                     volterra_include_cubic_conj=(
                         model_config.volterra_include_cubic_conj
                     ),
                     volterra_include_cubic_abs=(
                         model_config.volterra_include_cubic_abs
+                    ),
+                    volterra_include_cubic_abs_sq=(
+                        model_config.volterra_include_cubic_abs_sq
                     ),
                 )
             ]
@@ -164,9 +178,11 @@ def experiment(experiment_name, output_dir = './results/'):
                 model_config.volterra_include_quadratic,
                 model_config.volterra_include_conjugate,
                 model_config.volterra_include_abs,
+                model_config.volterra_include_abs_sq,
                 model_config.volterra_include_cubic,
                 model_config.volterra_include_cubic_conj,
                 model_config.volterra_include_cubic_abs,
+                model_config.volterra_include_cubic_abs_sq,
             )
             return_data = window_experiment(
                 rxa, txa, conv_data,
@@ -313,9 +329,11 @@ def full_window_experiment(
                 volterra_include_quadratic=config.volterra_include_quadratic,
                 volterra_include_conjugate=config.volterra_include_conjugate,
                 volterra_include_abs=config.volterra_include_abs,
+                volterra_include_abs_sq=config.volterra_include_abs_sq,
                 volterra_include_cubic=config.volterra_include_cubic,
                 volterra_include_cubic_conj=config.volterra_include_cubic_conj,
                 volterra_include_cubic_abs=config.volterra_include_cubic_abs,
+                volterra_include_cubic_abs_sq=config.volterra_include_cubic_abs_sq,
             )
             mtn_train = create_volterra_tensor(
                 txa_train_mem, i_back, i_fwd, **volterra_kwargs
@@ -345,9 +363,11 @@ def full_window_experiment(
                 volterra_include_quadratic=config.volterra_include_quadratic,
                 volterra_include_conjugate=config.volterra_include_conjugate,
                 volterra_include_abs=config.volterra_include_abs,
+                volterra_include_abs_sq=config.volterra_include_abs_sq,
                 volterra_include_cubic=config.volterra_include_cubic,
                 volterra_include_cubic_conj=config.volterra_include_cubic_conj,
                 volterra_include_cubic_abs=config.volterra_include_cubic_abs,
+                volterra_include_cubic_abs_sq=config.volterra_include_cubic_abs_sq,
             )
             wts_dict[(i_back, i_fwd, feature_count)] = [model_wts]
             train_metrics.append(train_metric_value)

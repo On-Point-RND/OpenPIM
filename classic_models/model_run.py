@@ -50,9 +50,11 @@ def model(rxa, txa, nfa, bf_len: int,
             volterra_include_quadratic=config.volterra_include_quadratic,
             volterra_include_conjugate=config.volterra_include_conjugate,
             volterra_include_abs=config.volterra_include_abs,
+            volterra_include_abs_sq=config.volterra_include_abs_sq,
             volterra_include_cubic=config.volterra_include_cubic,
             volterra_include_cubic_conj=config.volterra_include_cubic_conj,
             volterra_include_cubic_abs=config.volterra_include_cubic_abs,
+            volterra_include_cubic_abs_sq=config.volterra_include_cubic_abs_sq,
         )
         mtn_train = create_volterra_tensor(
             txa_train_mem, n_back, n_fwd, **volterra_kwargs
@@ -148,9 +150,11 @@ def train_poly_model(config: Config):
             volterra_include_quadratic=config.volterra_include_quadratic,
             volterra_include_conjugate=config.volterra_include_conjugate,
             volterra_include_abs=config.volterra_include_abs,
+            volterra_include_abs_sq=config.volterra_include_abs_sq,
             volterra_include_cubic=config.volterra_include_cubic,
             volterra_include_cubic_conj=config.volterra_include_cubic_conj,
             volterra_include_cubic_abs=config.volterra_include_cubic_abs,
+            volterra_include_cubic_abs_sq=config.volterra_include_cubic_abs_sq,
         )
     else:
         bf_dim = bf_lengths[config.model][0]

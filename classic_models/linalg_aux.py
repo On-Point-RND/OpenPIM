@@ -61,9 +61,11 @@ def volterra_tensor_feature_count(
     volterra_include_quadratic: bool = True,
     volterra_include_conjugate: bool = False,
     volterra_include_abs: bool = False,
+    volterra_include_abs_sq: bool = False,
     volterra_include_cubic: bool = False,
     volterra_include_cubic_conj: bool = True,
     volterra_include_cubic_abs: bool = False,
+    volterra_include_cubic_abs_sq: bool = False,
 ):
     _validate_volterra_order(volterra_order)
     n_linear = n_trans * win_len
@@ -75,12 +77,16 @@ def volterra_tensor_feature_count(
             n_features += n_linear * n_linear
         if volterra_include_abs:
             n_features += n_linear * n_linear
+        if volterra_include_abs_sq:
+            n_features += n_linear * n_linear
     if volterra_order >= 3:
         if volterra_include_cubic:
             n_features += n_linear * (n_linear + 1) * (n_linear + 2) // 6
         if volterra_include_cubic_conj:
             n_features += n_linear ** 3
         if volterra_include_cubic_abs:
+            n_features += n_linear ** 3
+        if volterra_include_cubic_abs_sq:
             n_features += n_linear ** 3
     return n_features
 
@@ -116,6 +122,7 @@ def _append_volterra_order2_blocks(
     volterra_include_quadratic: bool,
     volterra_include_conjugate: bool,
     volterra_include_abs: bool,
+    volterra_include_abs_sq: bool,
 ) -> int:
     if volterra_include_quadratic:
         for i_feature in range(n_linear):
@@ -140,6 +147,15 @@ def _append_volterra_order2_blocks(
                     linear_mat[:, i_feature] * np.abs(linear_mat[:, j_feature])
                 )
                 idx += 1
+
+    if volterra_include_abs_sq:
+        for i_feature in range(n_linear):
+            for j_feature in range(n_linear):
+                feature_mat[:, idx] = (
+                    np.abs(linear_mat[:, i_feature])
+                    * np.abs(linear_mat[:, j_feature])
+                )
+                idx += 1
     return idx
 
 
@@ -151,6 +167,7 @@ def _append_volterra_order3_blocks(
     volterra_include_cubic: bool,
     volterra_include_cubic_conj: bool,
     volterra_include_cubic_abs: bool,
+    volterra_include_cubic_abs_sq: bool,
 ) -> int:
     if volterra_include_cubic:
         for i_feature in range(n_linear):
@@ -184,6 +201,17 @@ def _append_volterra_order3_blocks(
                         * np.abs(linear_mat[:, k_feature])
                     )
                     idx += 1
+
+    if volterra_include_cubic_abs_sq:
+        for i_feature in range(n_linear):
+            for j_feature in range(n_linear):
+                for k_feature in range(n_linear):
+                    feature_mat[:, idx] = (
+                        linear_mat[:, i_feature]
+                        * np.abs(linear_mat[:, j_feature])
+                        * np.abs(linear_mat[:, k_feature])
+                    )
+                    idx += 1
     return idx
 
 
@@ -195,9 +223,11 @@ def create_volterra_tensor(
     volterra_include_quadratic: bool = True,
     volterra_include_conjugate: bool = False,
     volterra_include_abs: bool = False,
+    volterra_include_abs_sq: bool = False,
     volterra_include_cubic: bool = False,
     volterra_include_cubic_conj: bool = True,
     volterra_include_cubic_abs: bool = False,
+    volterra_include_cubic_abs_sq: bool = False,
 ):
     _validate_volterra_order(volterra_order)
     linear_mat, n_pts, n_linear, n_trans = _build_volterra_linear_mat(
@@ -210,9 +240,11 @@ def create_volterra_tensor(
         volterra_include_quadratic=volterra_include_quadratic,
         volterra_include_conjugate=volterra_include_conjugate,
         volterra_include_abs=volterra_include_abs,
+        volterra_include_abs_sq=volterra_include_abs_sq,
         volterra_include_cubic=volterra_include_cubic,
         volterra_include_cubic_conj=volterra_include_cubic_conj,
         volterra_include_cubic_abs=volterra_include_cubic_abs,
+        volterra_include_cubic_abs_sq=volterra_include_cubic_abs_sq,
     )
     if n_features > 50_000:
         print(
@@ -234,6 +266,7 @@ def create_volterra_tensor(
             volterra_include_quadratic,
             volterra_include_conjugate,
             volterra_include_abs,
+            volterra_include_abs_sq,
         )
     if volterra_order >= 3:
         idx = _append_volterra_order3_blocks(
@@ -244,6 +277,7 @@ def create_volterra_tensor(
             volterra_include_cubic,
             volterra_include_cubic_conj,
             volterra_include_cubic_abs,
+            volterra_include_cubic_abs_sq,
         )
 
     assert idx == n_features
