@@ -140,9 +140,7 @@ def train_poly_model(config: Config):
         "poly_series": [3]
     }
 
-    if config.model == "volterra_second_order":
-        bf_dim = volterra2_feature_count(txa.shape[1])
-    elif is_volterra_full_model(config.model):
+    if is_volterra_full_model(config.model):
         bf_dim = volterra_tensor_feature_count(
             txa.shape[1],
             config.n_back + config.n_fwd + 1,

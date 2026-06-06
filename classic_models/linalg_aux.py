@@ -42,7 +42,7 @@ def create_model_tensor(model_func: Callable[..., bool],
     return tens
 
 
-VOLTERRA_FULL_MODELS = frozenset({"volterra_full", "volterra_second_order_full"})
+VOLTERRA_FULL_MODELS = frozenset({"volterra_full"})
 
 
 def _validate_volterra_order(volterra_order: int):

@@ -129,9 +129,7 @@ def experiment(experiment_name, output_dir = './results/'):
             )
         train_gl, test_gl, params_gl = [], [], []
         wts_dict = dict()
-        if model_name == "volterra_second_order":
-            bf_lengths = [volterra2_feature_count(txa.shape[1])]
-        elif is_volterra_full_model(model_name):
+        if is_volterra_full_model(model_name):
             bf_lengths = [
                 volterra_tensor_feature_count(
                     txa.shape[1],
