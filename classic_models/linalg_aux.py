@@ -299,46 +299,6 @@ def create_volterra_tensor(
     return tens
 
 
-def volterra2_tensor_feature_count(
-    n_trans: int,
-    win_len: int,
-    volterra_include_quadratic: bool = True,
-    volterra_include_conjugate: bool = False,
-    volterra_include_abs: bool = False,
-    **kwargs,
-):
-    return volterra_tensor_feature_count(
-        n_trans,
-        win_len,
-        volterra_order=2,
-        volterra_include_quadratic=volterra_include_quadratic,
-        volterra_include_conjugate=volterra_include_conjugate,
-        volterra_include_abs=volterra_include_abs,
-        **kwargs,
-    )
-
-
-def create_volterra2_tensor(
-    x: np.ndarray,
-    n_back: int,
-    n_fwd: int,
-    volterra_include_quadratic: bool = True,
-    volterra_include_conjugate: bool = False,
-    volterra_include_abs: bool = False,
-    **kwargs,
-):
-    return create_volterra_tensor(
-        x,
-        n_back,
-        n_fwd,
-        volterra_order=2,
-        volterra_include_quadratic=volterra_include_quadratic,
-        volterra_include_conjugate=volterra_include_conjugate,
-        volterra_include_abs=volterra_include_abs,
-        **kwargs,
-    )
-
-
 def ls_solve(
     model_tens: np.ndarray,
     rhs: np.ndarray,
