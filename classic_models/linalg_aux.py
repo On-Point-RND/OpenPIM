@@ -78,16 +78,24 @@ def volterra_tensor_feature_count(
         if volterra_include_abs:
             n_features += n_linear * n_linear
         if volterra_include_abs_sq:
-            n_features += n_linear * n_linear
+            if volterra_include_conjugate:
+                # |z_i|^2 already covered by conjugate diagonal (i, i).
+                n_features += n_linear * (n_linear - 1) // 2
+            else:
+                n_features += n_linear * (n_linear + 1) // 2
     if volterra_order >= 3:
         if volterra_include_cubic:
             n_features += n_linear * (n_linear + 1) * (n_linear + 2) // 6
         if volterra_include_cubic_conj:
-            n_features += n_linear ** 3
+            n_features += (n_linear ** 2) * (n_linear + 1) // 2
         if volterra_include_cubic_abs:
-            n_features += n_linear ** 3
+            n_features += (n_linear ** 2) * (n_linear + 1) // 2
         if volterra_include_cubic_abs_sq:
-            n_features += n_linear ** 3
+            if volterra_include_cubic_conj:
+                # z_i|z_j|^2 already covered by cubic_conj when k == j.
+                n_features += (n_linear ** 2) * (n_linear - 1) // 2
+            else:
+                n_features += (n_linear ** 2) * (n_linear + 1) // 2
     return n_features
 
 
@@ -150,7 +158,8 @@ def _append_volterra_order2_blocks(
 
     if volterra_include_abs_sq:
         for i_feature in range(n_linear):
-            for j_feature in range(n_linear):
+            j_start = i_feature + 1 if volterra_include_conjugate else i_feature
+            for j_feature in range(j_start, n_linear):
                 feature_mat[:, idx] = (
                     np.abs(linear_mat[:, i_feature])
                     * np.abs(linear_mat[:, j_feature])
@@ -182,7 +191,7 @@ def _append_volterra_order3_blocks(
 
     if volterra_include_cubic_conj:
         for i_feature in range(n_linear):
-            for j_feature in range(n_linear):
+            for j_feature in range(i_feature, n_linear):
                 for k_feature in range(n_linear):
                     feature_mat[:, idx] = (
                         linear_mat[:, i_feature]
@@ -193,7 +202,7 @@ def _append_volterra_order3_blocks(
 
     if volterra_include_cubic_abs:
         for i_feature in range(n_linear):
-            for j_feature in range(n_linear):
+            for j_feature in range(i_feature, n_linear):
                 for k_feature in range(n_linear):
                     feature_mat[:, idx] = (
                         linear_mat[:, i_feature]
@@ -205,7 +214,10 @@ def _append_volterra_order3_blocks(
     if volterra_include_cubic_abs_sq:
         for i_feature in range(n_linear):
             for j_feature in range(n_linear):
-                for k_feature in range(n_linear):
+                k_start = (
+                    j_feature + 1 if volterra_include_cubic_conj else j_feature
+                )
+                for k_feature in range(k_start, n_linear):
                     feature_mat[:, idx] = (
                         linear_mat[:, i_feature]
                         * np.abs(linear_mat[:, j_feature])
