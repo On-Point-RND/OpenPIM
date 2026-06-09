@@ -7,18 +7,14 @@ class Config:
     """Configuration class for PIM model training"""
 
     dataset_path: str = (
-        # "./data/real_data/16TR/"
-        # "./data/"
+        "./data/"
     )
 
     dataset_name: str = (
-        # "data_A"
-        # "data_16TR_0"
-        # "data_32TR_A0"
         # "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_16L"
-        # "16TR_C22Nc8CD_CL_E20Ne1CD_20250331_1L"
         # "1TR_C20Nc1CD_E20Ne1CD_20250331_0.5m"
         # "2TR"   # ./data/2TR.pt
+        # "16TR"  # ./data/16TR.pt
     )
 
     data_type: str = (
@@ -39,6 +35,8 @@ class Config:
     PIM_backbone: str = "mcp"
     # Dataset structure:
     # "sequential" or "sliding"
+    # applied to ML approaches only
+    # set for sequential for the most of the cases
     dataset_mode: str = "sequential"
     PIM_hidden_size: int = 8
     # PIM type options: "total", "cond", "leak", "ext"
