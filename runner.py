@@ -11,7 +11,11 @@ from torch import optim
 from torch.optim.lr_scheduler import LinearLR, SequentialLR
 
 from config import Config
-from modules.data_collector import load_resources, load_and_split_data
+from modules.data_collector import (
+    load_resources,
+    load_and_split_data,
+    resolve_dataset_path,
+)
 from modules.loss import IQComponentWiseLoss, HybridLoss, JointLoss, FFTLoss
 from modules.loggers import PandasLogger, make_logger
 from modules.paths import gen_dir_paths, gen_file_paths
@@ -158,6 +162,8 @@ class Runner:
             self.args.batch_size_eval,
             self.args.seq_len,
             path_dir_save=self.path_dir_log_best,
+            backbone_type=self.args.PIM_backbone,
+            dataset_mode=self.args.dataset_mode,
         )
 
     def build_criterion(self):
@@ -328,16 +334,16 @@ class Runner:
             val_ratio=self.args.val_ratio,
             test_ratio=self.args.test_ratio,
             seed=self.args.seed,
+            dataset_mode=self.args.dataset_mode,
         )
 
         self.dump_json_config(spec_dictionary)
         return log_all
 
     def load_and_split_data(self):
-        path = os.path.join(
+        path = resolve_dataset_path(
             self.args.dataset_path,
             self.args.dataset_name,
-            f"{self.args.dataset_name}.mat",
         )
         return load_and_split_data(
             path,
@@ -372,6 +378,7 @@ class Runner:
             "out_filtration": self.args.out_filtration,
             "batch_size": self.args.batch_size,
             "PIM_backbone": self.args.PIM_backbone,
+            "dataset_mode": self.args.dataset_mode,
             
             "path_dir_save": self.path_dir_save,
             "path_dir_log_hist": self.path_dir_log_hist,

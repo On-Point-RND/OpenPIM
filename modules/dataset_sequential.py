@@ -1,8 +1,8 @@
 import random
+
 import numpy as np
 import torch
-from torch.utils.data import Dataset
-from torch.utils.data import IterableDataset
+from torch.utils.data import DataLoader, Dataset, IterableDataset
 
 
 class InfiniteSequentialDataset(IterableDataset):
@@ -11,14 +11,8 @@ class InfiniteSequentialDataset(IterableDataset):
     Splits data into non-overlapping sequential chains of length seq_len.
     Each sequence has shape (seq_len, channels, 2).
     """
+
     def __init__(self, features, targets, seq_len, shuffle=True):
-        """
-        Args:
-            features: numpy array shape (num_samples, channels, 2)
-            targets: numpy array shape (num_samples, channels, 2)
-            seq_len: length of the signal sequence
-            shuffle: shuffle the sequences
-        """
         self.seq_len = seq_len
         num_samples = features.shape[0]
         self.num_sequences = num_samples // seq_len
@@ -60,7 +54,7 @@ class InfiniteSequentialDataset(IterableDataset):
             for seq_idx in indices:
                 yield (
                     self.feature_sequences[seq_idx],
-                    self.target_sequences[seq_idx]
+                    self.target_sequences[seq_idx],
                 )
 
     def __len__(self):
@@ -72,15 +66,9 @@ class SequentialDataset(Dataset):
     Dataset for signal sequences of length seq_len.
     Splits data into non-overlapping sequential sequences of length seq_len.
     Each sequence has shape (seq_len, channels, 2).
-    Used for test and eval datasets.
     """
+
     def __init__(self, features, targets, seq_len):
-        """
-        Args:
-            features: numpy array shape (num_samples, channels, 2)
-            targets: numpy array shape (num_samples, channels, 2)
-            seq_len: length of the signal sequence
-        """
         self.seq_len = seq_len
         num_samples = features.shape[0]
         self.num_sequences = num_samples // seq_len
@@ -107,9 +95,30 @@ class SequentialDataset(Dataset):
         return self.num_sequences
 
     def __getitem__(self, idx):
-        """
-        Returns:
-            features: (seq_len, channels, 2)
-            targets: (seq_len, channels, 2)
-        """
         return self.feature_sequences[idx], self.target_sequences[idx]
+
+
+def build_sequential_loaders(
+    x_train: np.ndarray,
+    y_train: np.ndarray,
+    x_val: np.ndarray,
+    y_val: np.ndarray,
+    x_test: np.ndarray,
+    y_test: np.ndarray,
+    seq_len: int,
+    batch_size: int,
+    batch_size_eval: int,
+) -> tuple[tuple[DataLoader, DataLoader, DataLoader], int]:
+    """Build train/val/test loaders for non-overlapping sequence chunks."""
+    n_channels = x_train.shape[1]
+
+    train_set = InfiniteSequentialDataset(x_train, y_train, seq_len)
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=False)
+
+    val_set = SequentialDataset(x_val, y_val, seq_len)
+    val_loader = DataLoader(val_set, batch_size=batch_size_eval, shuffle=False)
+
+    test_set = SequentialDataset(x_test, y_test, seq_len)
+    test_loader = DataLoader(test_set, batch_size=batch_size_eval, shuffle=False)
+
+    return (train_loader, val_loader, test_loader), n_channels

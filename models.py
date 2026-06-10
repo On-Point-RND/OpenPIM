@@ -1,22 +1,25 @@
 import torch
 import torch.nn as nn
-from scipy.signal import firwin2
-from scipy.io import loadmat
+
+from modules.data_collector import load_rx_filter_coeff
+
 
 class EndFilter(nn.Module):
     def __init__(self, n_channels, out_filtration, filter_path):
         super(EndFilter, self).__init__()
 
         if out_filtration:
-            filter_coeff = loadmat(filter_path)["flt_coeff"][0]
-            filter_coeff = filter_coeff[::-1].copy()
+            filter_coeff = load_rx_filter_coeff(filter_path).flatten()[::-1].copy()
 
             wts = torch.from_numpy(filter_coeff).to(torch.complex64)
-            wts_expand = wts.unsqueeze(0).unsqueeze(0).expand(n_channels, 1, 255).clone()
+            kernel_size = wts.numel()
+            wts_expand = wts.unsqueeze(0).unsqueeze(0).expand(
+                n_channels, 1, kernel_size
+            ).clone()
             self.end_filter = torch.nn.Conv1d(
                 in_channels=n_channels,
                 out_channels=n_channels,
-                kernel_size=255,
+                kernel_size=kernel_size,
                 padding="same",
                 groups=n_channels,
                 bias=False,
@@ -171,5 +174,3 @@ class CoreModel(nn.Module):
 
     def get_aux_loss_state(self):
         return self.aux_loss_present
-
-

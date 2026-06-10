@@ -14,6 +14,39 @@ from modules.data_utils import toComplex
 from modules.loggers import make_logger
 from modules.data_utils import convert_to_serializable
 
+
+def prepare_batch(
+    features: torch.Tensor,
+    targets: torch.Tensor,
+    dataset_mode: str,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """
+    Align dataloader batch with net/filter (batch_size is always 1).
+
+    sequential: X (1, T, C, 2), Y (1, T, C, 2) -> Y (T, C, 2)
+    sliding:    X (1, L, 2) or (1, L, C, 2)
+                Y (1, 2) -> (1, 1, 2) for FTDNN; Y (1, C, 2) -> (C, 2)
+    """
+    if dataset_mode not in ("sequential", "sliding"):
+        raise ValueError(
+            f"dataset_mode must be 'sequential' or 'sliding', got '{dataset_mode}'"
+        )
+
+    if dataset_mode == "sequential":
+        return features, targets.squeeze(0)
+
+    if targets.ndim >= 3:
+        targets = targets.squeeze(0)
+    if targets.ndim == 1:
+        targets = targets.unsqueeze(0)
+
+    # Single-channel sliding (FTDNN): match backbone output (B, 1, 2)
+    if features.ndim == 3:
+        targets = targets.unsqueeze(1)
+
+    return features, targets
+
+
 def train_model(
     net: nn.Module,
     criterion: Callable,
@@ -48,6 +81,7 @@ def train_model(
     val_ratio: float = 0.2,
     test_ratio: float = 0.2,
     seed: int = 0,
+    dataset_mode: str = "sequential",
 ) -> tuple:
     """Standalone training function detached from class"""
 
@@ -73,7 +107,7 @@ def train_model(
 
     log_shape = True
     for iteration, (features, targets) in enumerate(train_loader):
-        targets = targets[0] # remove batch dimension
+        features, targets = prepare_batch(features, targets, dataset_mode)
         features, targets = features.to(device), targets.to(device)
         if log_shape:
             step_logger.info(
@@ -130,7 +164,12 @@ def train_model(
                 if phases[phase_name] > 0:
 
                     _, pred, gt = net_eval(
-                        logs[phase_name], net, loaders[phase_name], criterion, device
+                        logs[phase_name],
+                        net,
+                        loaders[phase_name],
+                        criterion,
+                        device,
+                        dataset_mode=dataset_mode,
                     )
                     net.train()
                     logs[phase_name] = calculate_metrics(
@@ -264,6 +303,7 @@ def net_eval(
     dataloader: DataLoader,
     criterion: Callable,
     device: torch.device,
+    dataset_mode: str = "sequential",
 ):
     net = net.eval()
     with torch.no_grad():
@@ -272,7 +312,7 @@ def net_eval(
         ground_truth = []
         # Batch Iteration
         for features, targets in tqdm(dataloader):
-            targets = targets[0] # remove batch dimension
+            features, targets = prepare_batch(features, targets, dataset_mode)
             features = features.to(device)
             targets = targets.to(device)
             if net.get_aux_loss_state():

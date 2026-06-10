@@ -10,6 +10,7 @@ class Config:
         "/home/sandbox/datasets/syth_01_shared_data/1TR/"
         # "./data/real_data/16TR/"
         # "./data/synth_data/"
+        # "./data/"
     )
 
     dataset_name: str = (
@@ -18,6 +19,8 @@ class Config:
         # "data_16TR_0"
         # "data_32TR_A0"
         # "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_16L"
+        # "2TR"   # ./data/2TR.pt
+        # "16TR"  # ./data/16TR.pt
     )
 
     data_type: str = (
@@ -30,11 +33,18 @@ class Config:
     out_filtration: bool = True
     filter_path: str = (
         "/home/sandbox/project_dir/data/rx_filter.mat"
+        # "./data/filter_synth.mat"
+        # "./data/rx_filter.mat"
         # "./data/filter_real.mat"
     )
 
     # PIM Model Settings
     PIM_backbone: str = "mcp"
+    # Dataset structure:
+    # "sequential" or "sliding"
+    # applied to ML approaches only
+    # set for sequential for the most of the cases
+    dataset_mode: str = "sequential"
     PIM_hidden_size: int = 8
     # PIM type options: "total", "cond", "leak", "ext"
     # For synthetic datasets with separation available

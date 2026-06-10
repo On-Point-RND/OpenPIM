@@ -104,7 +104,9 @@ def train_poly_model(config: Config):
         signal_config.fs, signal_config.pim_sft
     )
     pim_bw = signal_config.pim_bw
-    filter = loadmat(config.filter_path)["flt_coeff"]
+    from modules.data_collector import load_rx_filter_coeff
+
+    filter = load_rx_filter_coeff(config.filter_path)
 
     n, m = data["rxa"].shape[1], data["rxa"].shape[0]
     rxa = np.empty((n,m), dtype=np.complex128, order='F')

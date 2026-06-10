@@ -15,7 +15,7 @@ from modules.metrics import (
     plot_spectrums,
     calculate_mean_red,
     calculate_metrics,
-    compute_power,
+    compute_powers_dict,
     plot_total_perf
 )
 
@@ -37,9 +37,12 @@ def run_evaluation(
     logs,
     step_logger,
     path_dir_save,
+    dataset_mode: str = "sequential",
 ):
-    
-    _, pred, gt = net_eval(logs, net, test_loader, criterion, device)
+
+    _, pred, gt = net_eval(
+        logs, net, test_loader, criterion, device, dataset_mode=dataset_mode
+    )
     logs = calculate_metrics(
                 pred,
                 gt,
@@ -97,17 +100,8 @@ def run_evaluation(
         phase_name='EVAL',
     )
 
-    powers = dict()
-    for key, value in (("gt", gt), ("err", gt - pred), ("noise", noise)):
-        compl = toComplex(value)
-        powers[key] = [
-            compute_power(
-                compl[:, id],
-                FS, PIM_SFT, PIM_BW,
-                data_type, data_name
-            )
-            for id in range(compl.shape[1])
-        ]
+    signal_specs = (FS, PIM_SFT, PIM_BW, data_type, data_name)
+    powers = compute_powers_dict(gt, pred, noise, signal_specs)
 
     plot_total_perf(
         powers,
@@ -188,7 +182,8 @@ if __name__ == "__main__":
             noise=noise['test'],
             logs=logs,
             step_logger=step_logger,
-            path_dir_save =exp.args.path_dir_save
+            path_dir_save=exp.args.path_dir_save,
+            dataset_mode=exp.args.dataset_mode,
         )
 
     results = convert_to_serializable(results)
