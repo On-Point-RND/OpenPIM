@@ -78,6 +78,42 @@ class CoreModel(nn.Module):
                 n_channels=self.n_channels,
             )
 
+        elif backbone_type == "mc_reg":
+            from backbones.mcreg import MultiChannelRegression
+            self.backbone = MultiChannelRegression(
+                seq_len=self.seq_len,
+                tx_filt_size=self.tx_window,
+                rx_filt_size=self.rx_window,
+                n_channels=self.n_channels,
+            )
+
+        elif backbone_type == "mc_conv":
+            from backbones.mcconv import MultiChannelConv
+            self.backbone = MultiChannelConv(
+                seq_len=self.seq_len,
+                tx_filt_size=self.tx_window,
+                rx_filt_size=self.rx_window,
+                n_channels=self.n_channels,
+            )
+
+        elif backbone_type == "mc_rnn":
+            from backbones.mcrnn import MultiChannelRNN
+            self.backbone = MultiChannelRNN(
+                seq_len=self.seq_len,
+                tx_filt_size=self.tx_window,
+                rx_filt_size=self.rx_window,
+                n_channels=self.n_channels,
+            )
+
+        elif backbone_type == "pc_lut":
+            from backbones.pclut import PerChannelLUT
+            self.backbone = PerChannelLUT(
+                seq_len=self.seq_len,
+                tx_filt_size=self.tx_window,
+                rx_filt_size=self.rx_window,
+                n_channels=self.n_channels,
+            )
+
         elif backbone_type == "mcp_config":
             from backbones.mcp_configurable import MCPConfig
             self.backbone = MCPConfig(
