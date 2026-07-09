@@ -31,15 +31,18 @@ def _ensure_n_c_2(x: np.ndarray, name: str) -> np.ndarray:
 
 
 def resolve_dataset_path(dataset_path: str, dataset_name: str) -> str:
-    """Flat .pt in dataset_path or legacy .mat in a subfolder."""
+    """Flat .pt, nested .pt subfolder, or legacy .mat subfolder."""
     flat_pt = os.path.join(dataset_path, f"{dataset_name}.pt")
     if os.path.isfile(flat_pt):
         return flat_pt
+    nested_pt = os.path.join(dataset_path, dataset_name, f"{dataset_name}.pt")
+    if os.path.isfile(nested_pt):
+        return nested_pt
     mat_path = os.path.join(dataset_path, dataset_name, f"{dataset_name}.mat")
     if os.path.isfile(mat_path):
         return mat_path
     raise FileNotFoundError(
-        f"Dataset not found: tried {flat_pt} and {mat_path}"
+        f"Dataset not found: tried {flat_pt}, {nested_pt}, and {mat_path}"
     )
 
 
@@ -55,12 +58,15 @@ def _load_data_file(path: str) -> dict:
 
 def load_rx_filter_coeff(filter_path: str) -> np.ndarray:
     """
-    Load RX filter coefficients from a .mat file.
+    Load RX filter coefficients from ``.npy`` or ``.mat``.
 
-    Supports:
-      - field ``flt_coeff``
-      - field ``rx_filter``
+    ``.mat`` fields supported:
+      - ``flt_coeff``
+      - ``rx_filter``
     """
+    if filter_path.endswith(".npy"):
+        return np.asarray(np.load(filter_path)).squeeze()
+
     rx_filter_keys = ("flt_coeff", "rx_filter")
     mat = loadmat(filter_path)
     for key in rx_filter_keys:

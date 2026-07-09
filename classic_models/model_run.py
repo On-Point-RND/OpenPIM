@@ -1,8 +1,13 @@
 import numpy as np
 import os
-from scipy.io import loadmat
 import pyrallis
 from config import Config
+from modules.data_collector import (
+    _load_data_file,
+    _specs_from_data,
+    load_rx_filter_coeff,
+    resolve_dataset_path,
+)
 
 from linalg_aux import *
 from classical_metrics import *
@@ -94,18 +99,13 @@ def train_poly_model(config: Config):
     )
     os.makedirs(result_path, exist_ok=True)
 
-    # Load data
-    data_path = os.path.join(
-        config.dataset_path, config.dataset_name, config.dataset_name + ".mat"
-    )
-    data = loadmat(data_path)
-    signal_config = SignalConfig(data)
-    fs, pim_sft = (
-        signal_config.fs, signal_config.pim_sft
-    )
-    pim_bw = signal_config.pim_bw
-    from modules.data_collector import load_rx_filter_coeff
-
+    # Load data (.pt flat/nested or legacy .mat)
+    data_path = resolve_dataset_path(config.dataset_path, config.dataset_name)
+    data = _load_data_file(data_path)
+    specs = _specs_from_data(data, config.data_type)
+    fs = specs["FS"]
+    pim_sft = specs["PIM_SFT"]
+    pim_bw = specs["PIM_BW"]
     filter = load_rx_filter_coeff(config.filter_path)
 
     n, m = data["rxa"].shape[1], data["rxa"].shape[0]
