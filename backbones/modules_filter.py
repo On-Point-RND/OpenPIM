@@ -21,9 +21,9 @@ class TxaFilterEnsembleTorch(nn.Module):
             self.txa_filter_layers.append(layer)
 
     def forward(self, x):
-        n_batch, *_ = x.shape
+        n_batch, seq_len, _, _ = x.shape
         output = torch.empty(
-            (n_batch, self.seq_len, self.n_channels, 2), device=x.device
+            (n_batch, seq_len, self.n_channels, 2), device=x.device, dtype=x.dtype
         )
         for c, conv_layer in enumerate(self.txa_filter_layers):
             channel_data = x[:, :, c, :]
@@ -53,9 +53,9 @@ class RxaFilterEnsembleTorch(nn.Module):
             self.rxa_filter_layers.append(layer)
 
     def forward(self, x):
-        n_batch, *_ = x.shape
+        n_batch, seq_len, _, _ = x.shape
         output = torch.empty(
-            (n_batch, self.seq_len, self.n_channels, 2), device=x.device
+            (n_batch, seq_len, self.n_channels, 2), device=x.device, dtype=x.dtype
         )
         for c, conv_layer in enumerate(self.rxa_filter_layers):
             channel_data = x[:, :, c, :]
@@ -63,6 +63,7 @@ class RxaFilterEnsembleTorch(nn.Module):
             y = conv_layer(channel_data)
             y = y.transpose(2, 1)
             output[:, :, c, :] = y
+        # Batch size is always 1: match (T, C, 2) expected by loss/metrics.
         return output[0]
 
 

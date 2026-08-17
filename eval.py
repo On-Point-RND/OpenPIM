@@ -16,7 +16,9 @@ from modules.metrics import (
     calculate_mean_red,
     calculate_metrics,
     compute_powers_dict,
-    plot_total_perf
+    compute_powers_dict_lite,
+    plot_total_perf,
+    plot_total_perf_lite,
 )
 
 
@@ -37,11 +39,10 @@ def run_evaluation(
     logs,
     step_logger,
     path_dir_save,
-    dataset_mode: str = "sequential",
 ):
 
     _, pred, gt = net_eval(
-        logs, net, test_loader, criterion, device, dataset_mode=dataset_mode
+        logs, net, test_loader, criterion, device
     )
     logs = calculate_metrics(
                 pred,
@@ -80,8 +81,8 @@ def run_evaluation(
         PIM_BW,
         0,
         logs["Reduction_level"],
-        data_type,
         path_dir_save,
+        data_type=data_type,
         cut=False,
         phase_name='EVAL',
     )
@@ -107,6 +108,10 @@ def run_evaluation(
         powers,
         path_dir_save
     )
+
+    powers_lite = compute_powers_dict_lite(gt, pred, signal_specs)
+    plot_total_perf_lite(powers_lite, path_dir_save)
+
     logs['MEAN_REDUCTION'] = mean_reduction
     return logs
 
@@ -155,8 +160,6 @@ if __name__ == "__main__":
 
     pim_model_id = exp.gen_model_id(n_net_pim_params)
 
-    PandasWriter = exp.build_logger(pim_model_id)
-
     exp.build_logger(model_id=pim_model_id)
 
     criterion = exp.build_criterion()
@@ -183,7 +186,6 @@ if __name__ == "__main__":
             logs=logs,
             step_logger=step_logger,
             path_dir_save=exp.args.path_dir_save,
-            dataset_mode=exp.args.dataset_mode,
         )
 
     results = convert_to_serializable(results)

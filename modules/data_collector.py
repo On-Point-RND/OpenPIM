@@ -3,13 +3,10 @@ import numpy as np
 import torch
 from scipy.io import loadmat
 from modules.dataset_sequential import build_sequential_loaders
-from modules.dataset_sliding import build_sliding_loaders
 from modules.data_utils import ComplexScaler, to2Dreal
 from modules.loggers import make_logger
 
 logger = make_logger()
-
-DATASET_MODES = ("sequential", "sliding")
 
 
 def _ensure_n_c_2(x: np.ndarray, name: str) -> np.ndarray:
@@ -127,9 +124,6 @@ def load_resources(
     batch_size_eval: int,
     seq_len: int,
     path_dir_save: str,
-    backbone_type: str = "mcp",
-    dataset_mode: str = "sequential",
-    channel_idx: int = 0,
 ):
     # Load dataset (.pt flat file or legacy .mat subfolder)
     path = resolve_dataset_path(dataset_path, dataset_name)
@@ -151,37 +145,18 @@ def load_resources(
     for data_part in ["train", "val", "test"]:
         data["X"][data_part] = СScaler.normalize(data["X"][data_part], key="X")
         data["Y"][data_part] = СScaler.normalize(data["Y"][data_part], key="Y")
-    
-    if dataset_mode not in DATASET_MODES:
-        raise ValueError(
-            f"dataset_mode must be one of {DATASET_MODES}, got '{dataset_mode}'"
-        )
-    logger.info(f"Dataset mode: {dataset_mode}")
 
-    if dataset_mode == "sliding":
-        (train_loader, val_loader, test_loader), n_channels = build_sliding_loaders(
-            data["X"]["train"],
-            data["Y"]["train"],
-            data["X"]["val"],
-            data["Y"]["val"],
-            data["X"]["test"],
-            data["Y"]["test"],
-            seq_len=seq_len,
-            backbone_type=backbone_type,
-            channel_idx=channel_idx,
-        )
-    else:
-        (train_loader, val_loader, test_loader), n_channels = build_sequential_loaders(
-            data["X"]["train"],
-            data["Y"]["train"],
-            data["X"]["val"],
-            data["Y"]["val"],
-            data["X"]["test"],
-            data["Y"]["test"],
-            seq_len=seq_len,
-            batch_size=batch_size,
-            batch_size_eval=batch_size_eval,
-        )
+    (train_loader, val_loader, test_loader), n_channels = build_sequential_loaders(
+        data["X"]["train"],
+        data["Y"]["train"],
+        data["X"]["val"],
+        data["Y"]["val"],
+        data["X"]["test"],
+        data["Y"]["test"],
+        seq_len=seq_len,
+        batch_size=batch_size,
+        batch_size_eval=batch_size_eval,
+    )
 
     logger.success(f"Dataloaders were created")
     return (

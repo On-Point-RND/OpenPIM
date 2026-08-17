@@ -14,6 +14,57 @@ _PSD_KWARGS = {
     "pad_to": 2048,
 }
 
+_PSD_NFFT = 2048
+
+
+def compute_psd(x: np.ndarray, fs: float, nfft: int = _PSD_NFFT):
+    """
+    Two-sided Welch PSD (linear). Matches classic metric window settings.
+    Returns freqs (Hz, baseband), psd (linear power density).
+    """
+    freqs, psd = welch(
+        x,
+        fs,
+        window=np.kaiser(nfft, 10),
+        nperseg=nfft,
+        noverlap=1,
+        return_onesided=False,
+    )
+    return freqs, np.maximum(np.asarray(psd.real), 1e-30)
+
+
+def compute_spectra_bundle(
+    gt_rescaled,
+    pred_rescaled,
+    noise,
+    fs: float,
+):
+    """
+    Per-channel PSDs for rx / pred / err / noise.
+    Inputs are real I/Q arrays (T, C, 2). Returns freqs and arrays (C, F).
+    """
+    gt = toComplex(gt_rescaled)
+    pred = toComplex(pred_rescaled)
+    nse = toComplex(noise)
+    err = gt - pred
+    n_channels = gt.shape[1]
+
+    freqs = None
+    stacks = {"rx": [], "pred": [], "err": [], "noise": []}
+    for ch in range(n_channels):
+        for key, sig in (
+            ("rx", gt[:, ch]),
+            ("pred", pred[:, ch]),
+            ("err", err[:, ch]),
+            ("noise", nse[:, ch]),
+        ):
+            f, p = compute_psd(sig, fs)
+            if freqs is None:
+                freqs = f
+            stacks[key].append(p)
+
+    return freqs, {k: np.stack(v, axis=0) for k, v in stacks.items()}
+
 
 def _set_pim_xlim(ax, data_type, FC_TX, FS, PIM_SFT, PIM_BW):
     if data_type == "synth":
@@ -86,8 +137,8 @@ def plot_spectrums(
             iteration,
             reduction_level[f"CH_{c_number}"],
             c_number,
-            save_dir,
             data_type,
+            save_dir,
             path_dir_save,
             cut,
             phase_name,
@@ -169,55 +220,48 @@ def plot_final_spectrums(
     path_dir_save="",
     phase_name="test",
 ):
-
     n_channels = prediction.shape[1]
-    dim_1 = int(np.sqrt(n_channels))
-    dim_2 = n_channels // dim_1
+    ncols = int(np.ceil(np.sqrt(n_channels)))
+    nrows = int(np.ceil(n_channels / ncols))
+    figsize = (7 * ncols, 5 * nrows) if n_channels <= 4 else (15, 15)
 
-    if dim_1 * dim_2 > 1:
-        fig, axes = plt.subplots(dim_1, dim_2, figsize=(15, 15))
-    else: 
-        fig, axes = plt.subplots(dim_1, dim_2, figsize=(7, 7))
+    fig, axes = plt.subplots(nrows, ncols, figsize=figsize, squeeze=False)
+    axes_flat = axes.ravel()
 
-    for ch_dim_1 in range(dim_1):
-        for ch_dim_2 in range(dim_2):
+    for ch_idx in range(n_channels):
+        ax = axes_flat[ch_idx]
+        for signal, label, color in (
+            (ground_truth[:, ch_idx], "RX", "blue"),
+            (ground_truth[:, ch_idx] - prediction[:, ch_idx], "ERR", "red"),
+            (noise[:, ch_idx], "NF", "black"),
+        ):
+            ax.psd(
+                signal,
+                Fs=FS,
+                Fc=FC_TX,
+                label=label,
+                color=color,
+                **_PSD_KWARGS,
+            )
 
-            if dim_1 * dim_2 > 1:
-                ax = axes[ch_dim_1][ch_dim_2]
-            else: 
-                ax = axes
+        ax.set_ylabel(r"PSD, $V^2$/Hz [dB]", fontsize=16)
+        ax.set_xlabel("Frequency, MHz", fontsize=16)
+        ax.set_ylim(0, 48)
+        _set_pim_xlim(ax, data_type, FC_TX, FS, PIM_SFT, PIM_BW)
+        ax.legend(loc="upper left", fontsize=13)
+        ax.set_title(f"CH_{ch_idx}", fontsize=18)
+        ax.grid(True)
 
-            ch_idx = ch_dim_1 * dim_2 + ch_dim_2
-            for signal, label, color in (
-                (ground_truth[:, ch_idx], "RX", "blue"),
-                (ground_truth[:, ch_idx] - prediction[:, ch_idx], "ERR", "red"),
-                (noise[:, ch_idx], "NF", "black"),
-            ):
-                ax.psd(
-                    signal,
-                    Fs=FS,
-                    Fc=FC_TX,
-                    label=label,
-                    color=color,
-                    **_PSD_KWARGS,
-                )
+    for ax in axes_flat[n_channels:]:
+        ax.set_visible(False)
 
-            ax.set_ylabel(r"PSD, $V^2$/Hz [dB]", fontsize=16)
-            ax.set_xlabel("Frequency, MHz", fontsize = 16)
-            ax.set_ylim(0, 48)
-            _set_pim_xlim(ax, data_type, FC_TX, FS, PIM_SFT, PIM_BW)
-            ax.legend(loc="upper left", fontsize = 13)
-            ax.set_title(f"CH_{ch_idx}", fontsize=18)
-            ax.grid(True)
     fig.tight_layout()
-    fig.show()
     fig.savefig(
         f"{save_dir}/{phase_name}_total_performance_{iteration}_iterations"
-        + path_dir_save + ".png",
-        # bbox_inches="tight",
+        + path_dir_save
+        + ".png",
     )
-    plt.close()
-
+    plt.close(fig)
 
 def compute_powers_dict(
     gt_rescaled,
@@ -257,34 +301,127 @@ def perf_from_powers(powers: dict) -> float:
 
 
 def plot_total_perf(powers, path_save):
-    _ = plt.figure(figsize = (10, 7))
-    n_channels = len(powers['gt'])
-    gt_norm = [powers['gt'][idx] - powers['noise'][idx] for idx in range(n_channels)]
-    err_norm = [powers['err'][idx] - powers['noise'][idx] for idx in range(n_channels)]
+    _ = plt.figure(figsize=(10, 7))
+    n_channels = len(powers["gt"])
+    gt_norm = [powers["gt"][idx] - powers["noise"][idx] for idx in range(n_channels)]
+    err_norm = [powers["err"][idx] - powers["noise"][idx] for idx in range(n_channels)]
 
-    power_df = pd.DataFrame({
-    'RXA':gt_norm,
-    'ERR':err_norm
-    })
+    power_df = pd.DataFrame({"RXA": gt_norm, "ERR": err_norm})
 
     perf_list = perf_from_powers(powers)
     mean_perf = calculate_mean_red(perf_list)
     max_perf = max(perf_list)
 
-    power_df.plot.bar(color = ('red', 'blue', 'black'))
+    power_df.plot.bar(color=("red", "blue", "black"))
     plt.title(
-        f'PIM: '
-        f'ORIG: {calculate_mean_red(power_df["RXA"]):.2f}, '
-        f'RES: {calculate_mean_red(power_df["ERR"]):.2f}; '
-        f'Perf. ABS: {max_perf:.2f}, '
-        f'MEAN: {mean_perf:.2f}'
+        f"PIM: "
+        f"ORIG: {calculate_mean_red(power_df['RXA']):.2f}, "
+        f"RES: {calculate_mean_red(power_df['ERR']):.2f}; "
+        f"Perf. ABS: {max_perf:.2f}, "
+        f"MEAN: {mean_perf:.2f}"
     )
-    plt.xlabel('Channel number', fontsize = 16)
-    plt.ylabel('Signal level [dB]', fontsize = 16)
+    plt.xlabel("Channel number", fontsize=16)
+    plt.ylabel("Signal level [dB]", fontsize=16)
     plt.legend(loc="upper left")
-    plt.savefig(
-        f'{path_save}/' 'barplot_performance.png', bbox_inches='tight'
+    plt.savefig(f"{path_save}/barplot_performance.png", bbox_inches="tight")
+    plt.close()
+
+
+def compute_power_lite(
+    x,
+    fs,
+    pim_sft,
+    pim_bw,
+    data_type,
+    real_data_name="",
+    return_db=True,
+):
+    """
+    Band power via Welch: Hann window, K_FFT=2048, 50% overlap (noverlap=nperseg//2).
+    Mean over linear PSD bins in the receive band, then optionally to dB.
+    """
+    n = 2048
+    f, psd = welch(
+        x,
+        fs,
+        window="hann",
+        nperseg=n,
+        noverlap=n // 2,
+        return_onesided=False,
     )
+
+    if data_type == "synth":
+        freq_mask = np.where(
+            (f > pim_sft - pim_bw / 2) & (f < pim_sft + pim_bw / 2)
+        )
+    elif data_type == "real":
+        if real_data_name == "data_A":
+            freq_mask = np.where((f > -5 / 2 - 27.5) & (f < 5 / 2 - 27.5))
+        elif real_data_name == "set_B":
+            freq_mask = np.where((f > -5 / 2 + 32.5) & (f < 5 / 2 + 32.5))
+        else:
+            freq_mask = np.where((f > -5 / 2 + 15) & (f < 5 / 2 + 15))
+
+    power = np.mean(psd[freq_mask[0]].real)
+    if return_db:
+        power = 10 * np.log10(power)
+    return power
+
+
+def compute_powers_dict_lite(
+    gt_rescaled,
+    pred_rescaled,
+    signal_specs: Tuple[float, float, float, str, str],
+) -> dict:
+    """
+    Per-channel RXA (gt) and RES (gt-pred) levels [dB] via compute_power_lite.
+    Same layout as compute_powers_dict: pred/gt already band-filtered upstream;
+    no extra FIR, no noise. signal_specs: (FS, PIM_SFT, PIM_BW, data_type, data_name).
+    """
+    FS, PIM_SFT, PIM_BW, data_type, data_name = signal_specs
+    powers = {}
+    for key, value in (
+        ("gt", gt_rescaled),
+        ("err", gt_rescaled - pred_rescaled),
+    ):
+        compl = toComplex(value)
+        powers[key] = [
+            compute_power_lite(
+                compl[:, ch_id],
+                FS,
+                PIM_SFT,
+                PIM_BW,
+                data_type,
+                data_name,
+            )
+            for ch_id in range(compl.shape[1])
+        ]
+    return powers
+
+
+def perf_from_powers_lite(powers: dict) -> float:
+    """Mean residual level D: arithmetic average of per-antenna D_n [dB]."""
+    return float(np.mean(powers["err"]))
+
+
+def plot_total_perf_lite(powers, path_save):
+    """Final barplot RXA vs RES; saves barplot_performance_lite.png."""
+    _ = plt.figure(figsize=(10, 7))
+    gt = powers["gt"]
+    err = powers["err"]
+    mean_rxa = float(np.mean(gt))
+    mean_res = perf_from_powers_lite(powers)
+
+    power_df = pd.DataFrame({"RXA": gt, "RES": err})
+    power_df.plot.bar(color=("tab:red", "tab:blue"))
+    plt.title(
+        f"Residual level D (lite): "
+        f"RXA = {mean_rxa:.2f} dB, RES = {mean_res:.2f} dB"
+    )
+    plt.xlabel("Channel number", fontsize=16)
+    plt.ylabel("Signal level [dB]", fontsize=16)
+    plt.legend(loc="upper left")
+    plt.savefig(f"{path_save}/barplot_performance_lite.png", bbox_inches="tight")
     plt.close()
 
 

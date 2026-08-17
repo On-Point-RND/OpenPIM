@@ -17,7 +17,7 @@ from modules.data_collector import (
     resolve_dataset_path,
 )
 from modules.loss import IQComponentWiseLoss, HybridLoss, JointLoss, FFTLoss
-from modules.loggers import PandasLogger, make_logger
+from modules.loggers import CheckpointSaver, make_logger
 from modules.paths import gen_dir_paths, gen_file_paths
 from modules.train_funcs import train_model
 
@@ -33,17 +33,9 @@ class Runner:
         if load_exp:
             self.load_experiment()
             self.path_dir_save = self.args.path_dir_save
-            self.path_dir_log_hist = self.args.path_dir_log_hist
-            self.path_dir_log_best = self.args.path_dir_log_best
-        
         else:
-            dir_paths = gen_dir_paths(self.args)
-            (
-                self.path_dir_save,
-                self.path_dir_log_hist,
-                self.path_dir_log_best,
-            ) = dir_paths
-            [os.makedirs(p, exist_ok=True) for p in dir_paths]
+            self.path_dir_save = gen_dir_paths(self.args)
+            os.makedirs(self.path_dir_save, exist_ok=True)
 
         # Hardware Info
         self.num_cpu_threads = os.cpu_count()
@@ -70,36 +62,17 @@ class Runner:
         return pa_model_id
 
     def build_logger(self, model_id: str):
-        # Get Save and Log Paths
-        file_paths = gen_file_paths(
-            self.path_dir_save,
-            self.path_dir_log_hist,
-            self.path_dir_log_best,
-            model_id,
-        )
-        (
-            self.args.path_save_file_best,
-            self.args.path_log_file_hist,
-            self.args.path_log_file_best,
-        ) = file_paths
+        self.args.path_save_file_best = gen_file_paths(self.path_dir_save, model_id)
         self.step_logger.info(
             f"::: Best Model Save Path:  {self.args.path_save_file_best}"
         )
         self.step_logger.info(
-            f"::: Log-History     Path: {self.args.path_log_file_hist}"
+            f"::: Run metrics CSV: {os.path.join(self.path_dir_save, 'run_metrics.csv')}"
         )
         self.step_logger.info(
-            f"::: Log-Best        Path: {self.args.path_log_file_best}"
+            f"::: Spectra NPZ: {os.path.join(self.path_dir_save, 'spectra.npz')}"
         )
-
-        # Instantiate Logger for Recording Training Statistics
-        PandasWriter = PandasLogger(
-            path_save_file_best=self.args.path_save_file_best,
-            path_log_file_best=self.args.path_log_file_best,
-            path_log_file_hist=self.args.path_log_file_hist,
-            precision=self.args.log_precision,
-        )
-        return PandasWriter
+        return CheckpointSaver(path_save_file_best=self.args.path_save_file_best)
 
     def reproducible(self):
         rnd.seed(self.args.seed)
@@ -161,9 +134,7 @@ class Runner:
             self.args.batch_size,
             self.args.batch_size_eval,
             self.args.seq_len,
-            path_dir_save=self.path_dir_log_best,
-            backbone_type=self.args.PIM_backbone,
-            dataset_mode=self.args.dataset_mode,
+            path_dir_save=self.path_dir_save,
         )
 
     def build_criterion(self):
@@ -300,7 +271,7 @@ class Runner:
         data_type,
     ):
 
-        log_all = train_model(
+        train_model(
             net=net,
             criterion=criterion,
             optimizer=optimizer,
@@ -313,8 +284,6 @@ class Runner:
             CScaler=CScaler,
             device=self.device,
             path_dir_save=self.path_dir_save,
-            path_dir_log_hist=self.path_dir_log_hist,
-            path_dir_log_best=self.path_dir_log_best,
             writer=writer,
             data_type=data_type,
             data_name=self.args.dataset_name,
@@ -325,8 +294,6 @@ class Runner:
             n_log_steps=self.args.n_log_steps,
             n_lr_steps=self.args.n_lr_steps,
             n_iterations=self.args.n_iterations,
-            n_log_steps_dense=self.args.n_log_steps_dense,
-            dense_phase_end_iter=self.args.dense_phase_end_iter,
             grad_clip_val=self.args.grad_clip_val,
             lr_scheduler_type=self.args.lr_scheduler_type,
             save_results=self.args.save_results,
@@ -334,11 +301,9 @@ class Runner:
             val_ratio=self.args.val_ratio,
             test_ratio=self.args.test_ratio,
             seed=self.args.seed,
-            dataset_mode=self.args.dataset_mode,
         )
 
         self.dump_json_config(spec_dictionary)
-        return log_all
 
     def load_and_split_data(self):
         path = resolve_dataset_path(
@@ -378,11 +343,8 @@ class Runner:
             "out_filtration": self.args.out_filtration,
             "batch_size": self.args.batch_size,
             "PIM_backbone": self.args.PIM_backbone,
-            "dataset_mode": self.args.dataset_mode,
-            
+
             "path_dir_save": self.path_dir_save,
-            "path_dir_log_hist": self.path_dir_log_hist,
-            "path_dir_log_best": self.path_dir_log_best,
             "path_save_file_best": self.args.path_save_file_best,
             "filter_path": self.args.filter_path,
             "dataset_name": self.args.dataset_name,

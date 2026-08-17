@@ -30,7 +30,7 @@ class ChannelMixRNN(nn.Module):
         n_batch, seq_len, n_channels, _ = x.shape
         seq = x.reshape(n_batch, seq_len, self.feat_size)
         out, _ = self.rnn(seq, h_0)
-        return out.view(n_batch, seq_len, n_channels, 2)
+        return out.view(n_batch, seq_len, self.n_channels, 2)
 
 
 class MultiChannelRNN(nn.Module):
@@ -47,7 +47,5 @@ class MultiChannelRNN(nn.Module):
 
     def forward(self, x, h_0=None):
         x = self.txa_filter_layers(x)
-        x = F.gelu(x)
         x = self.channel_mix(x)
-        x = F.gelu(x)
         return self.rxa_filter_layers(x)

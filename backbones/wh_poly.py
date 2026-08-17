@@ -14,19 +14,9 @@ def _z_times(z: torch.Tensor, *f_of_mod: torch.Tensor) -> torch.Tensor:
     return torch.stack([z * f for f in f_of_mod], dim=-1)
 
 
-def _modulus_basis(z: torch.Tensor) -> torch.Tensor:
+def _power_basis(z: torch.Tensor) -> torch.Tensor:
     x = z.abs()
-    return _z_times(z, x, x.square(), torch.log1p(x))
-
-
-def _chebyshev_basis(z: torch.Tensor) -> torch.Tensor:
-    x = z.abs()
-    return _z_times(z, torch.ones_like(x), x, 2 * x * x - 1)
-
-
-# --- basis: uncomment one before run ---
-_basis = _modulus_basis
-# _basis = _chebyshev_basis
+    return _z_times(z, x, x.square(), x.pow(3))
 
 
 class NlinCore(nn.Module):
@@ -40,7 +30,7 @@ class NlinCore(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         z = torch.complex(x[..., 0], x[..., 1])
-        phi = _basis(z)
+        phi = _power_basis(z)
         w = self.weight.to(phi.dtype)
         z_out = torch.einsum("btjk,cjk->btc", phi, w)
         return torch.stack((z_out.real, z_out.imag), dim=-1)

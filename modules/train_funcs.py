@@ -5,46 +5,37 @@ import torch.nn as nn
 import numpy as np
 from torch.utils.data import DataLoader
 from typing import Dict, Any, Callable
-from modules.paths import gen_log_stat
 
 from tqdm import tqdm
-from modules.metrics import *
-
-from modules.data_utils import toComplex
+from modules.metrics import (
+    calculate_metrics,
+    calculate_mean_red,
+    compute_powers_dict,
+    compute_powers_dict_lite,
+    compute_spectra_bundle,
+    perf_from_powers,
+    perf_from_powers_lite,
+    plot_spectrums,
+    plot_final_spectrums,
+    plot_total_perf,
+    plot_total_perf_lite,
+)
+from modules.experiment_log import ExperimentRecorder
 from modules.loggers import make_logger
-from modules.data_utils import convert_to_serializable
+from modules.data_utils import convert_to_serializable, toComplex
 
 
 def prepare_batch(
     features: torch.Tensor,
     targets: torch.Tensor,
-    dataset_mode: str,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """
-    Align dataloader batch with net/filter (batch_size is always 1).
+    """Batch (1, T, C, 2) -> features unchanged, targets (T, C, 2)."""
+    return features, targets.squeeze(0)
 
-    sequential: X (1, T, C, 2), Y (1, T, C, 2) -> Y (T, C, 2)
-    sliding:    X (1, L, 2) or (1, L, C, 2)
-                Y (1, 2) -> (1, 1, 2) for FTDNN; Y (1, C, 2) -> (C, 2)
-    """
-    if dataset_mode not in ("sequential", "sliding"):
-        raise ValueError(
-            f"dataset_mode must be 'sequential' or 'sliding', got '{dataset_mode}'"
-        )
-
-    if dataset_mode == "sequential":
-        return features, targets.squeeze(0)
-
-    if targets.ndim >= 3:
-        targets = targets.squeeze(0)
-    if targets.ndim == 1:
-        targets = targets.unsqueeze(0)
-
-    # Single-channel sliding (FTDNN): match backbone output (B, 1, 2)
-    if features.ndim == 3:
-        targets = targets.unsqueeze(1)
-
-    return features, targets
+def _current_lr(optimizer) -> float:
+    for param_group in optimizer.param_groups:
+        return float(param_group["lr"])
+    return 0.0
 
 
 def train_model(
@@ -60,8 +51,6 @@ def train_model(
     CScaler,
     device: torch.device,
     path_dir_save: str,
-    path_dir_log_hist: str,
-    path_dir_log_best: str,
     writer,
     data_type: str,
     data_name: str,
@@ -72,42 +61,38 @@ def train_model(
     n_log_steps: int,
     n_lr_steps: int,
     n_iterations: int,
-    n_log_steps_dense: int,
-    dense_phase_end_iter: int,
     grad_clip_val: float,
     lr_scheduler_type: str,
     save_results: bool = True,
-    plot_per_step_spectrums: bool = True,
+    plot_per_step_spectrums: bool = False,
     val_ratio: float = 0.2,
     test_ratio: float = 0.2,
     seed: int = 0,
-    dataset_mode: str = "sequential",
-) -> tuple:
-    """Standalone training function detached from class"""
+) -> None:
+    """Standalone training function detached from class."""
 
     step_logger = make_logger()
-
-    # Create directories if they don't exist
     os.makedirs(path_dir_save, exist_ok=True)
-    os.makedirs(path_dir_log_hist, exist_ok=True)
-    os.makedirs(path_dir_log_best, exist_ok=True)
+
+    recorder = ExperimentRecorder(path_dir_save, seed=seed)
+    signal_specs = (FS, PIM_SFT, PIM_BW, data_type, data_name)
 
     start_time = time.time()
     net.train()
     losses = []
-    expert_weights_history = []
-    expert_names = None
-
-    mean_red_levels_for_iter = []
 
     phases = {"val": val_ratio, "test": test_ratio}
     loaders = {"val": val_loader, "test": test_loader}
     logs = {"val": dict(), "test": dict(), "train": dict()}
-    signal_specs = (FS, PIM_SFT, PIM_BW, data_type, data_name)
 
     log_shape = True
+    powers = None
+    powers_lite = None
+    pred_rescaled = None
+    gt_rescaled = None
+
     for iteration, (features, targets) in enumerate(train_loader):
-        features, targets = prepare_batch(features, targets, dataset_mode)
+        features, targets = prepare_batch(features, targets)
         features, targets = features.to(device), targets.to(device)
         if log_shape:
             step_logger.info(
@@ -115,7 +100,6 @@ def train_model(
             )
 
         optimizer.zero_grad()
-        # Check the presence of auxiliary loss
         if net.get_aux_loss_state():
             out, aux_loss = net(features)
         else:
@@ -137,68 +121,86 @@ def train_model(
 
         losses.append(loss.detach().item())
 
-        # Learning rate adjustment
         if iteration % n_lr_steps == 0:
             if lr_scheduler_type == "rop":
                 lr_scheduler.step(np.mean(losses))
             else:
                 lr_scheduler.step()
 
-        log_epoch = 0
-        log_step = (
-            n_log_steps_dense
-            if dense_phase_end_iter > 0 and iteration <= dense_phase_end_iter
-            else n_log_steps
-        )
-        if iteration % log_step == 0 and iteration > 0:
-            if hasattr(net, "get_expert_weights") and net.get_expert_weights() is not None:
-                w = net.get_expert_weights()
-                expert_weights_history.append((iteration, w.numpy().copy()))
-                if expert_names is None and hasattr(net, "get_expert_names"):
-                    expert_names = net.get_expert_names()
+        if iteration % n_log_steps == 0 and iteration > 0:
             step_logger.info(f"{iteration} iteration out of {n_iterations} is complete")
-            logs["train"]["loss"] = np.mean(losses)
+            logs["train"]["loss"] = float(np.mean(losses))
 
-            # Validation/Test evaluation
             for phase_name in phases:
-                if phases[phase_name] > 0:
-
-                    _, pred, gt = net_eval(
-                        logs[phase_name],
-                        net,
-                        loaders[phase_name],
-                        criterion,
-                        device,
-                        dataset_mode=dataset_mode,
-                    )
-                    net.train()
-                    logs[phase_name] = calculate_metrics(
-                        pred,
-                        gt,
-                        noise[phase_name],
-                        filter,
-                        data_type,
-                        data_name,
-                        CScaler,
-                        FS,
-                        PIM_SFT,
-                        PIM_BW,
-                        logs[phase_name],
-                    )
+                if phases[phase_name] <= 0:
+                    continue
+                _, pred, gt = net_eval(
+                    logs[phase_name],
+                    net,
+                    loaders[phase_name],
+                    criterion,
+                    device,
+                )
+                net.train()
+                logs[phase_name] = calculate_metrics(
+                    pred,
+                    gt,
+                    noise[phase_name],
+                    filter,
+                    data_type,
+                    data_name,
+                    CScaler,
+                    FS,
+                    PIM_SFT,
+                    PIM_BW,
+                    logs[phase_name],
+                )
                 mean_reduction = calculate_mean_red(
                     list(logs[phase_name]["Reduction_level"].values())
                 )
-
                 step_logger.success(
                     f"Mean Reduction_level {phase_name}: {mean_reduction}"
                 )
                 step_logger.success(
-                    f"Reduction_level {phase_name}: {convert_to_serializable(logs[phase_name]['Reduction_level'])}"
+                    f"Reduction_level {phase_name}: "
+                    f"{convert_to_serializable(logs[phase_name]['Reduction_level'])}"
                 )
 
-            if phase_name in ["test", "train"] and test_ratio > 0 and plot_per_step_spectrums:
-                pred_rescaled = CScaler.rescale(pred, key="Y")
-                gt_rescaled = CScaler.rescale(gt, key="Y")
+            pred_rescaled = CScaler.rescale(pred, key="Y")
+            gt_rescaled = CScaler.rescale(gt, key="Y")
+            powers = compute_powers_dict(
+                gt_rescaled, pred_rescaled, noise["test"], signal_specs
+            )
+            powers_lite = compute_powers_dict_lite(
+                gt_rescaled, pred_rescaled, signal_specs
+            )
+            perf_list = perf_from_powers(powers)
+            mean_reduction = calculate_mean_red(perf_list)
+            mean_res_lite = perf_from_powers_lite(powers_lite)
+
+            freqs, psds = compute_spectra_bundle(
+                gt_rescaled, pred_rescaled, noise["test"], FS
+            )
+            recorder.log_step(
+                iteration=iteration,
+                time_min=(time.time() - start_time) / 60,
+                lr=_current_lr(optimizer),
+                train_loss=logs["train"]["loss"],
+                test_loss=float(logs["test"].get("loss", np.nan)),
+                nmse_by_ch=logs["test"].get("NMSE", {}),
+                reduction_by_ch=logs["test"].get("Reduction_level", {}),
+                powers=powers,
+                powers_lite=powers_lite,
+                mean_reduction=mean_reduction,
+                mean_res_lite=mean_res_lite,
+                freqs=freqs,
+                psd_rx=psds["rx"],
+                psd_pred=psds["pred"],
+                psd_err=psds["err"],
+                psd_noise=psds["noise"],
+            )
+
+            if plot_per_step_spectrums:
                 plot_spectrums(
                     toComplex(pred_rescaled),
                     toComplex(gt_rescaled),
@@ -208,10 +210,9 @@ def train_model(
                     PIM_BW,
                     iteration,
                     logs["test"]["Reduction_level"],
-                    data_type,
                     path_dir_save,
-                    cut=False,
-                    phase_name=phase_name,
+                    data_type=data_type,
+                    phase_name="test",
                 )
                 plot_final_spectrums(
                     toComplex(pred_rescaled),
@@ -224,77 +225,43 @@ def train_model(
                     iteration,
                     data_type,
                     path_dir_save,
-                    phase_name=phase_name,
+                    phase_name="test",
                 )
 
-            # Logging
-            elapsed_time = (time.time() - start_time) / 60
-
-            log_all = gen_log_stat(
-                net,
-                optimizer,
-                elapsed_time,
-                iteration,
-                logs["train"],
-                logs["train"],
-                logs["test"],
-            )
-
-            writer.write_log(log_all)
-
-            pred_rescaled = CScaler.rescale(pred, key="Y")
-            gt_rescaled = CScaler.rescale(gt, key="Y")
-            powers = compute_powers_dict(
-                gt_rescaled, pred_rescaled, noise["test"], signal_specs
-            )
-            perf_list = perf_from_powers(powers)
-            mean_perf_for_iter = calculate_mean_red(perf_list)
-            mean_red_levels_for_iter.append(
-                [
-                    mean_perf_for_iter,
-                    iteration,
-                ]
-            )
-
-            # Model saving
             if save_results:
-                writer.save_best_model(net, log_epoch, logs["test"], "loss")
+                writer.save_best_model(net, logs["test"], "loss")
 
-        log_epoch += 1
         if iteration > n_iterations:
             break
 
     step_logger.info("Training Completed\n")
 
-    if expert_weights_history and expert_names is not None:
-        iterations_arr = np.array([t[0] for t in expert_weights_history])
-        weights_arr = np.array([t[1] for t in expert_weights_history])
-        out_path = os.path.join(path_dir_log_hist, "expert_weights_history.npz")
-        np.savez(
-            out_path,
-            iterations=iterations_arr,
-            weights=weights_arr,
-            expert_names=np.array(expert_names, dtype=object),
+    recorder.save_spectra(
+        meta={"FS": FS, "FC_TX": FC_TX, "PIM_SFT": PIM_SFT, "PIM_BW": PIM_BW}
+    )
+    step_logger.info(f"Metrics saved to {recorder.metrics_path}")
+    step_logger.info(f"Spectra saved to {recorder.spectra_path}")
+
+    if powers is None or powers_lite is None:
+        if pred_rescaled is None:
+            _, pred, gt = net_eval(
+                logs["test"],
+                net,
+                test_loader,
+                criterion,
+                device,
+            )
+            pred_rescaled = CScaler.rescale(pred, key="Y")
+            gt_rescaled = CScaler.rescale(gt, key="Y")
+        powers = compute_powers_dict(
+            gt_rescaled, pred_rescaled, noise["test"], signal_specs
         )
-        step_logger.info(f"Expert weights history saved to {out_path}")
+        powers_lite = compute_powers_dict_lite(
+            gt_rescaled, pred_rescaled, signal_specs
+        )
 
-    pred_rescaled = CScaler.rescale(pred, key="Y")
-    gt_rescaled = CScaler.rescale(gt, key="Y")
-    powers = compute_powers_dict(
-        gt_rescaled, pred_rescaled, noise["test"], signal_specs
-    )
-
-    pd.DataFrame(
-        mean_red_levels_for_iter,
-        columns=["Mean_red_levels", "Iteration"],
-    ).to_csv(path_dir_save + f"/quality_for_iter__seed_{seed}.csv")
-
-    plot_total_perf(
-        powers,
-        path_dir_save,
-    )
-
-    return log_all
+    plot_total_perf(powers, path_dir_save)
+    plot_total_perf_lite(powers_lite, path_dir_save)
 
 
 def net_eval(
@@ -303,38 +270,28 @@ def net_eval(
     dataloader: DataLoader,
     criterion: Callable,
     device: torch.device,
-    dataset_mode: str = "sequential",
 ):
     net = net.eval()
     with torch.no_grad():
         losses = []
         prediction = []
         ground_truth = []
-        # Batch Iteration
         for features, targets in tqdm(dataloader):
-            features, targets = prepare_batch(features, targets, dataset_mode)
+            features, targets = prepare_batch(features, targets)
             features = features.to(device)
             targets = targets.to(device)
             if net.get_aux_loss_state():
                 outputs, _ = net(features)
             else:
                 outputs = net(features)
-            # Calculate loss function
             conv_targets = net.filter(targets)
             loss = criterion(outputs, conv_targets)
 
-            # Collect prediction and ground truth for metric calculation
             prediction.append(outputs.cpu())
             ground_truth.append(conv_targets.cpu())
-
-            # Collect losses to calculate the average loss per epoch
             losses.append(loss.item())
-    # Average loss per epoch
     avg_loss = np.mean(losses)
-    # Prediction and Ground Truth
     prediction = torch.cat(prediction, dim=0).numpy()
     ground_truth = torch.cat(ground_truth, dim=0).numpy()
-    # Save Statistics
     log["loss"] = avg_loss
-    # End of Evaluation Epoch
     return net, prediction, ground_truth

@@ -78,8 +78,17 @@ class CoreModel(nn.Module):
                 n_channels=self.n_channels,
             )
 
-        elif backbone_type == "mc_reg":
-            from backbones.mcreg import MultiChannelRegression
+        elif backbone_type == "wh_baseline":
+            from backbones.wh_baseline import MultiChannelFIR
+            self.backbone = MultiChannelFIR(
+                seq_len=self.seq_len,
+                tx_filt_size=self.tx_window,
+                rx_filt_size=self.rx_window,
+                n_channels=self.n_channels,
+            )
+
+        elif backbone_type == "wh_poly":
+            from backbones.wh_poly import MultiChannelRegression
             self.backbone = MultiChannelRegression(
                 seq_len=self.seq_len,
                 tx_filt_size=self.tx_window,
@@ -87,17 +96,8 @@ class CoreModel(nn.Module):
                 n_channels=self.n_channels,
             )
 
-        elif backbone_type == "mc_conv":
-            from backbones.mcconv import MultiChannelConv
-            self.backbone = MultiChannelConv(
-                seq_len=self.seq_len,
-                tx_filt_size=self.tx_window,
-                rx_filt_size=self.rx_window,
-                n_channels=self.n_channels,
-            )
-
-        elif backbone_type == "mc_rnn":
-            from backbones.mcrnn import MultiChannelRNN
+        elif backbone_type == "wh_rnn":
+            from backbones.wh_rnn import MultiChannelRNN
             self.backbone = MultiChannelRNN(
                 seq_len=self.seq_len,
                 tx_filt_size=self.tx_window,
@@ -105,68 +105,40 @@ class CoreModel(nn.Module):
                 n_channels=self.n_channels,
             )
 
-        elif backbone_type == "pc_lut":
-            from backbones.pclut import PerChannelLUT
-            self.backbone = PerChannelLUT(
+        elif backbone_type == "wh_ttr":
+            from backbones.wh_ttr import TemporalTransformer
+            self.backbone = TemporalTransformer(
                 seq_len=self.seq_len,
                 tx_filt_size=self.tx_window,
                 rx_filt_size=self.rx_window,
                 n_channels=self.n_channels,
             )
 
-        elif backbone_type == "mcp_config":
-            from backbones.mcp_configurable import MCPConfig
-            self.backbone = MCPConfig(
+        elif backbone_type == "wh_tctr":
+            from backbones.wh_tctr import TemporalChannelTransformer
+            self.backbone = TemporalChannelTransformer(
                 seq_len=self.seq_len,
                 tx_filt_size=self.tx_window,
                 rx_filt_size=self.rx_window,
                 n_channels=self.n_channels,
             )
 
-        elif backbone_type == "mcp_abs":
-            from backbones.mcp_abs import McpAbs
-            self.backbone = McpAbs(
+        elif backbone_type == "wh_ctr":
+            from backbones.wh_ctr import ChannelTransformer
+            self.backbone = ChannelTransformer(
                 seq_len=self.seq_len,
                 tx_filt_size=self.tx_window,
                 rx_filt_size=self.rx_window,
                 n_channels=self.n_channels,
             )
 
-        elif backbone_type == "mcp_enriched":
-            from backbones.mcp_enriched import McpEnriched
-            self.backbone = McpEnriched(
+        elif backbone_type == "rnn":
+            from backbones.rnn import MultiChannelPureRNN
+            self.backbone = MultiChannelPureRNN(
                 seq_len=self.seq_len,
                 tx_filt_size=self.tx_window,
                 rx_filt_size=self.rx_window,
                 n_channels=self.n_channels,
-            )
-
-        elif backbone_type == "moe_enriched":
-            from backbones.moe_enriched import MoeEnriched
-            self.backbone = MoeEnriched(
-                seq_len=self.seq_len,
-                tx_filt_size=self.tx_window,
-                rx_filt_size=self.rx_window,
-                n_channels=self.n_channels,
-                expert_mode="both",
-            )
-        elif backbone_type == "moe_enriched_simple":
-            from backbones.moe_enriched import MoeEnriched
-            self.backbone = MoeEnriched(
-                seq_len=self.seq_len,
-                tx_filt_size=self.tx_window,
-                rx_filt_size=self.rx_window,
-                n_channels=self.n_channels,
-                expert_mode="simple_only",
-            )
-        elif backbone_type == "moe_enriched_trainable":
-            from backbones.moe_enriched import MoeEnriched
-            self.backbone = MoeEnriched(
-                seq_len=self.seq_len,
-                tx_filt_size=self.tx_window,
-                rx_filt_size=self.rx_window,
-                n_channels=self.n_channels,
-                expert_mode="trainable_only",
             )
 
         else:

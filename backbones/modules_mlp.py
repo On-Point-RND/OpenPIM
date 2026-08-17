@@ -7,7 +7,7 @@ class SingleLayerPerceptron(nn.Module):
     def __init__(
         self,
         n_channels,
-        nonlinearity="silu",
+        nonlinearity="gelu",
         input_size=32,
         output_size=32
     ):
@@ -26,6 +26,7 @@ class SingleLayerPerceptron(nn.Module):
             "tanh": nn.Tanh(),
             "elu": nn.ELU(),
             "silu": nn.SiLU(),
+            "gelu": nn.GELU(),
             "none": nn.Identity(),
         }[nonlinearity]
 

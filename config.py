@@ -11,10 +11,9 @@ class Config:
     )
 
     dataset_name: str = (
-        # "16TR_C25Nc16CD_CL_E20Ne1CD_20250117_16L"
-        # "1TR_C20Nc1CD_E20Ne1CD_20250331_0.5m"
-        # "2TR"   # ./data/2TR.pt
-        # "16TR"  # ./data/16TR.pt
+        # "2TR"  # ./data/2TR.pt
+        # "16T16R_1_EXT"  # ./data/16TR.pt
+        # "16T16R_3_EXT"  # ./data/16TR.pt
     )
 
     data_type: str = (
@@ -23,21 +22,13 @@ class Config:
     )
 
     log_out_dir: str = "./results"
-    log_precision: int = 8
     out_filtration: bool = False
     filter_path: str = (
-        # "./data/filter_synth.mat"
-        # "./data/rx_filter.mat"
-        # "./data/filter_real.mat"
+        "./data/filter_synth.mat"
     )
 
     # PIM Model Settings
     PIM_backbone: str = "mcp"
-    # Dataset structure:
-    # "sequential" or "sliding"
-    # applied to ML approaches only
-    # set for sequential for the most of the cases
-    dataset_mode: str = "sequential"
     PIM_hidden_size: int = 8
     # PIM type options: "total", "cond", "leak", "ext"
     # For synthetic datasets with separation available
@@ -47,8 +38,8 @@ class Config:
     # Training Process
     step: str = "train_pim_single"
     seq_len: int = 2048
-    tx_window: int = 48
-    rx_window: int = 30
+    tx_window: int = 20
+    rx_window: int = 20
     accelerator: str = "cuda"
     devices: int = 0
     re_level: str = "soft"
@@ -59,11 +50,8 @@ class Config:
     opt_type: str = "adam"
     batch_size: int = 1
     batch_size_eval: int = 1
-    n_iterations: int = 6e4
-    n_log_steps: int = 5e3
-    # Dense-then-sparse logging: first phase logs every n_log_steps_dense
-    n_log_steps_dense: int = 200
-    dense_phase_end_iter: int = 0  # 0 = no dense phase, use n_log_steps all the way
+    n_iterations: int = 2e4
+    n_log_steps: int = 2e3
 
     # lr_scheduler_type options: "none", "rop" (reduce on plateau), "cosine"
     lr_scheduler_type : str = "none"
@@ -78,9 +66,9 @@ class Config:
     val_ratio: float = 0.2
     test_ratio: float = 0.2
     save_results: bool = True
-    # to plot spectrum plots each logging step
-    plot_per_step_spectrums: bool = False
-    exp_name: str = "test"
+    # Optional per-channel / grid PSD PNGs at each log step (data always in spectra.npz)
+    plot_per_step_spectrums: bool = True
+    exp_name: str = "2e4_seq2048_tx20rx20"
     load_experiment: str = '/home/dev/work_main/2025/OpenPIM/results/m_mlp/data_16TR_0/mmlp_real_for_pca/training_config.json'
 
 

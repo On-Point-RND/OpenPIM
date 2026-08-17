@@ -37,7 +37,7 @@ def main(exp: Runner):
 
     pim_model_id = exp.gen_model_id(n_net_pim_params)
 
-    PandasWriter = exp.build_logger(pim_model_id)
+    checkpoint = exp.build_logger(pim_model_id)
 
     net = net.to(exp.device)
     criterion = exp.build_criterion()
@@ -61,6 +61,6 @@ def main(exp: Runner):
         filter=filter,
         CScaler=CScaler,
         spec_dictionary=specs,
-        writer=PandasWriter,
+        writer=checkpoint,
         data_type=exp.args.data_type,
     )

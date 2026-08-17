@@ -9,7 +9,7 @@ from backbones.modules_mlp import SingleLayerPerceptron
 
 
 class NlinCore(nn.Module):
-    def __init__(self, n_channels, num_layers, nonlinearity="silu"):
+    def __init__(self, n_channels, num_layers, nonlinearity="gelu"):
         super().__init__()
         self.n_channels = n_channels
         layers = []
@@ -37,7 +37,7 @@ class NlinCore(nn.Module):
 class MultiChannelMLP(nn.Module):
     def __init__(self, seq_len, tx_filt_size, rx_filt_size, n_channels):
         super().__init__()
-        num_mlp_layers = 3
+        num_mlp_layers = 2
 
         self.txa_filter_layers = TxaFilterEnsembleTorch(
             n_channels, tx_filt_size, seq_len
