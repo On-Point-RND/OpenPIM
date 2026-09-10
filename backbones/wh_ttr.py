@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
-from torch.utils.checkpoint import checkpoint
 
 from backbones.modules_filter import (
     TxaFilterEnsembleTorch,
@@ -19,10 +18,10 @@ def _pick_n_heads(feat_size: int, preferred: int = 4) -> int:
 
 class TemporalMixTransformer(nn.Module):
     """
-    Transformer encoder over time on the full I/Q cross-channel vector.
+    Transformer over time on the joint I/Q × channel vector (size 2C).
 
-    Full-length self-attention is O(T^2) and OOMs at T~2k. Sequences longer
-    than ``attn_chunk`` are processed in non-overlapping temporal chunks.
+    Prefer seq_len <= attn_chunk (default 512) for full attention.
+    Longer sequences are split into non-overlapping chunks.
     """
 
     def __init__(
@@ -31,14 +30,12 @@ class TemporalMixTransformer(nn.Module):
         n_layers: int = 1,
         n_heads: int | None = None,
         d_ff: int | None = None,
-        attn_chunk: int = 256,
-        use_checkpoint: bool = True,
+        attn_chunk: int = 512,
     ):
         super().__init__()
         self.n_channels = n_channels
         self.feat_size = 2 * n_channels
         self.attn_chunk = attn_chunk
-        self.use_checkpoint = use_checkpoint
         n_heads = n_heads or _pick_n_heads(self.feat_size)
         if self.feat_size % n_heads != 0:
             raise ValueError(
@@ -56,20 +53,15 @@ class TemporalMixTransformer(nn.Module):
             encoder_layer, num_layers=n_layers, enable_nested_tensor=False
         )
 
-    def _encode(self, seq: torch.Tensor) -> torch.Tensor:
-        if self.use_checkpoint and seq.requires_grad:
-            return checkpoint(self.transformer, seq, use_reentrant=False)
-        return self.transformer(seq)
-
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         n_batch, seq_len, _, _ = x.shape
         seq = x.reshape(n_batch, seq_len, self.feat_size)
-        chunk = max(1, min(self.attn_chunk, seq_len))
+        chunk = self.attn_chunk
         if seq_len <= chunk:
-            out = self._encode(seq)
+            out = self.transformer(seq)
         else:
             pieces = [
-                self._encode(seq[:, t0 : t0 + chunk])
+                self.transformer(seq[:, t0 : t0 + chunk])
                 for t0 in range(0, seq_len, chunk)
             ]
             out = torch.cat(pieces, dim=1)

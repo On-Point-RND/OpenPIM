@@ -18,9 +18,10 @@ def _pick_n_heads(feat_size: int, preferred: int = 4) -> int:
 
 class ChannelAttnTransformer(nn.Module):
     """
-    Lightweight Transformer encoder over RF channels at each time step.
+    Transformer over RF channels at each time step.
 
-    Input / output: (B, T, C, 2). Self-attention runs along C; T is folded into batch.
+    (B, T, C, 2) → fold time into batch → attend along C → restore shape.
+    Attention length is only C (small); no chunking / checkpoint.
     """
 
     def __init__(
@@ -59,8 +60,7 @@ class ChannelAttnTransformer(nn.Module):
         residual = seq
         h = self.in_proj(seq)
         h = self.transformer(h)
-        h = self.out_proj(h)
-        out = residual + h
+        out = residual + self.out_proj(h)
         return out.view(n_batch, seq_len, n_channels, 2)
 
 
@@ -72,7 +72,6 @@ class ChannelTransformer(nn.Module):
             n_channels, tx_filt_size, seq_len
         )
         self.channel_attn = ChannelAttnTransformer(n_channels)
-        self.channel_attn_2 = ChannelAttnTransformer(n_channels)
         self.rxa_filter_layers = RxaFilterEnsembleTorch(
             n_channels, rx_filt_size, seq_len
         )
@@ -80,5 +79,4 @@ class ChannelTransformer(nn.Module):
     def forward(self, x, h_0=None):
         x = self.txa_filter_layers(x)
         x = self.channel_attn(x)
-        x = self.channel_attn_2(x)
         return self.rxa_filter_layers(x)
