@@ -65,16 +65,27 @@ def train_model(
     lr_scheduler_type: str,
     save_results: bool = True,
     plot_per_step_spectrums: bool = False,
+    primary: bool = True,
     val_ratio: float = 0.2,
     test_ratio: float = 0.2,
     seed: int = 0,
 ) -> None:
-    """Standalone training function detached from class."""
+    """Standalone training function detached from class.
+
+    primary=True (first seed): checkpoint, barplots, spectra, optional PNG spectra.
+    primary=False: quality metrics only (append to run_metrics.csv).
+    """
 
     step_logger = make_logger()
     os.makedirs(path_dir_save, exist_ok=True)
 
-    recorder = ExperimentRecorder(path_dir_save, seed=seed)
+    save_results = primary and save_results
+    plot_per_step_spectrums = primary and plot_per_step_spectrums
+    append_metrics = not primary
+
+    recorder = ExperimentRecorder(
+        path_dir_save, seed=seed, append_metrics=append_metrics
+    )
     signal_specs = (FS, PIM_SFT, PIM_BW, data_type, data_name)
 
     start_time = time.time()
@@ -88,6 +99,7 @@ def train_model(
     log_shape = True
     powers = None
     powers_lite = None
+    last_powers_iteration = None
     pred_rescaled = None
     gt_rescaled = None
 
@@ -174,13 +186,24 @@ def train_model(
             powers_lite = compute_powers_dict_lite(
                 gt_rescaled, pred_rescaled, signal_specs
             )
+            last_powers_iteration = iteration
             perf_list = perf_from_powers(powers)
             mean_reduction = calculate_mean_red(perf_list)
             mean_res_lite = perf_from_powers_lite(powers_lite)
 
-            freqs, psds = compute_spectra_bundle(
-                gt_rescaled, pred_rescaled, noise["test"], FS
-            )
+            spectra_kwargs = {}
+            if primary:
+                freqs, psds = compute_spectra_bundle(
+                    gt_rescaled, pred_rescaled, noise["test"], FS
+                )
+                spectra_kwargs = dict(
+                    freqs=freqs,
+                    psd_rx=psds["rx"],
+                    psd_pred=psds["pred"],
+                    psd_err=psds["err"],
+                    psd_noise=psds["noise"],
+                )
+
             recorder.log_step(
                 iteration=iteration,
                 time_min=(time.time() - start_time) / 60,
@@ -193,11 +216,7 @@ def train_model(
                 powers_lite=powers_lite,
                 mean_reduction=mean_reduction,
                 mean_res_lite=mean_res_lite,
-                freqs=freqs,
-                psd_rx=psds["rx"],
-                psd_pred=psds["pred"],
-                psd_err=psds["err"],
-                psd_noise=psds["noise"],
+                **spectra_kwargs,
             )
 
             if plot_per_step_spectrums:
@@ -236,32 +255,41 @@ def train_model(
 
     step_logger.info("Training Completed\n")
 
-    recorder.save_spectra(
-        meta={"FS": FS, "FC_TX": FC_TX, "PIM_SFT": PIM_SFT, "PIM_BW": PIM_BW}
-    )
+    if primary:
+        recorder.save_spectra(
+            meta={"FS": FS, "FC_TX": FC_TX, "PIM_SFT": PIM_SFT, "PIM_BW": PIM_BW}
+        )
+        step_logger.info(f"Spectra saved to {recorder.spectra_path}")
     step_logger.info(f"Metrics saved to {recorder.metrics_path}")
-    step_logger.info(f"Spectra saved to {recorder.spectra_path}")
 
-    if powers is None or powers_lite is None:
-        if pred_rescaled is None:
-            _, pred, gt = net_eval(
-                logs["test"],
-                net,
-                test_loader,
-                criterion,
-                device,
+    if primary:
+        if powers is None or powers_lite is None:
+            if pred_rescaled is None:
+                _, pred, gt = net_eval(
+                    logs["test"],
+                    net,
+                    test_loader,
+                    criterion,
+                    device,
+                )
+                pred_rescaled = CScaler.rescale(pred, key="Y")
+                gt_rescaled = CScaler.rescale(gt, key="Y")
+            powers = compute_powers_dict(
+                gt_rescaled, pred_rescaled, noise["test"], signal_specs
             )
-            pred_rescaled = CScaler.rescale(pred, key="Y")
-            gt_rescaled = CScaler.rescale(gt, key="Y")
-        powers = compute_powers_dict(
-            gt_rescaled, pred_rescaled, noise["test"], signal_specs
-        )
-        powers_lite = compute_powers_dict_lite(
-            gt_rescaled, pred_rescaled, signal_specs
-        )
+            powers_lite = compute_powers_dict_lite(
+                gt_rescaled, pred_rescaled, signal_specs
+            )
+            last_powers_iteration = n_iterations
 
-    plot_total_perf(powers, path_dir_save)
-    plot_total_perf_lite(powers_lite, path_dir_save)
+        recorder.save_barplot_powers(
+            powers,
+            powers_lite,
+            last_powers_iteration if last_powers_iteration is not None else n_iterations,
+        )
+        step_logger.info(f"Barplot data saved to {recorder.barplot_powers_path}")
+        plot_total_perf(powers, path_dir_save)
+        plot_total_perf_lite(powers_lite, path_dir_save)
 
 
 def net_eval(

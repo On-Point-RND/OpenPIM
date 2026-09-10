@@ -11,14 +11,14 @@ class Config:
     )
 
     dataset_name: str = (
-        # "2TR"  # ./data/2TR.pt
+        "2TR"  # ./data/2TR.pt
         # "16T16R_1_EXT"  # ./data/16TR.pt
         # "16T16R_3_EXT"  # ./data/16TR.pt
     )
 
     data_type: str = (
         # 'real'
-        # 'synth'
+        'synth'
     )
 
     log_out_dir: str = "./results"
@@ -28,7 +28,7 @@ class Config:
     )
 
     # PIM Model Settings
-    PIM_backbone: str = "mcp"
+    PIM_backbone: str = "wh_ctr"
     PIM_hidden_size: int = 8
     # PIM type options: "total", "cond", "leak", "ext"
     # For synthetic datasets with separation available
@@ -46,12 +46,16 @@ class Config:
 
     # General Hyperparameters
     seed: int = 0
+    # Number of runs with seeds seed .. seed+n_seeds-1 in the same exp folder.
+    # All runs append quality metrics to run_metrics.csv; heavy artifacts
+    # (checkpoint, barplots, spectra) only for the first seed. Use 1 for a single run.
+    n_seeds: int = 5
     loss_type: str = "l2"
     opt_type: str = "adam"
     batch_size: int = 1
     batch_size_eval: int = 1
-    n_iterations: int = 2e4
-    n_log_steps: int = 2e3
+    n_iterations: int = 5e4
+    n_log_steps: int = 5e3
 
     # lr_scheduler_type options: "none", "rop" (reduce on plateau), "cosine"
     lr_scheduler_type : str = "none"
@@ -67,8 +71,8 @@ class Config:
     test_ratio: float = 0.2
     save_results: bool = True
     # Optional per-channel / grid PSD PNGs at each log step (data always in spectra.npz)
-    plot_per_step_spectrums: bool = True
-    exp_name: str = "2e4_seq2048_tx20rx20"
+    plot_per_step_spectrums: bool = False
+    exp_name: str = "multi_seed_5e4_seq2048_tx20rx20"
     load_experiment: str = '/home/dev/work_main/2025/OpenPIM/results/m_mlp/data_16TR_0/mmlp_real_for_pca/training_config.json'
 
 

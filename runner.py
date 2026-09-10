@@ -269,6 +269,7 @@ class Runner:
         spec_dictionary,
         writer,
         data_type,
+        primary: bool = True,
     ):
 
         train_model(
@@ -298,12 +299,15 @@ class Runner:
             lr_scheduler_type=self.args.lr_scheduler_type,
             save_results=self.args.save_results,
             plot_per_step_spectrums=self.args.plot_per_step_spectrums,
+            primary=primary,
             val_ratio=self.args.val_ratio,
             test_ratio=self.args.test_ratio,
             seed=self.args.seed,
         )
 
-        self.dump_json_config(spec_dictionary)
+        # Write config once for the primary seed (checkpoint path matches saved .pt).
+        if primary:
+            self.dump_json_config(spec_dictionary)
 
     def load_and_split_data(self):
         path = resolve_dataset_path(
@@ -363,6 +367,7 @@ class Runner:
             "val_ratio": self.args.val_ratio,
             "test_ratio": self.args.test_ratio,
             "seed": self.args.seed,
+            "n_seeds": self.args.n_seeds,
         }
 
         # Serialize to JSON-compatible format

@@ -141,6 +141,33 @@ class CoreModel(nn.Module):
                 n_channels=self.n_channels,
             )
 
+        elif backbone_type == "tctr":
+            from backbones.tctr import MultiChannelPureTCTR
+            self.backbone = MultiChannelPureTCTR(
+                seq_len=self.seq_len,
+                tx_filt_size=self.tx_window,
+                rx_filt_size=self.rx_window,
+                n_channels=self.n_channels,
+            )
+
+        elif backbone_type == "wh_cnn1d":
+            from backbones.wh_cnn1d import WhCnn1d
+            self.backbone = WhCnn1d(
+                seq_len=self.seq_len,
+                tx_filt_size=self.tx_window,
+                rx_filt_size=self.rx_window,
+                n_channels=self.n_channels,
+            )
+
+        elif backbone_type == "wh_cnn2d":
+            from backbones.wh_cnn2d import WhCnn2d
+            self.backbone = WhCnn2d(
+                seq_len=self.seq_len,
+                tx_filt_size=self.tx_window,
+                rx_filt_size=self.rx_window,
+                n_channels=self.n_channels,
+            )
+
         else:
             raise ValueError(
                 f"The backbone type '{self.backbone_type}' is not supported. Please add your own "
