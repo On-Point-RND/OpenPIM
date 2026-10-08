@@ -300,7 +300,7 @@ def perf_from_powers(powers: dict) -> float:
     return perf_list
 
 
-def plot_total_perf(powers, path_save):
+def plot_total_perf(powers, path_save, ext: str = ".png"):
     _ = plt.figure(figsize=(10, 7))
     n_channels = len(powers["gt"])
     gt_norm = [powers["gt"][idx] - powers["noise"][idx] for idx in range(n_channels)]
@@ -323,7 +323,9 @@ def plot_total_perf(powers, path_save):
     plt.xlabel("Channel number", fontsize=16)
     plt.ylabel("Signal level [dB]", fontsize=16)
     plt.legend(loc="upper left")
-    plt.savefig(f"{path_save}/barplot_performance.png", bbox_inches="tight")
+    if not ext.startswith("."):
+        ext = f".{ext}"
+    plt.savefig(f"{path_save}/barplot_performance{ext}", bbox_inches="tight")
     plt.close()
 
 
@@ -404,8 +406,8 @@ def perf_from_powers_lite(powers: dict) -> float:
     return float(np.mean(powers["err"]))
 
 
-def plot_total_perf_lite(powers, path_save):
-    """Final barplot RXA vs RES; saves barplot_performance_lite.png."""
+def plot_total_perf_lite(powers, path_save, ext: str = ".png"):
+    """Final barplot RXA vs RES; saves barplot_performance_lite{ext}."""
     _ = plt.figure(figsize=(10, 7))
     gt = powers["gt"]
     err = powers["err"]
@@ -421,7 +423,9 @@ def plot_total_perf_lite(powers, path_save):
     plt.xlabel("Channel number", fontsize=16)
     plt.ylabel("Signal level [dB]", fontsize=16)
     plt.legend(loc="upper left")
-    plt.savefig(f"{path_save}/barplot_performance_lite.png", bbox_inches="tight")
+    if not ext.startswith("."):
+        ext = f".{ext}"
+    plt.savefig(f"{path_save}/barplot_performance_lite{ext}", bbox_inches="tight")
     plt.close()
 
 
